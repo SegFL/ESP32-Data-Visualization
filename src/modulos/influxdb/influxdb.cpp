@@ -60,7 +60,7 @@ void influxDBInit(){
     // Check server connection
     if (client.validateConnection()) {
         writeSerialCom("Connected to InfluxDB: ");
-        writeSerialCom(client.getServerUrl());
+        writeSerialCom(client.getServerUrl()+"\n\r");
     } else {
         writeSerialCom("InfluxDB connection failed: ");
         writeSerialCom(client.getLastErrorMessage());
@@ -77,7 +77,6 @@ void writeData(uint16_t data){
     // Store measured value into point
     // Report RSSI of currently connected network
 
-    sensor.addField("adc0", (float)data); // Convertir a float si es necesario
 
     // Print what are we exactly writing
     if (!client.writePoint(sensor)) {
@@ -99,23 +98,31 @@ void writeData(uint16_t data){
 }
 
 
-
-void influxDBUpdate() {
+void influxDBUpdate(Buffer* adcBuffer) {
   
   ADCData temp;
-  while ((ADCEmpty())!=true) {
-    getADCData(&temp);
+  while ((adcBuffer->isEmpty()) != true) {
+    sensor.clearFields();
+
+    temp = adcBuffer->popData();
+    writeSerialCom("Dato procesado en influxUpdate():" + String(temp.pin) + "," + String(temp.value) + "\n\r");
+    
     // Crear un punto para enviar a InfluxDB
     Point sensor("adc_data");
-    sensor.addTag("pin", String(temp.pin));          // Agregar el pin como etiqueta
-    sensor.addField("value", temp.value);            // Agregar el valor del ADC
-    sensor.addField("timestamp", temp.timestamp);    // Agregar la marca de tiempo
+    
+    // Convertir pin a cadena antes de agregarlo como etiqueta
+    sensor.addTag("pin", String(temp.pin));          // Agregar pin como etiqueta
+    
+    // Asegurarse de que 'value' sea tratado como un número (int o float según corresponda)
+    sensor.addField("value", (float)temp.value);      // Agregar el valor del ADC como un campo numérico (float)
+    sensor.addField("timestamp", temp.timestamp);     // Agregar la marca de tiempo
     
     if (!client.writePoint(sensor)) {
-      Serial.print("Error al enviar datos a InfluxDB: ");
-      Serial.println(client.getLastErrorMessage());
+      writeSerialCom("Error al enviar datos a InfluxDB: ");
+      writeSerialCom(client.getLastErrorMessage());
     } else {
-      Serial.println("Datos enviados a InfluxDB.");
+      writeSerialCom("Datos enviados a InfluxDB.");
     }
   }
 }
+

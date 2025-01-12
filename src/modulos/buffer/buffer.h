@@ -1,49 +1,46 @@
+// Buffer.h
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include <vector>
 #include <stdexcept>
 #include "ADCData.h"
 #include <modulos/serialCom/serialCom.h>
 
+#define MAX_SIZE 100
 
 class Buffer {
-private:
-    std::vector<ADCData> buffer;  // Contenedor dinámico para almacenar datos
-    size_t currentIndex;          // Índice actual para agregar datos
-
 public:
-    // Constructor: inicializa el buffer con un tamaño inicial
-    explicit Buffer(size_t initialSize);
+    Buffer();
 
     // Agregar un dato al buffer
     void addData(const ADCData& data);
 
-    void printData();
-
-    // Obtener un dato del buffer en un índice específico
-    ADCData getData(size_t index) const;
-
     // Obtener y eliminar el primer dato del buffer (FIFO)
     ADCData popData();
 
-    // Copiar el primer dato del buffer a un puntero (sin eliminarlo)
-    void copyFirstData(ADCData* dataPtr);
+    // Obtener el primer dato del buffer sin eliminarlo
+    ADCData peekData() const;
 
     // Verificar si el buffer está vacío
-    bool BufferEmpty() const;
+    bool isEmpty() const;
+
+    // Verificar si el buffer está lleno
+    bool isFull() const;
 
     // Limpiar el buffer
     void clear();
 
-    // Aumentar el tamaño del buffer
-    void resize(size_t newSize);
+    // Imprimir los datos almacenados
+    void printData() const;
 
-    // Obtener el tamaño actual del buffer
+    // Obtener la cantidad de elementos almacenados
     size_t size() const;
 
-    // Obtener la cantidad de datos almacenados
-    size_t dataCount() const;
+private:
+    ADCData buffer[MAX_SIZE];
+    size_t front; // Índice del primer elemento
+    size_t rear;  // Índice del último elemento + 1
+    size_t count; // Cantidad de elementos almacenados
 };
 
-#endif  // BUFFER_H
+#endif // BUFFER_H

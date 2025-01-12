@@ -1,9 +1,9 @@
 
 #include "modulos/adc/adc.h"
 #include "modulos/serialCom/serialCom.h"
-//#include "modulos/server/server.h"
 #include <Arduino.h>
 #include "modulos/influxdb/influxdb.h"
+#include "modulos/buffer/buffer.h"
 
 
 
@@ -19,10 +19,15 @@ const long interval = 1000;      // Intervalo de 1 segundo
 unsigned long previousMillisSendingData = 0; // Tiempo del último evento
 const long intervalSendingData = 1000;      // Intervalo de 1 segundo
 
+
+
+static Buffer* adcBuffer=NULL;
+
+
 void setup() {
 
 
-  adcInit();
+  adcInit(adcBuffer);
   serialComInit();
   influxDBInit();
 
@@ -40,8 +45,10 @@ void loop() {
     //Manejo las solicitudes y envios de info de WIFi
     if (currentMillis - previousMillisSendingData >= intervalSendingData) {
         previousMillisSendingData = currentMillis;
-        //influxDBUpdate();
-        leerADC();
+        if(adcBuffer!=NULL)
+          leerADC(adcBuffer);
+          influxDBUpdate(adcBuffer);
+
 
     }
  

@@ -1,23 +1,20 @@
 
-#include <Arduino.h>
+
 #include "adc.h"
-#include <modulos/buffer/buffer.h>
-#include "ADCData.h"
 
+void adcInit(Buffer*& adcBuffer) {
+    // Inicializar el buffer
+    adcBuffer = new Buffer();
 
-static Buffer* adcBuffer=NULL;
-
-void adcInit(){
-  pinMode(36, INPUT);
+    // Configuración de pines
+    pinMode(36, INPUT);
 }
 
 
-bool ADCEmpty(){
-  return adcBuffer->BufferEmpty();
-}
 
-void  leerADC(){
-  static Buffer adcBuffer(4);
+
+void  leerADC(Buffer*& adcBuffer){
+
 
   ADCData temp;
   int i =0;
@@ -25,18 +22,17 @@ void  leerADC(){
     temp.value=analogRead(36);
     temp.pin=36;
     temp.timestamp=micros();
-    //adcBuffer.addData(temp);
+    adcBuffer->addData(temp);
     i++;
   }
   writeSerialCom(String(temp.pin)+","+String(temp.value)+"\n\r");
+  
 
   //adcBuffer.printData();
   
 }
 
-void getADCData(ADCData* dataPtr){
-  adcBuffer->copyFirstData(dataPtr);
-}
+
 
 
 
