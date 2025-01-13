@@ -17,9 +17,9 @@
 unsigned long previousMillis = 0; // Tiempo del último evento
 const long interval = 1000;      // Intervalo de 1 segundo
 unsigned long previousMillisSendingData = 0; // Tiempo del último evento
-const long intervalSendingData = 1000;      // Intervalo de 1 segundo
-
-
+const long intervalSendingData = 10000;      // Intervalo de 1 segundo
+unsigned long previousMillisSensoringData=0;
+const long intervalSensoringData = 1000;
 
 static Buffer* adcBuffer=NULL;
 
@@ -43,13 +43,14 @@ void loop() {
 
     
     //Manejo las solicitudes y envios de info de WIFi
-    if (currentMillis - previousMillisSendingData >= intervalSendingData) {
-        previousMillisSendingData = currentMillis;
+    if (currentMillis - previousMillisSensoringData >= intervalSensoringData) {
+        previousMillisSensoringData = currentMillis;
         if(adcBuffer!=NULL)
           leerADC(adcBuffer);
-          influxDBUpdate(adcBuffer);
-
-
+    }
+    if (currentMillis - previousMillisSendingData >= intervalSendingData) {
+        previousMillisSendingData = currentMillis;
+        influxDBUpdate(adcBuffer);
     }
  
 

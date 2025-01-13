@@ -67,6 +67,8 @@ void influxDBInit(){
     }
 
     sensor.addTag("device", DEVICE);
+    // Enable lines batching
+    client.setWriteOptions(WriteOptions().batchSize(4));
 
 }
 
@@ -77,7 +79,7 @@ void writeData(uint16_t data){
     // Store measured value into point
     // Report RSSI of currently connected network
 
-
+    
     // Print what are we exactly writing
     if (!client.writePoint(sensor)) {
         writeSerialCom("InfluxDB write failed: ");
@@ -102,27 +104,36 @@ void influxDBUpdate(Buffer* adcBuffer) {
   
   ADCData temp;
   while ((adcBuffer->isEmpty()) != true) {
-    sensor.clearFields();
-
+    writeSerialCom("Proceso un Point");
     temp = adcBuffer->popData();
-    writeSerialCom("Dato procesado en influxUpdate():" + String(temp.pin) + "," + String(temp.value) + "\n\r");
+    if(!client.isBufferFull()){
+        Point sensor("adc_data");
+        sensor.addTag("pin", String(temp.pin));         
+        sensor.addField("value", (float)temp.value);     
+        sensor.addField("timestamp", temp.timestamp);   
+        client.writePoint(sensor);
+    }else{
+      if(!client.flushBuffer()){
+        writeSerialCom("InfluxDB flush failed: ");
+        writeSerialCom(client.getLastErrorMessage()+"\n\r");
+        writeSerialCom("Full buffer: ");
+        writeSerialCom(client.isBufferFull() ? "Yes" : "No");
+        writeSerialCom("\n\r");
+      }else{
+            writeSerialCom("Dato procesado en influxUpdate():" + String(temp.pin) + "," + String(temp.value) + "\n\r");
+      }
+    }
     
-    // Crear un punto para enviar a InfluxDB
-    Point sensor("adc_data");
-    
-    // Convertir pin a cadena antes de agregarlo como etiqueta
-    sensor.addTag("pin", String(temp.pin));          // Agregar pin como etiqueta
-    
-    // Asegurarse de que 'value' sea tratado como un número (int o float según corresponda)
-    sensor.addField("value", (float)temp.value);      // Agregar el valor del ADC como un campo numérico (float)
-    sensor.addField("timestamp", temp.timestamp);     // Agregar la marca de tiempo
-    
+/*
     if (!client.writePoint(sensor)) {
       writeSerialCom("Error al enviar datos a InfluxDB: ");
       writeSerialCom(client.getLastErrorMessage());
     } else {
       writeSerialCom("Datos enviados a InfluxDB.");
     }
+  */ 
+    //Borro los valores de los campos del punto
+    sensor.clearFields();
   }
 }
 
