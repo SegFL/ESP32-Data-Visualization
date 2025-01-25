@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "modulos/influxdb/influxdb.h"
 #include "modulos/buffer/buffer.h"
-
+#include "modulos/PWM/PWM.h"
 
 
 
