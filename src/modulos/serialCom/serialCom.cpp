@@ -21,9 +21,13 @@ char readSerialChar() {
 }
 
 
+void writeSerialComln(String data){
+    writeSerialCom(data+"\n\r");
+}
 void writeSerialCom(String data){
     Serial.print(data);
 }
+
 
 
 
