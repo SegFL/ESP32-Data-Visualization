@@ -49,7 +49,7 @@ void Buffer::printData() const {
     size_t idx = front;
     for (size_t i = 0; i < count; ++i) {
         const ADCData& data = buffer[idx];
-        writeSerialCom("Pin: " + String(data.pin) + ", Value: " + String(data.value) + ", Timestamp: " + String(data.timestamp));
+        writeSerialCom("Pin: " + String(data.pin) + ", Value: " + String(data.busVoltage_V) + ", Timestamp: " + String(data.timestamp));
         idx = (idx + 1) % MAX_SIZE;
     }
 }

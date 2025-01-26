@@ -1,6 +1,7 @@
 
 
 #include "adc.h"
+#include <modulos/ina219/ina219.h>
 
 void adcInit(Buffer*& adcBuffer) {
     // Inicializar el buffer
@@ -19,16 +20,15 @@ void  leerADC(Buffer*& adcBuffer){
   ADCData temp;
   int i =0;
   while(i<1){
-    temp.value=analogRead(36);
-    temp.pin=36;
-    temp.timestamp=micros();
-    adcBuffer->addData(temp);
+    
+    if(getData(temp,i)==false){
+        temp.pin=i; 
+        temp.timestamp=micros();
+        adcBuffer->addData(temp);
+    }
     i++;
   }
-  writeSerialCom(String(temp.pin)+","+String(temp.value)+"\n\r");
-  
 
-  //adcBuffer.printData();
   
 }
 
