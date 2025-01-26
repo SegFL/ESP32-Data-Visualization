@@ -26,9 +26,9 @@ static Buffer* adcBuffer=NULL;
 
 void setup() {
 
-
-  adcInit(adcBuffer);
   serialComInit();
+  adcInit(adcBuffer);
+  
   influxDBInit();
 
 
