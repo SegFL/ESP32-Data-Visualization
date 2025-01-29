@@ -28,8 +28,12 @@ const long intervalSensoringData = 1000;
 static Buffer* adcBuffer=NULL;
 
 
+typedef enum{
+    IDLE,    //estado default
+    INFLUXDB     
+} serialComState_t;
 
-
+serialComState_t serialComState=IDLE;
 // Definimos los manejadores de las tareas
 TaskHandle_t Task1Handle = NULL;
 TaskHandle_t Task2Handle = NULL;
@@ -43,7 +47,7 @@ void Task1(void *pvParameters) {
         
   Serial.println("Task 1 is running");
 
-  while (Serial.available() > 0) { // Leo todos los datos de la terminal serie
+  while (serialComAvailable() > 0) { // Leo todos los datos de la terminal serie
   receivedChar = readSerialChar();
 
   // Procesar el carácter leído
@@ -52,11 +56,18 @@ void Task1(void *pvParameters) {
   } else if (receivedChar == '\n') { // Si es nueva línea, enviar el mensaje
     if (!buffer.isEmpty()) { // Verificar si el buffer no está vacío
       //Aca deberia ir un switch un estado por cada modulo, donde se asignaria QueueTemp=QueueModuloCorrespondiente
-      if (xQueueSend(xQueueComSerial, &buffer, portMAX_DELAY) != pdPASS) {
-        Serial.println("Error: No se pudo enviar a la cola.");
-      } else {
-        Serial.println("Envie:");
-        Serial.println(buffer);
+      switch(serialComState){
+        case INFLUXDB:{
+            if (xQueueSend(xQueueComSerial, &buffer, portMAX_DELAY) != pdPASS) {
+              Serial.println("Error: No se pudo enviar a la cola a INFLUXDB.");
+            } else {
+              Serial.println("Envie:");
+              Serial.println(buffer);
+            }
+        }
+          break;
+        defaul:
+          break;
       }
       //Aca deberia enviar el buffer al Queue correspondiente
       buffer = ""; // Limpiar el buffer

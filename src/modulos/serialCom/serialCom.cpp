@@ -2,12 +2,8 @@
 
 #include "serialCom.h"
 
-typedef enum{
-    IDLE,    //estado default
-    INFLUXDB     
-} serialComState_t;
 
-static serialComState_t currentState=IDLE;
+
 
 static String serialDataBuffer = ""; // Buffer para almacenar datos del puerto serie
 
