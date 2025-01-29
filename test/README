@@ -1,11 +1,11 @@
 
-This directory is intended for PlatformIO Test Runner and project tests.
 
-Unit Testing is a software testing method by which individual units of
-source code, sets of one or more MCU program modules together with associated
-control data, usage procedures, and operating procedures, are tested to
-determine whether they are fit for use. Unit testing finds problems early
-in the development cycle.
+En el task1 deberia poner la fucnion de serialComUpdate, esta fucnion deberia enviarle una señal al otro modulo para que sepa que tiene
+datos esperando en la Queue. Por ejemplo una funcion en SerialCom que devuelva el estado. 
+O si no modificar los datos de la Queue y agregar un un typedef con el nombre del modulo al que le pertenece el dato.
 
-More information about PlatformIO Unit Testing:
-- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+(*****Esto no se podria solucionar teniendo mas de una Queue? una por cada modulo*****)
+
+
+En task2 deberia fijarme si hay datos en la Queue y mandarselos al modulo correspondiente
+En esta task deberia ten

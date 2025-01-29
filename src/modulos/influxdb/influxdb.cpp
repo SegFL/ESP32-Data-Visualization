@@ -77,6 +77,20 @@ void influxDBInit(){
 
 void influxDBUpdate(){
 
+    //Si no se termino de procesar los datos del estado anterior no hago nada
+    if( nextState!=true ) {
+          switch ( currentState ) {
+            case CONNECTING_WIFI:
+                connectWiFi();
+                 break;
+            case CONNECTING_WIFI_SSID:
+                influxdbGetChar( receivedChar );
+                 break;
+            default:
+                SerialComState = IDLE;
+                break;
+        }
+    }  
 
 }
 void influxDBUpdate1(Buffer* adcBuffer) ;
