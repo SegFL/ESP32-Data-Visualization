@@ -36,7 +36,7 @@ void writeSerialCom(String data){
 
 
 void SerialComUpdate(){
-
+/*
   char receivedChar = readSerialChar();
     if( receivedChar != '\0' ) {
         switch ( currentState ) {
@@ -48,6 +48,7 @@ void SerialComUpdate(){
                 break;
         }
     }    
+    */
 }
 
 bool serialComChangeState(serialComState_t newState) {
@@ -86,4 +87,8 @@ bool receiveString(String data){
             return true;
         }
     }
+}
+
+int serialComAvailable(){
+    return Serial.available();
 }

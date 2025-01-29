@@ -61,9 +61,7 @@ void Task1(void *pvParameters) {
     }
   }
 }
-
-
-      Serial.println("Task 1 is Stopping");
+    Serial.println("Task 1 is Stopping");
 
         // Simular un retardo
     vTaskDelay(pdMS_TO_TICKS(1000)); // Espera 1 segundo

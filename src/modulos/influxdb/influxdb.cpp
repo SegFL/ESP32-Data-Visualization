@@ -30,12 +30,7 @@ WiFiMulti wifiMulti;
   
 
 
-typedef enum{
-    IDLE,    //estado default
-    CONNECTING_WIFI,
-    CONNECTING_WIFI_SSID,
-    CONNECTING_WIFI_PASSWORD  
-} influxdbState_t;
+
 
 influxdbState_t currentState= IDLE;
 //Esta variable sirve para indicar que la funcion encargada de 
@@ -56,12 +51,7 @@ Point sensor("adc_readings");
 
 void influxDBInit(){
 
-    if(serialComChangeState(CONNECTING_WIFI)==true){
-        currentState=CONNECTING_WIFI;
-    }else{
-      writeSerialComln("La intefaz serie esta ocupada, no se pudo connectar a la red WiFi");
-      return;
-    }
+
 
     // Accurate time is necessary for certificate validation and writing in batches
     // We use the NTP servers in your area as provided by: https://www.pool.ntp.org/zone/
@@ -87,20 +77,6 @@ void influxDBInit(){
 
 void influxDBUpdate(){
 
-    //Si no se termino de procesar los datos del estado anterior no hago nada
-    if( nextState!=true ) {
-          switch ( currentState ) {
-            case CONNECTING_WIFI:
-                connectWiFi();
-                 break;
-            case CONNECTING_WIFI_SSID:
-                influxdbGetChar( receivedChar );
-                 break;
-            default:
-                SerialComState = IDLE;
-                break;
-        }
-    }  
 
 }
 void influxDBUpdate1(Buffer* adcBuffer) ;
