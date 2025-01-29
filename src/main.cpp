@@ -51,12 +51,14 @@ void Task1(void *pvParameters) {
     buffer += receivedChar;
   } else if (receivedChar == '\n') { // Si es nueva línea, enviar el mensaje
     if (!buffer.isEmpty()) { // Verificar si el buffer no está vacío
+      //Aca deberia ir un switch un estado por cada modulo, donde se asignaria QueueTemp=QueueModuloCorrespondiente
       if (xQueueSend(xQueueComSerial, &buffer, portMAX_DELAY) != pdPASS) {
         Serial.println("Error: No se pudo enviar a la cola.");
       } else {
         Serial.println("Envie:");
         Serial.println(buffer);
       }
+      //Aca deberia enviar el buffer al Queue correspondiente
       buffer = ""; // Limpiar el buffer
     }
   }
