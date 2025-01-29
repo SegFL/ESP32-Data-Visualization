@@ -13,7 +13,7 @@
 #define QUEUE_LENGTH 100       // Máximo número de elementos en la queue
 #define ITEM_SIZE sizeof(char) // Tamaño de cada elemento (en este caso, 1 byte para un char)
 
-QueueHandle_t xQueue;         // Handle para la queue
+QueueHandle_t xQueueComSerial;         // Handle para la queue
 
 
 
@@ -51,7 +51,7 @@ void Task1(void *pvParameters) {
     buffer += receivedChar;
   } else if (receivedChar == '\n') { // Si es nueva línea, enviar el mensaje
     if (!buffer.isEmpty()) { // Verificar si el buffer no está vacío
-      if (xQueueSend(xQueue, &buffer, portMAX_DELAY) != pdPASS) {
+      if (xQueueSend(xQueueComSerial, &buffer, portMAX_DELAY) != pdPASS) {
         Serial.println("Error: No se pudo enviar a la cola.");
       } else {
         Serial.println("Envie:");
@@ -76,7 +76,7 @@ void Task2(void *pvParameters) {
     String buffer="";
   
     Serial.println("Task 2 is running");
-    if (xQueueReceive(xQueue, &buffer, portMAX_DELAY) == pdPASS)
+    if (xQueueReceive(xQueueComSerial, &buffer, portMAX_DELAY) == pdPASS)
         {
             // Procesar el dato recibido
                 Serial.print(buffer);
@@ -96,10 +96,10 @@ void setup() {
   //influxDBInit();
 
       // Crear la queue
-    xQueue = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
+    xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
     
     // Verificar si la queue se creó correctamente
-    if (xQueue == NULL)
+    if (xQueueComSerial == NULL)
     {
         // Manejar error: No se pudo crear la queue
         printf("Error: No se pudo crear la queue.\n");

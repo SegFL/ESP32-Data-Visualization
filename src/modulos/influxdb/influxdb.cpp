@@ -87,6 +87,15 @@ void influxDBInit(){
 
 void influxDBUpdate(){
 
+
+  switch(currentState){
+
+    case IDLE:
+      BREAK;
+    case CONNECTING_WIFI:
+      
+
+  }
     //Si no se termino de procesar los datos del estado anterior no hago nada
     if( nextState!=true ) {
           switch ( currentState ) {

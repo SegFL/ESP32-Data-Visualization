@@ -4,7 +4,7 @@
 
 typedef enum{
     IDLE,    //estado default
-    CONNECTING_WIFI     
+    INFLUXDB     
 } serialComState_t;
 
 static serialComState_t currentState=IDLE;
@@ -74,7 +74,7 @@ void serialComUpdate(){
     }
 }
 
-//Codigo bloqueante para recivir un String
+//Codigo **bloqueante** para recivir un String
 bool receiveString(String data){
     
     char receivedChar = readSerialChar();
