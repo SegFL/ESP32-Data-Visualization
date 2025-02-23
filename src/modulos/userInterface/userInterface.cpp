@@ -1,5 +1,7 @@
 
 #include "userInterface.h"
+#include <ADCData.h>
+#include "modulos/queueCom/queueCom.h"
 #define MAX_DATA_BUFFER 30
 #define ESC 27
 static MenuNode *menu = nullptr;
@@ -8,6 +10,7 @@ bool aceptandoDatos=false;
 
 void moveCursor(int row, int col);
 void procesarDatos(String data);
+void printSensorData();
 
 void userInterfaceInit(){
     serialComInit();
@@ -47,10 +50,16 @@ void userInterfaceUpdate(){
         menuUpdate(charReceived, &menu);
         clearScreen();
         printNode(menu);
+        if(menu->id==1){
+            writeSerialComln("Precesando datos del sensor");
+            printSensorData();
+
+        }
     }else{
         //writeSerialComln("Guarde:"+String(charReceived));
         data_buffer += charReceived;  // Agregarlo al buffer
     }
+
 
     return;
 }
@@ -61,9 +70,34 @@ void procesarDatos(String data){
     if(data==""||data==nullptr||menu==nullptr){
         return;
     }
-    writeSerialComln("Procesando datos");
     if(menu->id==3){//Decido a que modulo/funcion le mando los datos que entraron por pantalla
         writeSerialComln("Llame a la funcion cargar contraseña");
     }
+    if(menu->id==1){
+        writeSerialComln("Datos de sensor");
+        printSensorData();
+    }
+    
 
 }
+
+
+
+void printSensorData() {
+    //ADCData data;
+    ADCData data = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
+
+    if(receiveSensorDataToUserInterface(data)==false){
+        return;
+    }
+ 
+    writeSerialComln(String("Pin: ") + String(data.pin));
+    writeSerialComln(String("\tBus Voltage: ") + String(data.busVoltage_V) + String(" V"));
+    writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
+    writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
+    writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
+    writeSerialComln(String("\tTimestamp: ") + String(data.timestamp));
+
+}
+
+

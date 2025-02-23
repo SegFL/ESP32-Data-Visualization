@@ -2,7 +2,11 @@
 #include <modulos/serialCom/serialCom.h>
 #include <ADCData.h>
 
-
+/*
+Por defaul se crea lacomunicacion I2C en los pines:
+SDA (Serial Data) → GPIO 21
+SCL (Serial Clock) → GPIO 22
+*/
 #define NUM_SENSORS 1 // Número de sensores INA219
 
 // Crear un vector de punteros para manejar múltiples sensores
@@ -19,7 +23,7 @@ void ina219Init(){
     // Inicializar los sensores en sus respectivas direcciones
     for (int i = 0; i < NUM_SENSORS; i++) {
         ina219[i] = new Adafruit_INA219(sensorAddresses[i]); // Crear instancia con dirección específica
-        if (!ina219[i]->begin()) {
+        if (!ina219[i]->begin()) {  //Se inicializa la comunicacion I2C
             writeSerialCom("Error al inicializar el sensor INA219 en la dirección 0x");
             writeSerialComln(String(sensorAddresses[i]));
             while (1) { delay(10); }

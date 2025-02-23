@@ -28,7 +28,6 @@ const long intervalSendingData = 10000;      // Intervalo de 1 segundo
 unsigned long previousMillisSensoringData=0;
 const long intervalSensoringData = 1000;
 
-static Buffer* adcBuffer=NULL;
 
 
 
@@ -44,32 +43,31 @@ void Task1(void *pvParameters) {
     userInterfaceUpdate();
 
     // Simular un retardo
-    vTaskDelay(pdMS_TO_TICKS(10)); // Espera 1 segundo
+    vTaskDelay(pdMS_TO_TICKS(50)); // Espera 1 segundo
   }
 }
 
 // Función de la tarea 2
 void Task2(void *pvParameters) {
   while (true) {
-    String buffer="";
+    
   
-    if (xQueueReceive(xQueueComSerial, &buffer, portMAX_DELAY) == pdPASS)
-        {
-            // Procesar el dato recibido
-                //Serial.print(buffer);
-                //buffer="";
-            // Implementar lógica de conexión o configuración Wi-Fi
-        }
-    vTaskDelay(pdMS_TO_TICKS(50)); // Espera 0.5 segundos
+
+    ADCData sensor;
+    if(getData(sensor,0)==true)
+      sendSensorDataToUserInterface(sensor);
+
+    vTaskDelay(pdMS_TO_TICKS(100)); 
   }
 }
 
 
 void setup() {
   userInterfaceInit();
-  adcInit(adcBuffer); 
+  adcInit(); 
+  ina219Init();
   //influxDBInit();
-
+/*
       // Crear la queue
     xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
     
@@ -80,13 +78,13 @@ void setup() {
         printf("Error: No se pudo crear la queue.\n");
         while (1); // Detener el sistema o manejarlo según sea necesario
     }
-
+*/
 
     // Crear la tarea 1
   xTaskCreate(
     Task1,          // Función que implementa la tarea
     "Task1",        // Nombre de la tarea
-    1000,           // Tamaño del stack en palabras
+    4000,           // Tamaño del stack en palabras
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task1Handle    // Manejador de la tarea
@@ -96,14 +94,14 @@ void setup() {
   xTaskCreate(
     Task2,          // Función que implementa la tarea
     "Task2",        // Nombre de la tarea
-    1000,           // Tamaño del stack en palabras
+    4000,           // Tamaño del stack en palabras
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task2Handle    // Manejador de la tarea
   );
 
 
-  //vTaskStartScheduler();
+  vTaskStartScheduler();
 
 
 
