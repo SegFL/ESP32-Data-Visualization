@@ -5,13 +5,16 @@
 #include "modulos/influxdb/influxdb.h"
 #include "modulos/buffer/buffer.h"
 #include "modulos/PWM/PWM.h"
-
-
-
+#include "modulos/userInterface/userInterface.h"
 
 
 #define QUEUE_LENGTH 100       // Máximo número de elementos en la queue
 #define ITEM_SIZE sizeof(char) // Tamaño de cada elemento (en este caso, 1 byte para un char)
+
+
+
+
+
 
 QueueHandle_t xQueueComSerial;         // Handle para la queue
 
@@ -28,56 +31,20 @@ const long intervalSensoringData = 1000;
 static Buffer* adcBuffer=NULL;
 
 
-typedef enum{
-    IDLE,    //estado default
-    INFLUXDB     
-} serialComState_t;
 
-serialComState_t serialComState=IDLE;
+
 // Definimos los manejadores de las tareas
 TaskHandle_t Task1Handle = NULL;
 TaskHandle_t Task2Handle = NULL;
 
 // Función de la tarea 1 RECIVE DATOS
 void Task1(void *pvParameters) {
-  String buffer="";
-  char receivedChar='\0';
+
   while (true) {
-            // Simula leer datos de la interfaz serie
-        
-  Serial.println("Task 1 is running");
+    userInterfaceUpdate();
 
-  while (serialComAvailable() > 0) { // Leo todos los datos de la terminal serie
-  receivedChar = readSerialChar();
-
-  // Procesar el carácter leído
-  if (receivedChar != '\n' && receivedChar != '\r') { // Si no es nueva línea ni retorno de carro
-    buffer += receivedChar;
-  } else if (receivedChar == '\n') { // Si es nueva línea, enviar el mensaje
-    if (!buffer.isEmpty()) { // Verificar si el buffer no está vacío
-      //Aca deberia ir un switch un estado por cada modulo, donde se asignaria QueueTemp=QueueModuloCorrespondiente
-      switch(serialComState){
-        case INFLUXDB:{
-            if (xQueueSend(xQueueComSerial, &buffer, portMAX_DELAY) != pdPASS) {
-              Serial.println("Error: No se pudo enviar a la cola a INFLUXDB.");
-            } else {
-              Serial.println("Envie:");
-              Serial.println(buffer);
-            }
-        }
-          break;
-        defaul:
-          break;
-      }
-      //Aca deberia enviar el buffer al Queue correspondiente
-      buffer = ""; // Limpiar el buffer
-    }
-  }
-}
-    Serial.println("Task 1 is Stopping");
-
-        // Simular un retardo
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Espera 1 segundo
+    // Simular un retardo
+    vTaskDelay(pdMS_TO_TICKS(10)); // Espera 1 segundo
   }
 }
 
@@ -86,23 +53,20 @@ void Task2(void *pvParameters) {
   while (true) {
     String buffer="";
   
-    Serial.println("Task 2 is running");
     if (xQueueReceive(xQueueComSerial, &buffer, portMAX_DELAY) == pdPASS)
         {
             // Procesar el dato recibido
-                Serial.print(buffer);
-                buffer="";
+                //Serial.print(buffer);
+                //buffer="";
             // Implementar lógica de conexión o configuración Wi-Fi
         }
-    Serial.println("Task 2 is stopping");
-    vTaskDelay(pdMS_TO_TICKS(500)); // Espera 0.5 segundos
+    vTaskDelay(pdMS_TO_TICKS(50)); // Espera 0.5 segundos
   }
 }
 
 
 void setup() {
-
-  serialComInit();
+  userInterfaceInit();
   adcInit(adcBuffer); 
   //influxDBInit();
 

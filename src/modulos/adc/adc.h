@@ -1,7 +1,6 @@
 
 #include "ADCData.h"
 #include <Arduino.h>
-
 #include <modulos/buffer/buffer.h>
 #include <modulos/serialCom/serialCom.h>
 

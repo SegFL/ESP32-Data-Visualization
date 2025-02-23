@@ -76,6 +76,7 @@ void influxDBInit(){
 
 
 void influxDBUpdate(){
+/*
 
     //Si no se termino de procesar los datos del estado anterior no hago nada
     if( nextState!=true ) {
@@ -91,7 +92,7 @@ void influxDBUpdate(){
                 break;
         }
     }  
-
+*/
 }
 void influxDBUpdate1(Buffer* adcBuffer) ;
 void influxDBUpdate1(Buffer* adcBuffer) {
