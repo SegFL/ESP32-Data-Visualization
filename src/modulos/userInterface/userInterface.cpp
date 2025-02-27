@@ -1,5 +1,7 @@
 
 #include "userInterface.h"
+#include <ADCData.h>
+#include "modulos/queueCom/queueCom.h"
 #define MAX_DATA_BUFFER 30
 #define ESC 27
 static MenuNode *menu = nullptr;
@@ -8,6 +10,7 @@ bool aceptandoDatos=false;
 
 void moveCursor(int row, int col);
 void procesarDatos(String data);
+void printSensorData();
 
 void userInterfaceInit(){
     serialComInit();
@@ -22,6 +25,7 @@ void userInterfaceInit(){
 
 
 void userInterfaceUpdate(){
+
     char charReceived = readSerialChar();
 
     if(charReceived=='\0'||menu==nullptr){
@@ -44,13 +48,18 @@ void userInterfaceUpdate(){
     }
 
     if(aceptandoDatos==false){
+
         menuUpdate(charReceived, &menu);
         clearScreen();
         printNode(menu);
+        if(menu->id==1){
+            printSensorData();
+        }
     }else{
         //writeSerialComln("Guarde:"+String(charReceived));
         data_buffer += charReceived;  // Agregarlo al buffer
     }
+
 
     return;
 }
@@ -61,9 +70,31 @@ void procesarDatos(String data){
     if(data==""||data==nullptr||menu==nullptr){
         return;
     }
-    writeSerialComln("Procesando datos");
     if(menu->id==3){//Decido a que modulo/funcion le mando los datos que entraron por pantalla
         writeSerialComln("Llame a la funcion cargar contraseña");
     }
+
+    
+
+}
+
+
+
+void printSensorData() {
+    //ADCData data;
+    ADCData data;
+
+    if(receiveSensorDataToUserInterface(data)==false){
+        writeSerialComln("No hay datos para mostrar");
+        return;
+    }
+ 
+    writeSerialComln(String("Ok"));
+    writeSerialComln(String("Pin: ") + String(data.pin));
+    writeSerialComln(String("\tBus Voltage: ") + String(data.busVoltage_V) + String(" V"));
+    writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
+    writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
+    writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
+    //writeSerialComln(String("\tTimestamp: ") + String(data.timestamp));//Provoca problemas con punteros nulos o de memoria
 
 }

@@ -8,4 +8,9 @@ O si no modificar los datos de la Queue y agregar un un typedef con el nombre de
 
 
 En task2 deberia fijarme si hay datos en la Queue y mandarselos al modulo correspondiente
-En esta task deberia ten
+
+
+
+PROBLEMA DE LA ULTIMA VERSION:
+    sendSensorDataToUserInterface() devuelve false siempre por lo que no se envian datos. Hay que probar bien como funciona quieieCom
+    por separado.

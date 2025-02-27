@@ -6,6 +6,7 @@
 #include "modulos/buffer/buffer.h"
 #include "modulos/PWM/PWM.h"
 #include "modulos/userInterface/userInterface.h"
+#include "modulos/queueCom/queueCom.h"
 
 
 #define QUEUE_LENGTH 100       // Máximo número de elementos en la queue
@@ -53,21 +54,18 @@ void Task2(void *pvParameters) {
   while (true) {
     String buffer="";
   
-    if (xQueueReceive(xQueueComSerial, &buffer, portMAX_DELAY) == pdPASS)
-        {
-            // Procesar el dato recibido
-                //Serial.print(buffer);
-                //buffer="";
-            // Implementar lógica de conexión o configuración Wi-Fi
-        }
-    vTaskDelay(pdMS_TO_TICKS(50)); // Espera 0.5 segundos
+    
+    ADCData d = {A0, (float)rand(), 10.0, 2.5, 12.5, millis()};
+    sendSensorDataToUserInterface(d);
+      
+    vTaskDelay(pdMS_TO_TICKS(500)); // Espera 0.5 segundos
   }
 }
 
 
 void setup() {
   userInterfaceInit();
-  adcInit(adcBuffer); 
+  //adcInit(adcBuffer); 
   //influxDBInit();
 
       // Crear la queue
