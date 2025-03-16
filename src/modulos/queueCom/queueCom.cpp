@@ -1,4 +1,5 @@
 #include "queueCom.h"
+
 #define QUEUE_LENGTH 100       // Máximo número de elementos en la cola
 #define ITEM_SIZE sizeof(ADCData) // Tamaño de cada elemento (en este caso, un struct ADCData)
 
@@ -19,22 +20,24 @@ void queueInit(){
 // Enviar datos del sensor a la cola
 bool sendSensorDataToUserInterface(ADCData data){
 
-    return false;
     if (xQueueSend(xQueueAdcUserInterface, &data, pdMS_TO_TICKS(100)) == pdTRUE) {
-        // Éxito al enviar los datos a la cola
         return true;
     }
-    return false; // Cola llena o error
+    return false;
 }
 
 // Recibir datos del sensor desde la cola
-bool receiveSensorDataToUserInterface(ADCData &data) {
-    // Intentamos recibir datos desde la cola
-    if (xQueueAdcUserInterface != NULL) {
-        if (xQueueReceive(xQueueAdcUserInterface, &data, 0) == pdTRUE) {
-            return true; // Datos recibidos correctamente
-        }
+
+bool receiveSensorDataToUserInterface(ADCData &data) {//Leo todos los datos de la cola pero solo me quedo con el ultimo
+    if (xQueueAdcUserInterface == NULL) {
+        return false;
     }
-        
-    return false; // Cola vacía o error al recibir datos
+
+    // Vaciar la cola antes de leer el último dato disponible
+    ADCData tempData;
+    while (xQueueReceive(xQueueAdcUserInterface, &tempData, 0) == pdTRUE) {
+        data = tempData; // Guardamos el último dato leído
+    }
+
+    return true; // Se obtuvo al menos un dato
 }

@@ -2,8 +2,6 @@
 #include "modulos/adc/adc.h"
 #include "modulos/serialCom/serialCom.h"
 #include <Arduino.h>
-#include "modulos/influxdb/influxdb.h"
-#include "modulos/buffer/buffer.h"
 #include "modulos/PWM/PWM.h"
 #include "modulos/userInterface/userInterface.h"
 #include "modulos/queueCom/queueCom.h"
@@ -22,42 +20,34 @@ QueueHandle_t xQueueComSerial;         // Handle para la queue
 
 
 
-unsigned long previousMillis = 0; // Tiempo del último evento
-const long interval = 1000;      // Intervalo de 1 segundo
-unsigned long previousMillisSendingData = 0; // Tiempo del último evento
-const long intervalSendingData = 10000;      // Intervalo de 1 segundo
-unsigned long previousMillisSensoringData=0;
-const long intervalSensoringData = 1000;
-
-static Buffer* adcBuffer=NULL;
-
-
-
 
 // Definimos los manejadores de las tareas
 TaskHandle_t Task1Handle = NULL;
 TaskHandle_t Task2Handle = NULL;
 
 // Función de la tarea 1 RECIVE DATOS
-void Task1(void *pvParameters) {
+void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de usuario
 
   while (true) {
     userInterfaceUpdate();
+    
 
-    // Simular un retardo
-    vTaskDelay(pdMS_TO_TICKS(10)); // Espera 1 segundo
+    
+   vTaskDelay(pdMS_TO_TICKS(1000)); // Espera 0.5 segundos
+
   }
 }
 
 // Función de la tarea 2
-void Task2(void *pvParameters) {
+void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
   while (true) {
     String buffer="";
-  
+
+    leerADC();
+
+
+
     
-    ADCData d = {A0, (float)rand(), 10.0, 2.5, 12.5, millis()};
-    sendSensorDataToUserInterface(d);
-      
     vTaskDelay(pdMS_TO_TICKS(500)); // Espera 0.5 segundos
   }
 }
@@ -65,7 +55,8 @@ void Task2(void *pvParameters) {
 
 void setup() {
   userInterfaceInit();
-  //adcInit(adcBuffer); 
+  queueInit();
+  adcInit(); 
   //influxDBInit();
 
       // Crear la queue
@@ -84,7 +75,7 @@ void setup() {
   xTaskCreate(
     Task1,          // Función que implementa la tarea
     "Task1",        // Nombre de la tarea
-    1000,           // Tamaño del stack en palabras
+    1500,           // Tamaño del stack en palabras
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task1Handle    // Manejador de la tarea
@@ -105,36 +96,14 @@ void setup() {
 
 
 
-/*
-  serialComInit();
-  adcInit(adcBuffer); 
-  influxDBInit();
 
-*/
 }
 
 
 
 void loop() {
 
-/*
-    unsigned long currentMillis = millis();
-    serialComUpdate();
 
-
-    
-    //Manejo las solicitudes y envios de info de WIFi
-    if (currentMillis - previousMillisSensoringData >= intervalSensoringData) {
-        previousMillisSensoringData = currentMillis;
-        if(adcBuffer!=NULL)
-          leerADC(adcBuffer);
-    }
-    if (currentMillis - previousMillisSendingData >= intervalSendingData) {
-        previousMillisSendingData = currentMillis;
-        influxDBUpdate(adcBuffer);
-    }
- 
-*/
 }
 
 

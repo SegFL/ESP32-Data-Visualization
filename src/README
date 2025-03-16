@@ -11,6 +11,3 @@ En task2 deberia fijarme si hay datos en la Queue y mandarselos al modulo corres
 
 
 
-PROBLEMA DE LA ULTIMA VERSION:
-    sendSensorDataToUserInterface() devuelve false siempre por lo que no se envian datos. Hay que probar bien como funciona quieieCom
-    por separado.
