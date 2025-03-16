@@ -18,13 +18,15 @@ void adcInit() {
 void  leerADC(){
 
 
-  ADCData temp;
+  ADCData temp,temp2;
   int i =0;
   while(i<1){//Cantidad de sensores
     
-    temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
+
+    getData(temp,0);
+    //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
     if (sendSensorDataToUserInterface(temp)) {
-      //Serial.println("Dato enviado: "+String(temp.timestamp));
+      //Serial.println("Dato enviado: "+String(temp2.timestamp));
     } else {
       Serial.println("No se pudo enviar el dato");
     }

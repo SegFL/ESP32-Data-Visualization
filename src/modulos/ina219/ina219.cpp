@@ -42,6 +42,8 @@ bool getData(ADCData& data, int sensor){ //Numero del sensor a leer
         data.current_mA = ina219[sensor]->getCurrent_mA();
         data.power_mW = ina219[sensor]->getPower_mW();
         data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV();
+        data.timestamp = millis();
+        data.pin = sensor;
         return true;
     }else{
         return false;

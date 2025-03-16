@@ -5,6 +5,7 @@
 #include "modulos/PWM/PWM.h"
 #include "modulos/userInterface/userInterface.h"
 #include "modulos/queueCom/queueCom.h"
+#include "modulos/ina219/ina219.h"
 
 
 #define QUEUE_LENGTH 100       // Máximo número de elementos en la queue
@@ -33,7 +34,7 @@ void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de 
     
 
     
-   vTaskDelay(pdMS_TO_TICKS(1000)); // Espera 0.5 segundos
+   vTaskDelay(pdMS_TO_TICKS(200)); // Espera 0.5 segundos
 
   }
 }
@@ -48,7 +49,7 @@ void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
 
 
     
-    vTaskDelay(pdMS_TO_TICKS(500)); // Espera 0.5 segundos
+    vTaskDelay(pdMS_TO_TICKS(100)); // Espera 0.5 segundos
   }
 }
 
@@ -56,6 +57,7 @@ void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
 void setup() {
   userInterfaceInit();
   queueInit();
+  ina219Init();
   adcInit(); 
   //influxDBInit();
 
@@ -75,7 +77,7 @@ void setup() {
   xTaskCreate(
     Task1,          // Función que implementa la tarea
     "Task1",        // Nombre de la tarea
-    1500,           // Tamaño del stack en palabras
+    2000,           // Tamaño del stack en palabras
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task1Handle    // Manejador de la tarea
@@ -85,7 +87,7 @@ void setup() {
   xTaskCreate(
     Task2,          // Función que implementa la tarea
     "Task2",        // Nombre de la tarea
-    1000,           // Tamaño del stack en palabras
+    2000,           // Tamaño del stack en palabras
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task2Handle    // Manejador de la tarea
