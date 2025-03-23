@@ -10,4 +10,10 @@ O si no modificar los datos de la Queue y agregar un un typedef con el nombre de
 En task2 deberia fijarme si hay datos en la Queue y mandarselos al modulo correspondiente
 
 
+Deberia poder configurar la ESP32 para que se pueda guardar la configuracion de si esta enviando datos
+o funciona como menu. Esto se deberia guardar en la memora eeprom o flash del esp32 para que si se peirde la alimentacion 
+se vuelva a arrancar en este modo.
+
+El codigo al estar en modo SENDDATA envia los datos pero solo se pueden ver si se hace un split delpuerto real con virtual 
+serial por driver. Tendria que hacer que quede el modo guardado ya que si me desconecta de la terminal parace que no envia los datos
 

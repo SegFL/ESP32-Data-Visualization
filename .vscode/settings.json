@@ -18,6 +18,8 @@
         "tuple": "cpp",
         "type_traits": "cpp",
         "utility": "cpp",
-        "new": "cpp"
+        "new": "cpp",
+        "string.h": "c",
+        "stdlib.h": "c"
     }
 }

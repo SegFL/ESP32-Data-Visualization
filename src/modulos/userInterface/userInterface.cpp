@@ -90,6 +90,12 @@ void procesarDatos(String data){
     if(menu->id==3){//Decido a que modulo/funcion le mando los datos que entraron por pantalla
         writeSerialComln("Llame a la funcion cargar contraseña");
     }
+    if (menu->id == 6) {
+        if (strcmp(data.c_str(), "y") == 0) {  // Corregido el uso de strcmp
+            changeMode(true);
+            writeSerialComln("Modo SEND DATA activado");
+        }
+    }
 
 }
 
