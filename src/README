@@ -1,19 +1,6 @@
+Falta probar como hacer para que se envien los datos de 4 sensores distintos al mismotiempo
 
+Ya se grafican los datos en tiemporeal
 
-En el task1 deberia poner la fucnion de serialComUpdate, esta fucnion deberia enviarle una señal al otro modulo para que sepa que tiene
-datos esperando en la Queue. Por ejemplo una funcion en SerialCom que devuelva el estado. 
-O si no modificar los datos de la Queue y agregar un un typedef con el nombre del modulo al que le pertenece el dato.
-
-(*****Esto no se podria solucionar teniendo mas de una Queue? una por cada modulo*****)
-
-
-En task2 deberia fijarme si hay datos en la Queue y mandarselos al modulo correspondiente
-
-
-Deberia poder configurar la ESP32 para que se pueda guardar la configuracion de si esta enviando datos
-o funciona como menu. Esto se deberia guardar en la memora eeprom o flash del esp32 para que si se peirde la alimentacion 
-se vuelva a arrancar en este modo.
-
-El codigo al estar en modo SENDDATA envia los datos pero solo se pueden ver si se hace un split delpuerto real con virtual 
-serial por driver. Tendria que hacer que quede el modo guardado ya que si me desconecta de la terminal parace que no envia los datos
-
+Todavia falta solucionar el hecho de que se escriben los csv con los mensajes provenintes de la consola(menu y mensajes 
+de inicializacion).

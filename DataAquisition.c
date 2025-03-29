@@ -10,9 +10,15 @@
 #include <termios.h>
 #endif
 
-#define FILENAME "Sensor1.csv"
-#define BUFFER_SIZE 512
 
+// Vector con los nombres de los archivos
+const char *filenames[] = {"Sensor1.csv", "Sensor2.csv", "Sensor3.csv", "Sensor4.csv"}; 
+
+
+#define BUFFER_SIZE 512
+#ifndef _WIN32
+typedef unsigned long DWORD;
+#endif
 #ifdef _WIN32
 HANDLE open_serial_port(const char *port_name, DWORD baudrate) {
     HANDLE hSerial = CreateFile(port_name, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
@@ -107,13 +113,16 @@ int main() {
             } else if (buffer[i] == '\n') {
                 buffer_acumulado[buffer_index] = '\0';
 
-                file = fopen(FILENAME, "a");
-                if (file != NULL) {
-                    fprintf(file, "%s\n", buffer_acumulado);
-                    fclose(file);
-                    printf("%s\n", buffer_acumulado);
+                for (int i = 0; i < 4; i++) {
+                    FILE *file = fopen(filenames[i], "a"); // Abrir en modo "append"
+                    if (file != NULL) {
+                        fprintf(file, "%s\n", buffer_acumulado); // Escribir en el archivo
+                        fclose(file);
+                        printf("Escrito en %s: %s\n", filenames[i], buffer_acumulado); // Confirmación en consola
+                    } else {
+                        printf("Error al abrir %s\n", filenames[i]);
+                    }
                 }
-
                 buffer_index = 0;
                 buffer_acumulado[0] = '\0';
             } else {
@@ -127,7 +136,7 @@ int main() {
 #ifdef _WIN32
         Sleep(10);
 #else
-        usleep(10000);
+        usleep(1000);
 #endif
     }
 

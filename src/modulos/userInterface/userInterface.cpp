@@ -1,9 +1,16 @@
+#include <nvs.h>
 
 #include "userInterface.h"
 #include <ADCData.h>
 #include "modulos/queueCom/queueCom.h"
+
+
 #define MAX_DATA_BUFFER 30
 #define ESC 27
+#define SEND_DATA true
+#define NOT_SEND_DATA false
+
+
 static MenuNode *menu = nullptr;
 String data_buffer = ""; //Variable para almacenar los datos recibidos
 bool aceptandoDatos=false;
@@ -11,6 +18,9 @@ bool updateScreen=false;
 void moveCursor(int row, int col);
 void procesarDatos(String data);
 void printSensorData();
+bool loadConfiguration();
+void saveValueNVS(const char* key, bool value);
+bool readValueNVS(const char* key);
 
 void userInterfaceInit(){
     serialComInit();
@@ -21,7 +31,15 @@ void userInterfaceInit(){
     }else{
         writeSerialComln("Menu no inicializado");
     }
+    if(loadConfiguration()){
+        writeSerialComln("Configuracion cargada correctamente");
+    } else{
+        writeSerialComln("Error al cargar la configuracion");
+    }
+
 }
+
+
 
 
 void userInterfaceUpdate(){
@@ -81,23 +99,71 @@ void userInterfaceUpdate(){
     return;
 }
 
+bool loadConfiguration(){
+    if (readValueNVS("mode") == SEND_DATA) { // Si el modo es SEND_DATA, se activa la opción de enviar datos
+        changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
+        writeSerialComln("Modo SEND DATA activado");
+        return true;
+    } else {
+        changeMode(NOT_SEND_DATA); // Cambiar el modo a RECEIVE_DATA
+        writeSerialComln("Modo RECEIVE DATA activado");
+        return false;
+    }
+}
 
 
-void procesarDatos(String data){
-    if(data==""||data==nullptr||menu==nullptr){
+void saveValueNVS(const char* key, bool value) {
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (err == ESP_OK) {
+        err = nvs_set_u8(my_handle, key, value ? 1 : 0); // Guardar el valor como uint8_t
+        if (err == ESP_OK) {
+            err = nvs_commit(my_handle); // Confirmar los cambios
+        }
+        nvs_close(my_handle); // Cerrar el handle
+    } else {
+        writeSerialComln("Error al abrir NVS");
+    }
+}
+
+bool readValueNVS(const char* key) {
+    nvs_handle_t my_handle;
+    uint8_t value = 0; // Valor por defecto
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
+    if (err == ESP_OK) {
+        err = nvs_get_u8(my_handle, key, &value);
+        nvs_close(my_handle);
+        if (err == ESP_OK) {
+            return value; // Retornar el valor leído
+        } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+            writeSerialComln("Clave no encontrada en NVS");
+        } else {
+            writeSerialComln("Error al leer NVS");
+        }
+    } else {
+        writeSerialComln("Error al abrir NVS");
+    }
+    return false; // Retornar false en caso de error
+}
+
+
+
+void procesarDatos(String data) {
+    if (data.isEmpty() || menu == nullptr) { // Mejor forma de validar String vacío
         return;
     }
-    if(menu->id==3){//Decido a que modulo/funcion le mando los datos que entraron por pantalla
+    if (menu->id == 3) {
         writeSerialComln("Llame a la funcion cargar contraseña");
     }
     if (menu->id == 6) {
-        if (strcmp(data.c_str(), "y") == 0) {  // Corregido el uso de strcmp
-            changeMode(true);
+        if (data.equalsIgnoreCase("y")) { // Comparación más eficiente
+            changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
             writeSerialComln("Modo SEND DATA activado");
+            saveValueNVS("mode", SEND_DATA); // Guardar el modo en NVS
         }
     }
-
 }
+
 
 
 

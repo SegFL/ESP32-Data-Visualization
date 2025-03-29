@@ -1,4 +1,3 @@
-
 #include "modulos/adc/adc.h"
 #include "modulos/serialCom/serialCom.h"
 #include <Arduino.h>
@@ -6,6 +5,7 @@
 #include "modulos/userInterface/userInterface.h"
 #include "modulos/queueCom/queueCom.h"
 #include "modulos/ina219/ina219.h"
+#include <nvs_flash.h>
 
 
 #define QUEUE_LENGTH 100       // Máximo número de elementos en la queue
@@ -59,7 +59,12 @@ void setup() {
   queueInit();
   ina219Init();
   adcInit(); 
-  //influxDBInit();
+  // Inicializar NVS antes de usarlo(MEMORIA ESTATICA EN LA QUE SE ALMACENAN LA CONFIGURACION DEL SISTEMA)
+  esp_err_t err = nvs_flash_init();
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    nvs_flash_erase();
+    nvs_flash_init();
+  }
 
       // Crear la queue
     xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
