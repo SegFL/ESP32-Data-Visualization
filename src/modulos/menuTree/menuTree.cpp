@@ -69,12 +69,14 @@ MenuNode* menuInit() {
     add_child(child2, child4);
     MenuNode* child3 = create_node("Entre SSID", '2',4);
     add_child(child2, child3);
-    MenuNode* child5 = create_node("Configuracion adicional", '3',5);
+    MenuNode* child5 = create_node("Configuracion PWM", '3',5);
     add_child(root, child5);
     MenuNode* child6 = create_node("Modo de funcionamiento", '4',6);
     add_child(root, child6);
-    MenuNode* child7 = create_node("Presiona enter + y para pasar a modo SEND DATA", '1',7);
+    MenuNode* child7 = create_node("Presiona enter + y para pasar a modo SEND DATA o enter + n para desactivar", '1',7);
     add_child(child6, child7);
+    MenuNode* child8 = create_node("Modificar Duty Cycle del PWM", '1',8);
+    add_child(child5, child8);
     return root;
 }
 

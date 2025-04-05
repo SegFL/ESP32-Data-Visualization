@@ -9,7 +9,7 @@ const int MAX_DUTY_CYCLE = (int)(pow(2, PWM_RESOLUTION) - 1); // Valor máximo d
 const int LED_OUTPUT_PIN = 18;   // Pin GPIO donde se genera la señal PWM
 
 // Variables globales
-int DC = 0;  // Duty cycle inicial 
+static int DC = 0;  // Duty cycle inicial 
 
 
 void PWMInit(){
@@ -29,29 +29,19 @@ void PWMInit(){
 }
 
 void PWMUpdate(){
-  // Verificar si hay datos disponibles en la interfaz serial
-  if (Serial.available() > 0) {
-    char input = Serial.read();  // Leer el carácter ingresado
 
-    // Incrementar o reducir el duty cycle según el símbolo
-    if (input == '+') {
-      if (DC < 100) {
-        DC++;  // Incrementar en 1%
-      }
-    } else if (input == '-') {
-      if (DC > 0) {
-        DC--;  // Reducir en 1%
-      }
-    }
-
-    // Mostrar el valor actual del duty cycle
-    writeSerialCom("Duty cycle actual: \n\r");
-    writeSerialCom(DC+"\n\r");
-    writeSerialCom("%");
-  }
 
   // Aplicar el duty cycle actual
   int pwmValue = (DC * MAX_DUTY_CYCLE) / 100; // Escalar a 0-255
   ledcWrite(PWM_CHANNEL, pwmValue);
 
+}
+
+bool PWMSetDC(int dc){
+  if(dc>=0 && dc<=100){
+    DC = dc;
+    return true;
+
+  }
+  return false;
 }

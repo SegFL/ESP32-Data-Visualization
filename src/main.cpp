@@ -45,6 +45,7 @@ void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
     String buffer="";
 
     leerADC();
+    PWMUpdate();
 
 
 
@@ -59,6 +60,7 @@ void setup() {
   queueInit();
   ina219Init();
   adcInit(); 
+  PWMInit();
   // Inicializar NVS antes de usarlo(MEMORIA ESTATICA EN LA QUE SE ALMACENAN LA CONFIGURACION DEL SISTEMA)
   esp_err_t err = nvs_flash_init();
   if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {

@@ -10,6 +10,6 @@
 
 void PWMInit();
 void PWMUpdate();
-
+bool PWMSetDC(int dc);
 
 #endif

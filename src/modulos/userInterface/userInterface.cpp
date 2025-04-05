@@ -3,6 +3,7 @@
 #include "userInterface.h"
 #include <ADCData.h>
 #include "modulos/queueCom/queueCom.h"
+#include <modulos/PWM/PWM.h>
 
 
 #define MAX_DATA_BUFFER 30
@@ -160,6 +161,20 @@ void procesarDatos(String data) {
             changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
             writeSerialComln("Modo SEND DATA activado");
             saveValueNVS("mode", SEND_DATA); // Guardar el modo en NVS
+        }
+        if (data.equalsIgnoreCase("n")) { 
+            changeMode(NOT_SEND_DATA); 
+            writeSerialComln("Modo SEND DATA desactivado");
+            saveValueNVS("mode", NOT_SEND_DATA); 
+        }
+    }
+
+    if(menu->id==8){
+        int dutyCycle = data.toInt(); // Convertir el String a entero
+        if (PWMSetDC(dutyCycle)==true) {
+            writeSerialComln("Duty Cycle cambiado a: " + String(dutyCycle) + "%");
+        } else {
+            writeSerialComln("Valor de Duty Cycle inválido. Debe estar entre 0 y 100.");
         }
     }
 }
