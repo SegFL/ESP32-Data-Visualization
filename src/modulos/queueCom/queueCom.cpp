@@ -26,9 +26,12 @@ bool sendSensorDataToUserInterface(ADCData data){
     return false;
 }
 
-// Recibir datos del sensor desde la cola
 
-bool receiveSensorDataToUserInterface(ADCData &data) {//Leo todos los datos de la cola pero solo me quedo con el ultimo
+// Recibe datos del sensor desde la cola.
+//Lee todos los datos pero solo se queda con el ultimo. Estoprovoca que los datos mostrados
+//en la interfaz de usuario no sean exactamente los mismos que los que lee el sensor
+
+bool receiveSensorDataToUserInterface(ADCData data[]) {//Leo todos los datos de la cola pero solo me quedo con el ultimo
     if (xQueueAdcUserInterface == NULL) {
         return false;
     }
@@ -36,7 +39,22 @@ bool receiveSensorDataToUserInterface(ADCData &data) {//Leo todos los datos de l
     // Vaciar la cola antes de leer el último dato disponible
     ADCData tempData;
     while (xQueueReceive(xQueueAdcUserInterface, &tempData, 0) == pdTRUE) {
-        data = tempData; // Guardamos el último dato leído
+        switch (tempData.pin){
+        case 0:
+            data[0] = tempData;
+            break;
+            case 1:
+            data[1] = tempData;
+            break;
+            case 2:
+            data[2] = tempData;
+            break;
+            case 3:
+            data[3] = tempData;
+            break;                               
+        default:
+            break;
+        }
     }
 
     return true; // Se obtuvo al menos un dato

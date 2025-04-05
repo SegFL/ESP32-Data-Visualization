@@ -5,6 +5,8 @@
 #include <modulos/queueCom/queueCom.h>
 #include <modulos/serialCom/serialCom.h>
 #include <modulos/userInterface/userInterface.h>
+
+#define NUMBER_OF_SENSORS 2 // Número de sensores INA219
 void adcInit() {
     // Inicializar el buffer
 
@@ -21,10 +23,10 @@ void  leerADC(){
 
   ADCData temp,temp2;
   int i =0;
-  while(i<1){//Cantidad de sensores
+  while(i<NUMBER_OF_SENSORS){//Cantidad de sensores
     
 
-    getData(temp,0);
+    getData(temp,i);
     //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
 
 

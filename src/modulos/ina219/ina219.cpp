@@ -3,13 +3,13 @@
 #include <ADCData.h>
 
 
-#define NUM_SENSORS 1 // Número de sensores INA219
+#define NUM_SENSORS 2 // Número de sensores INA219
 
 // Crear un vector de punteros para manejar múltiples sensores
 Adafruit_INA219* ina219[NUM_SENSORS];
 
 // Direcciones I2C para cada sensor
-uint8_t sensorAddresses[NUM_SENSORS] = {0x40};//0x40,0x41, 0x44
+uint8_t sensorAddresses[4] = {0x40, 0x41,0x44,0x45};//Direcciones de los in219 
 
 void ina219Init(){
   // Iniciar la comunicación serie
@@ -26,7 +26,7 @@ void ina219Init(){
         }
         ina219[i]->setCalibration_16V_400mA();
         writeSerialCom("INA219 en dirección 0x");
-        writeSerialCom(String(sensorAddresses[i]));
+        writeSerialCom(sensorAddresses[i]);
         writeSerialComln(" inicializado correctamente.");
     }
 

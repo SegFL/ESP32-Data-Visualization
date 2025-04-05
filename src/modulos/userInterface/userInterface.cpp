@@ -22,6 +22,7 @@ void printSensorData();
 bool loadConfiguration();
 void saveValueNVS(const char* key, bool value);
 bool readValueNVS(const char* key);
+void printSensor(ADCData data);
 
 void userInterfaceInit(){
     serialComInit();
@@ -81,7 +82,7 @@ void userInterfaceUpdate(){
         clearScreen();
         printNode(menu);
         //En el caso que se cambie al estado de menu 1 se ejecuta este if una sola vez(solo cuando se cambia de estado del menu),
-        //el resto de las veces lo 
+        //el resto de las veces lo hago automaticamente
         if(updateScreen==false){
             if(menu->id==1){
                 printSensorData();
@@ -184,17 +185,33 @@ void procesarDatos(String data) {
 
 void printSensorData() {
 
-    ADCData data;
-    if (receiveSensorDataToUserInterface(data)) {
-      writeSerialComln(String("Pin: ") + String(data.pin));
-      writeSerialComln(String("\tBus Voltage: ") + String(data.busVoltage_V) + String(" V"));
-      writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
-      writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
-      writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
-      writeSerialComln(String("\tTimestamp: ") + String(data.timestamp));//Provoca problemas con punteros nulos o de memoria
 
+    const int cant=4;
+    ADCData data[cant]={};
+
+    
+
+
+
+
+    if (receiveSensorDataToUserInterface(data)) {
+        for (int i = 0; i < cant; i++){
+            printSensor(data[i]);
+            writeSerialComln("\n");
+        }
+        
     } 
   
 
+
+}
+
+void printSensor(ADCData data){
+    writeSerialComln(String("Pin: ") + String(data.pin));
+    writeSerialComln(String("\tBus Voltage: ") + String(data.busVoltage_V) + String(" V"));
+    writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
+    writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
+    writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
+    writeSerialComln(String("\tTimestamp: ") + String(data.timestamp));//Provoca problemas con punteros nulos o de memoria
 
 }
