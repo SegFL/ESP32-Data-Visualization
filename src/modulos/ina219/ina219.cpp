@@ -10,7 +10,7 @@ Adafruit_INA219* ina219[NUM_SENSORS];
 
 // Direcciones I2C para cada sensor
 uint8_t sensorAddresses[4] = {0x40, 0x41,0x44,0x45};//Direcciones de los in219 
-
+bool sensorAvailable[4] = {false, false, false, false}; // Estado de disponibilidad de los sensores
 void ina219Init(){
   // Iniciar la comunicación serie
     
@@ -22,7 +22,8 @@ void ina219Init(){
         if (!ina219[i]->begin()) {
             writeSerialCom("Error al inicializar el sensor INA219 en la dirección 0x");
             writeSerialComln(String(sensorAddresses[i]));
-            while (1) { delay(10); }
+            sensorAvailable[i] = false; // Marcar como no disponible
+            continue;
         }
         ina219[i]->setCalibration_16V_400mA();
         writeSerialCom("INA219 en dirección 0x");
@@ -37,7 +38,7 @@ bool getData(ADCData& data, int sensor){ //Numero del sensor a leer
 
     // Leer el voltaje del bus
 
-    if(sensor<NUM_SENSORS){
+    if(sensor<NUM_SENSORS && sensorAvailable[sensor]==true){
         data.busVoltage_V = ina219[sensor]->getBusVoltage_V();
         data.current_mA = ina219[sensor]->getCurrent_mA();
         data.power_mW = ina219[sensor]->getPower_mW();

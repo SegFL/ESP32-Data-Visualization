@@ -21,28 +21,20 @@ void adcInit() {
 void  leerADC(){
 
 
-  ADCData temp,temp2;
+  ADCData temp;
   int i =0;
   while(i<NUMBER_OF_SENSORS){//Cantidad de sensores
-    
-
-    getData(temp,i);
-    //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
-
-
-    if(sendDataStatus() ==true){
-      
-
-      writeSerialComln(String(temp.timestamp)+String(',')+String(temp.shuntVoltage_mV)+String(',')+String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+String(',')+String(temp.power_mW)+String(',')+String(temp.pin));
-
-
-
-    }else{
-      if (sendSensorDataToUserInterface(temp)) {
-        //Serial.println("Dato enviado: "+String(temp2.timestamp));
-      } 
-    }
-    i++;
+      if(getData(temp,i)==true){
+      //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
+        if(sendDataStatus() ==true){
+            writeSerialComln(String(temp.timestamp)+String(',')+String(temp.shuntVoltage_mV)+String(',')+String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+String(',')+String(temp.power_mW)+String(',')+String(temp.pin));
+          }else{
+            if (sendSensorDataToUserInterface(temp)) {
+              //Serial.println("Dato enviado: "+String(temp2.timestamp));
+            } 
+        }
+      }
+      i++;
   }
 
   
