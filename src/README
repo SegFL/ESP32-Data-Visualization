@@ -1,14 +1,4 @@
-Falta probar como hacer para que se envien los datos de 4 sensores distintos al mismotiempo
-
-Todavia falta solucionar el hecho de que se escriben los csv con los mensajes provenintes de la consola(menu y mensajes 
-de inicializacion).
-
-Cambiar para que no se muestre el texto delpwm alinicial lacom con el micro
-
-Cambiar para que al inicilizar correctamente los ina219 se muestre bien la direccion(0x65 deberia ser0x45)
 
 
 Volver mas eficiente laimpresion de datos por pantalla escirbiendo los valores de los sensores y no todo 
 el texto(Se podria usar la funcion moveCursor())
-
-Falta verificar que los datos de los sensores se escriban en los archivos csv correposndientes(Hasta ahora se imprimen porpantalla)
