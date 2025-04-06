@@ -26,7 +26,7 @@ void ina219Init(){
         }
         ina219[i]->setCalibration_16V_400mA();
         writeSerialCom("INA219 en dirección 0x");
-        writeSerialCom(sensorAddresses[i]);
+        writeSerialCom(String("0x" + String(sensorAddresses[i], HEX)));
         writeSerialComln(" inicializado correctamente.");
     }
 

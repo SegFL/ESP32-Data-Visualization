@@ -20,11 +20,7 @@ void PWMInit(){
   // Asociar el canal PWM al pin de salida
   ledcAttachPin(LED_OUTPUT_PIN, PWM_CHANNEL);
 
-  writeSerialCom("Control del duty cycle:");
-  writeSerialCom("Usa '+' para incrementar y '-' para reducir el duty cycle.");
-  writeSerialCom("Duty cycle inicial: \n\r");
-  writeSerialCom(DC+"\r\n");
-  writeSerialCom("%");
+
 
 }
 

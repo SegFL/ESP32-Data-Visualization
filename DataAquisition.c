@@ -12,7 +12,7 @@
 
 
 // Vector con los nombres de los archivos
-const char *filenames[] = {"Sensor1.csv", "Sensor2.csv", "Sensor3.csv", "Sensor4.csv"}; 
+const char *filenames[] = {"..\\App de MATLAB\\Data\\Sensor1.csv", "..\\App de MATLAB\\Data\\Sensor2.csv", "..\\App de MATLAB\\Data\\Sensor3.csv", "..\\App de MATLAB\\Data\\Sensor4.csv"}; 
 
 
 #define BUFFER_SIZE 512
@@ -113,15 +113,23 @@ int main() {
             } else if (buffer[i] == '\n') {
                 buffer_acumulado[buffer_index] = '\0';
 
-                for (int i = 0; i < 4; i++) {
-                    FILE *file = fopen(filenames[i], "a"); // Abrir en modo "append"
-                    if (file != NULL) {
-                        fprintf(file, "%s\n", buffer_acumulado); // Escribir en el archivo
-                        fclose(file);
-                        printf("Escrito en %s: %s\n", filenames[i], buffer_acumulado); // Confirmación en consola
+                char *last_comma = strrchr(buffer_acumulado, ',');
+                if (last_comma != NULL && *(last_comma + 1) != '\0') {
+                    int index = *(last_comma + 1) - '0'; // Convertir el último caracter a entero
+                    if (index >= 0 && index < 4) {
+                        FILE *file = fopen(filenames[index], "a");
+                        if (file != NULL) {
+                            fprintf(file, "%s\n", buffer_acumulado);
+                            fclose(file);
+                            printf("Escrito en %s: %s\n", filenames[index], buffer_acumulado);
+                        } else {
+                            printf("Error al abrir %s\n", filenames[index]);
+                        }
                     } else {
-                        printf("Error al abrir %s\n", filenames[i]);
+                        printf("Índice fuera de rango: %d\n", index);
                     }
+                } else {
+                    printf("Error al procesar la línea: %s\n", buffer_acumulado);
                 }
                 buffer_index = 0;
                 buffer_acumulado[0] = '\0';

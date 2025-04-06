@@ -9,12 +9,12 @@
 
 
 typedef struct MenuNode {
-    char title[30];                     // Nombre del menú (ej: "MENU1")
+    char title[70];                     // Nombre del menú (ej: "MENU1")
     char key;                         // Teclas para acceder a los hijos
     struct MenuNode *parent;         // Nodo padre (para volver atrás)
     struct MenuNode *children[5];    // Punteros a hijos (máx 5, ajustable)
     int child_count;                 // Número de hijos
-    int id;                         // Identificador del nodo
+    int id;                         // Identificador unico del nodo
 } MenuNode;
 
 void add_child(MenuNode *parent, MenuNode *child);

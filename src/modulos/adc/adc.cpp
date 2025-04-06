@@ -33,7 +33,7 @@ void  leerADC(){
     if(sendDataStatus() ==true){
       
 
-      writeSerialComln(String(temp.timestamp)+String(',')+String(temp.shuntVoltage_mV)+String(',')+String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+String(',')+String(temp.power_mW));
+      writeSerialComln(String(temp.timestamp)+String(',')+String(temp.shuntVoltage_mV)+String(',')+String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+String(',')+String(temp.power_mW)+String(',')+String(temp.pin));
 
 
 
