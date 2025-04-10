@@ -11,5 +11,5 @@
 void PWMInit();
 void PWMUpdate();
 bool PWMSetDC(int dc);
-
+bool PWMSetFrequency(int frecuencies);
 #endif

@@ -77,6 +77,8 @@ MenuNode* menuInit() {
     add_child(child6, child7);
     MenuNode* child8 = create_node("Modificar Duty Cycle del PWM", '1',8);
     add_child(child5, child8);
+    MenuNode* child9 = create_node("Modificar frecuencia del PWM", '2',9);
+    add_child(child5, child9);
     return root;
 }
 

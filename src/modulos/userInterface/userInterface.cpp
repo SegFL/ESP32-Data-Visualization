@@ -178,6 +178,16 @@ void procesarDatos(String data) {
             writeSerialComln("Valor de Duty Cycle inválido. Debe estar entre 0 y 100.");
         }
     }
+    if(menu->id ==9){
+        int frequency = data.toInt(); // Convertir el String a entero
+        if (PWMSetFrequency(frequency)==true) {
+            writeSerialComln("Frecuencia cambiada a: " + String(frequency) + " Hz");
+        } else {
+            writeSerialComln("Valor de frecuencia inválido. Debe ser mayor que 0.");
+        }
+    }
+
+    
 }
 
 

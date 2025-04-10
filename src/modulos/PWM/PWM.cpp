@@ -41,3 +41,12 @@ bool PWMSetDC(int dc){
   }
   return false;
 }
+
+bool PWMSetFrequency(int frecuencies){
+  if(frecuencies>0 && frecuencies<500000){
+    ledcSetup(PWM_CHANNEL, frecuencies, PWM_RESOLUTION);
+    return true;
+  }
+  return false;
+
+}
