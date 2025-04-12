@@ -6,7 +6,7 @@
 #include <modulos/serialCom/serialCom.h>
 #include <modulos/userInterface/userInterface.h>
 
-#define NUMBER_OF_SENSORS 2 // Número de sensores INA219
+#define NUMBER_OF_SENSORS 1 // Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 void adcInit() {
     // Inicializar el buffer
 

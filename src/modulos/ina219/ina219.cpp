@@ -3,7 +3,7 @@
 #include <ADCData.h>
 
 
-#define NUM_SENSORS 2 // Número de sensores INA219
+#define NUM_SENSORS 1 // Número de sensores INA219. Si se cambia tambien se deberia cambiar el valor en adc.cpp
 
 // Crear un vector de punteros para manejar múltiples sensores
 Adafruit_INA219* ina219[NUM_SENSORS];
@@ -25,8 +25,9 @@ void ina219Init(){
             sensorAvailable[i] = false; // Marcar como no disponible
             continue;
         }
-        ina219[i]->setCalibration_16V_400mA();
-        writeSerialCom("INA219 en dirección 0x");
+        ina219[i]->setCalibration_32V_1A();
+        sensorAvailable[i] = true; // Marcar como disponible
+        writeSerialCom("INA219 en dirección");
         writeSerialCom(String("0x" + String(sensorAddresses[i], HEX)));
         writeSerialComln(" inicializado correctamente.");
     }

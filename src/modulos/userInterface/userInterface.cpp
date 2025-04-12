@@ -108,7 +108,7 @@ bool loadConfiguration(){
         return true;
     } else {
         changeMode(NOT_SEND_DATA); // Cambiar el modo a RECEIVE_DATA
-        writeSerialComln("Modo RECEIVE DATA activado");
+        writeSerialComln("Modo SEND DATA desactivado");
         return false;
     }
 }
@@ -198,11 +198,6 @@ void printSensorData() {
 
     const int cant=4;
     ADCData data[cant]={};
-
-    
-
-
-
 
     if (receiveSensorDataToUserInterface(data)) {
         for (int i = 0; i < cant; i++){
