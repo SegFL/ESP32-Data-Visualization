@@ -79,6 +79,10 @@ MenuNode* menuInit() {
     add_child(child5, child8);
     MenuNode* child9 = create_node("Modificar frecuencia del PWM", '2',9);
     add_child(child5, child9);
+    MenuNode* child10 = create_node("Modificar valor maximo del PWM", '3',9);
+    add_child(child5, child10);
+    MenuNode* child11 = create_node("Presione enter + el valor maximo de DutyCycle permitido", '1',10);
+    add_child(child10, child11);
     return root;
 }
 

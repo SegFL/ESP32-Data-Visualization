@@ -3,7 +3,7 @@
 #include "userInterface.h"
 #include <ADCData.h>
 #include "modulos/queueCom/queueCom.h"
-#include <modulos/PWM/PWM.h>
+#include <modulos/carga_electronica/carga_electronica.h>
 
 
 #define MAX_DATA_BUFFER 30
@@ -157,12 +157,13 @@ void procesarDatos(String data) {
     if (menu->id == 3) {
         writeSerialComln("Llame a la funcion cargar contraseña");
     }
-    if (menu->id == 6) {
+    if (menu->id == 7) {
         if (data.equalsIgnoreCase("y")) { // Comparación más eficiente
             changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
             writeSerialComln("Modo SEND DATA activado");
             saveValueNVS("mode", SEND_DATA); // Guardar el modo en NVS
         }
+        
         if (data.equalsIgnoreCase("n")) { 
             changeMode(NOT_SEND_DATA); 
             writeSerialComln("Modo SEND DATA desactivado");
@@ -172,8 +173,10 @@ void procesarDatos(String data) {
 
     if(menu->id==8){
         int dutyCycle = data.toInt(); // Convertir el String a entero
-        if (PWMSetDC(dutyCycle)==true) {
-            writeSerialComln("Duty Cycle cambiado a: " + String(dutyCycle) + "%");
+        int dc=PWMSetDC(dutyCycle);
+        if (dc>=0 && dc<=100) {
+            writeSerialComln("Duty Cycle cambiado a: " + String(dc) + "%");
+            
         } else {
             writeSerialComln("Valor de Duty Cycle inválido. Debe estar entre 0 y 100.");
         }
@@ -186,6 +189,15 @@ void procesarDatos(String data) {
             writeSerialComln("Valor de frecuencia inválido. Debe ser mayor que 0.");
         }
     }
+    if(menu->id ==10){
+        int maxDC = data.toInt(); // Convertir el String a entero
+        if (PWMSetMaxDC(maxDC)==true) {
+            writeSerialComln("Valor máximo de Duty Cycle cambiado a: " + String(maxDC) + "%");
+        } else {
+            writeSerialComln("Valor máximo de Duty Cycle inválido. Debe estar entre 0 y 100.");
+        }
+    }
+
 
     
 }

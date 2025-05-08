@@ -9,7 +9,7 @@
 Adafruit_INA219* ina219[NUM_SENSORS];
 
 // Direcciones I2C para cada sensor
-uint8_t sensorAddresses[4] = {0x40, 0x41,0x44,0x45};//Direcciones de los in219 
+uint8_t sensorAddresses[4] = {0x41, 0x40,0x44,0x45};//Direcciones de los in219 
 bool sensorAvailable[4] = {false, false, false, false}; // Estado de disponibilidad de los sensores
 void ina219Init(){
   // Iniciar la comunicación serie

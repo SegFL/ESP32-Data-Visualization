@@ -20,6 +20,7 @@
         "utility": "cpp",
         "new": "cpp",
         "string.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "cmath": "cpp"
     }
 }

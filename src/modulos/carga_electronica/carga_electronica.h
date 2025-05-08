@@ -8,8 +8,9 @@
 #include <modulos/serialCom/serialCom.h>
 
 
-void PWMInit();
-void PWMUpdate();
-bool PWMSetDC(int dc);
+void CargaElectronicaInit();
+void CargaElectronicaUpdate();
+int PWMSetDC(int dc);
 bool PWMSetFrequency(int frecuencies);
+bool PWMSetMaxDC(int dc);
 #endif

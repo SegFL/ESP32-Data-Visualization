@@ -2,3 +2,6 @@
 
 Volver mas eficiente laimpresion de datos por pantalla escirbiendo los valores de los sensores y no todo 
 el texto(Se podria usar la funcion moveCursor())
+
+
+Agregar tiempos reales a los datos
