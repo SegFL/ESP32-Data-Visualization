@@ -6,7 +6,7 @@
 #include "modulos/queueCom/queueCom.h"
 #include "modulos/ina219/ina219.h"
 #include <nvs_flash.h>
-
+#include "modulos/time/time.h"
 
 #define QUEUE_LENGTH 100       // Máximo número de elementos en la queue
 #define ITEM_SIZE sizeof(char) // Tamaño de cada elemento (en este caso, 1 byte para un char)
@@ -31,7 +31,7 @@ void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de 
 
   while (true) {
     userInterfaceUpdate();
-    
+    TimeUpdate();
 
     
    vTaskDelay(pdMS_TO_TICKS(200)); // Espera 0.5 segundos
@@ -61,6 +61,7 @@ void setup() {
   ina219Init();
   adcInit(); 
   CargaElectronicaInit();
+  TimeInit();
   // Inicializar NVS antes de usarlo(MEMORIA ESTATICA EN LA QUE SE ALMACENAN LA CONFIGURACION DEL SISTEMA)
   esp_err_t err = nvs_flash_init();
   if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {

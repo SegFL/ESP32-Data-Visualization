@@ -4,6 +4,7 @@
 #include <ADCData.h>
 #include "modulos/queueCom/queueCom.h"
 #include <modulos/carga_electronica/carga_electronica.h>
+#include <modulos/time/time.h>
 
 
 #define MAX_DATA_BUFFER 30
@@ -196,6 +197,9 @@ void procesarDatos(String data) {
         } else {
             writeSerialComln("Valor máximo de Duty Cycle inválido. Debe estar entre 0 y 100.");
         }
+    }
+    if(menu->id ==11){
+        writeSerialComln("Fecha y hora: " + getFormattedDateTime());
     }
 
 

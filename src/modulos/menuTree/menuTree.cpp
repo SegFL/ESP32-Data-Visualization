@@ -83,6 +83,8 @@ MenuNode* menuInit() {
     add_child(child5, child10);
     MenuNode* child11 = create_node("Presione enter + el valor maximo de DutyCycle permitido", '1',10);
     add_child(child10, child11);
+    MenuNode* child12 = create_node("Fecha y hora", '5',11);
+    add_child(root, child12);
     return root;
 }
 
