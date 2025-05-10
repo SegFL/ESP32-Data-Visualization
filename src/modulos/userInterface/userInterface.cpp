@@ -156,7 +156,12 @@ void procesarDatos(String data) {
         return;
     }
     if (menu->id == 3) {
-        writeSerialComln("Llame a la funcion cargar contraseña");
+        setSSID(data); // Cambiar el SSID
+        writeSerialComln("SSID cambiado a: " + data);
+    }
+    if (menu->id == 4) {
+        setPassWord(data); // Cambiar el PASSWORD
+        writeSerialComln("SSID cambiado a *** " );
     }
     if (menu->id == 7) {
         if (data.equalsIgnoreCase("y")) { // Comparación más eficiente

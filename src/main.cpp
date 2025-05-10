@@ -34,7 +34,7 @@ void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de 
     TimeUpdate();
 
     
-   vTaskDelay(pdMS_TO_TICKS(200)); // Espera 0.5 segundos
+   vTaskDelay(pdMS_TO_TICKS(300)); // Espera 0.5 segundos
 
   }
 }
@@ -50,7 +50,7 @@ void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
 
 
     
-    vTaskDelay(pdMS_TO_TICKS(100)); // Espera 0.5 segundos
+    vTaskDelay(pdMS_TO_TICKS(100)); // 
   }
 }
 

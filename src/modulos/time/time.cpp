@@ -1,9 +1,12 @@
 #include "time.h"
 
 // Configuración de Wi-Fi
-const char *ssid = "Claro";
-const char *password = "17727630";
+
+static unsigned long millisInit = 0; // milisegundos desde el incio del programa
+static unsigned long millisTranscurridos = 0; // milisegundos transcurridos desde el incio del programa
 static String timeString = ""; // Variable para almacenar la hora formateada
+unsigned long epochTime = 0; // Variable para almacenar el tiempo desde epoch
+bool WiFiConected=false;
 // Configuración de NTP
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Argentina)
@@ -11,37 +14,65 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Argent
 // Función para inicializar la conexión Wi-Fi y NTP
 void TimeInit() {
 
-    WiFi.begin(ssid, password);
-    writeSerialComln("Conectando a Wi-Fi...");
-    if (WiFi.status() != WL_CONNECTED) {
-        writeSerialCom("Error al conectar a Wi-Fi: ");
+    if(connectWiFi()==true){
+        writeSerialComln("Conectado a Wi-Fi");
+        timeClient.begin();
+        epochTime = timeClient.getEpochTime();
+        millisInit = 0; // Guardar el tiempo inicial
+        millisTranscurridos = 0; 
+        WiFiConected=true;
     }
-    writeSerialComln("\nConectado a Wi-Fi");
-    timeClient.begin();
 }
+/*
+Actualiza el tiempo cada vez que se llama a la función. Usa el tiempo desde epoch
+y una diferencia de tiempo para tener los milisegundos transcurridos.
 
-// Función para actualizar y obtener la hora
+Con epoch time obtengo el tiempoabsoluto y cuandon millisTrancurridos obtengo
+el tiempo en milisegundos desde la utlimaacutalizacion de epoch time.
+*/
+
+
 void TimeUpdate() {
+    if(WiFiConected==false){
+        if(connectWiFi()==true){
+            WiFiConected=true;
+        }else{
+            
+            return;
+        }
+        
+    }
     timeClient.update();
-    timeString = timeClient.getFormattedTime(); // Obtener la hora formateada
+    epochTime = timeClient.getEpochTime();
+    millisTranscurridos = millis() - millisInit; // Calcular el tiempo transcurrido desde el inicio
     return ;
 }
 
-String getFormattedDateTime() {
-    timeClient.update();
-    unsigned long epochTime = timeClient.getEpochTime();
-
-    // Establecemos el tiempo en la librería TimeLib
-    setTime(epochTime);
-
-    // Construimos el formato: DD/MM/YYYY HH:MM:SS
-    String formattedDateTime = String(day()) + "/" + 
-                               String(month()) + "/" + 
-                               String(year()) + " " + 
-                               String(hour()) + ":" + 
-                               String(minute()) + ":" + 
-                               String(second());
-
-    return formattedDateTime;
+void getTime(unsigned long &epoch, unsigned long &millisTrans) {
+    epoch = epochTime+millisTranscurridos/1000;
+    millisTrans = millisTranscurridos%1000;
+    
 }
+
+
+// Formatear la fecha y hora como "YYYY/MM/DD HH:MM:SS.MMMM"
+String getFormattedDateTime() {
+    unsigned long epoch, millisTrans;
+    getTime(epoch, millisTrans);
+
+    String formattedTime = String(year(epoch)) + "/" +
+                             String(month(epoch)) + "/" +
+                             String(day(epoch)) + " " +
+                             String(hour(epoch)) + ":" +
+                             String(minute(epoch)) + ":" +
+                             String(second(epoch))+ "."+
+                             String(millisTrans);
+    // Formatear la fecha y hora como "YYYY/MM/DD HH:MM:SS"
+    
+
+
+
+    return formattedTime;
+}
+
 
