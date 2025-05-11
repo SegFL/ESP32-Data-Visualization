@@ -8,7 +8,8 @@ struct ADCData {
     float shuntVoltage_mV;
     float current_mA;
     float power_mW;
-    unsigned long timestamp;  // Marca de tiempo del dato
+    unsigned long timestampMillis; // Marca de tiempo en milisegundos
+    unsigned long timestampDate; // Marca de tiempo en milisegundos
 };
 
 #endif // ADCDATA_H

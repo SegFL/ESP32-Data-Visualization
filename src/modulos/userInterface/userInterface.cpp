@@ -238,6 +238,5 @@ void printSensor(ADCData data){
     writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
     writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
     writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
-    writeSerialComln(String("\tTimestamp: ") + String(data.timestamp));//Provoca problemas con punteros nulos o de memoria
-
+    //writeSerialComln(String("\tTiempo: ") + getFormattedDateTime());
 }

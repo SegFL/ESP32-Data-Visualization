@@ -9,7 +9,7 @@
 Adafruit_INA219* ina219[NUM_SENSORS];
 
 // Direcciones I2C para cada sensor
-uint8_t sensorAddresses[4] = {0x41, 0x40,0x44,0x45};//Direcciones de los in219 
+uint8_t sensorAddresses[4] = {0x40, 0x41,0x44,0x45};//Direcciones de los in219 
 bool sensorAvailable[4] = {false, false, false, false}; // Estado de disponibilidad de los sensores
 void ina219Init(){
   // Iniciar la comunicación serie
@@ -27,8 +27,8 @@ void ina219Init(){
         }
         ina219[i]->setCalibration_32V_1A();
         sensorAvailable[i] = true; // Marcar como disponible
-        writeSerialCom("INA219 en dirección");
-        writeSerialCom(String("0x" + String(sensorAddresses[i], HEX)));
+        writeSerialCom("INA219 en dirección 0x");
+        writeSerialCom(String(sensorAddresses[i], HEX));
         writeSerialComln(" inicializado correctamente.");
     }
 
@@ -44,8 +44,8 @@ bool getData(ADCData& data, int sensor){ //Numero del sensor a leer
         data.current_mA = ina219[sensor]->getCurrent_mA();
         data.power_mW = ina219[sensor]->getPower_mW();
         data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV();
-        data.timestamp = millis();
         data.pin = sensor;
+        data.timestampMillis = millis();
         return true;
     }else{
         return false;

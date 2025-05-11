@@ -13,6 +13,7 @@ void adcInit() {
 
     // Configuración de pines
     pinMode(36, INPUT);
+
 }
 
 
@@ -27,7 +28,13 @@ void  leerADC(){
       if(getData(temp,i)==true){
       //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
         if(sendDataStatus() ==true){
-            writeSerialComln(String(temp.timestamp)+String(',')+String(temp.shuntVoltage_mV)+String(',')+String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+String(',')+String(temp.power_mW)+String(',')+String(temp.pin)+String(',')+getFormattedDateTime());
+            getTime(temp.timestampDate,temp.timestampMillis);
+            writeSerialComln(String(temp.timestampMillis)+String(',')+
+            String(temp.shuntVoltage_mV)+String(',')+
+            String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+
+            String(',')+String(temp.power_mW)+String(',')+
+            //String(temp.timestampDate)+String(',')+
+            String(temp.pin));
           }else{
             if (sendSensorDataToUserInterface(temp)) {
               //Serial.println("Dato enviado: "+String(temp2.timestamp));

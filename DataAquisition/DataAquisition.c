@@ -1,7 +1,17 @@
+
+
+
+/*   CODIGO PARA EJECUTAR Y COMPILAR EN WINDOWS
+gcc DataAquisition.c -o DataAquisition.exe
+Start-Process ".\DataAquisition.exe" 
+
+*/
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -12,8 +22,6 @@
 #endif
 
 
-bool validarLineaCSV(const char *linea, int cantidadEsperada);
-bool esNumero(const char *str) ;
 // Vector con los nombres de los archivos
 const char *filenames[] = {"..\\App de MATLAB\\Data\\Sensor1.csv", "..\\App de MATLAB\\Data\\Sensor2.csv", "..\\App de MATLAB\\Data\\Sensor3.csv", "..\\App de MATLAB\\Data\\Sensor4.csv"}; 
 
@@ -116,16 +124,10 @@ int main() {
             } else if (buffer[i] == '\n') {
                 buffer_acumulado[buffer_index] = '\0';
 
-                if (!validarLineaCSV(buffer_acumulado, 6)) {
-                    printf("Error en la línea: %s\n", buffer_acumulado);
-                    buffer_index = 0;
-                    buffer_acumulado[0] = '\0';
-                    continue;
-                }
                 char *last_comma = strrchr(buffer_acumulado, ',');
                 if (last_comma != NULL && *(last_comma + 1) != '\0') {
                     int index = *(last_comma + 1) - '0'; // Convertir el último caracter a entero
-                    if (index >= 0 && index < 4) {
+                    if (index >= 0 && index < 5) { // Asegurarse de que el índice esté dentro del rango
                         FILE *file = fopen(filenames[index], "a");
                         if (file != NULL) {
                             fprintf(file, "%s\n", buffer_acumulado);
@@ -159,46 +161,3 @@ int main() {
 
     return 0;
 }
-
-
-#include <stdbool.h>
-#include <ctype.h>
-
-bool esNumero(const char *str) {
-    if (*str == '-' || *str == '+') str++;  // signo opcional
-    bool punto = false;
-
-    if (*str == '\0') return false;  // vacío
-
-    while (*str) {
-        if (*str == '.') {
-            if (punto) return false; // más de un punto
-            punto = true;
-        } else if (!isdigit(*str)) {
-            return false; // contiene letra o símbolo raro
-        }
-        str++;
-    }
-
-    return true;
-}
-
-bool validarLineaCSV(const char *linea, int cantidadEsperada) {
-    char copia[BUFFER_SIZE];
-    strncpy(copia, linea, BUFFER_SIZE - 1);
-    copia[BUFFER_SIZE - 1] = '\0';
-
-    int contador = 0;
-    char *token = strtok(copia, ",");
-
-    while (token != NULL) {
-        if (!esNumero(token)) {
-            return false;
-        }
-        contador++;
-        token = strtok(NULL, ",");
-    }
-
-    return contador == cantidadEsperada;
-}
-
