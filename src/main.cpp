@@ -7,7 +7,7 @@
 #include "modulos/ina219/ina219.h"
 #include <nvs_flash.h>
 #include "modulos/time/time.h"
-
+#include "modulos/simuladorCurvas/simuladorCurvas.h"
 #define QUEUE_LENGTH 100       // Máximo número de elementos en la queue
 #define ITEM_SIZE sizeof(char) // Tamaño de cada elemento (en este caso, 1 byte para un char)
 
@@ -25,7 +25,7 @@ QueueHandle_t xQueueComSerial;         // Handle para la queue
 // Definimos los manejadores de las tareas
 TaskHandle_t Task1Handle = NULL;
 TaskHandle_t Task2Handle = NULL;
-
+TaskHandle_t Task3Handle = NULL;
 // Función de la tarea 1 RECIVE DATOS
 void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de usuario
 
@@ -50,6 +50,13 @@ void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
 
 
     
+    vTaskDelay(pdMS_TO_TICKS(100)); // 
+  }
+}
+void Task3(void *pvParameters) {//Tarea encargada de leer datos del ADC
+  while (true) {
+
+    simuladorCurvasUpdate();
     vTaskDelay(pdMS_TO_TICKS(100)); // 
   }
 }
@@ -99,6 +106,16 @@ void setup() {
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task2Handle    // Manejador de la tarea
+  );
+
+    // Crear la tarea 2
+  xTaskCreate(
+    Task3,          // Función que implementa la tarea
+    "Task3",        // Nombre de la tarea
+    2000,           // Tamaño del stack en palabras
+    NULL,           // Parámetro que se pasa a la tarea
+    1,              // Prioridad de la tarea
+    &Task3Handle    // Manejador de la tarea
   );
 
 
