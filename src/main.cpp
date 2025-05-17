@@ -56,7 +56,7 @@ void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
 void Task3(void *pvParameters) {//Tarea encargada de leer datos del ADC
   while (true) {
 
-    simuladorCurvasUpdate();
+
     vTaskDelay(pdMS_TO_TICKS(100)); // 
   }
 }

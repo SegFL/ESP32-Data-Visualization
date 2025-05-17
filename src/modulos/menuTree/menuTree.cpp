@@ -37,14 +37,14 @@ void add_child(MenuNode *parent, MenuNode *child) {
     }
 
     // Buscar un espacio disponible en el array de hijos
-    if (parent->child_count < 5) {
+    if (parent->child_count < MAX_CHILDREN) {
         int i = 0;
-        while (i < 5 && parent->children[i] != nullptr) {
+        while (i < MAX_CHILDREN && parent->children[i] != nullptr) {
             i++;
         }
 
         // Asegurarse de que no se excede el límite
-        if (i < 5) {
+        if (i < MAX_CHILDREN) {
             parent->children[i] = child;
             child->parent = parent;  // Se asigna el nodo padre
             parent->child_count++;
@@ -65,26 +65,61 @@ MenuNode* menuInit() {
     add_child(root, child1);
     MenuNode* child2 = create_node("Configuracion de WiFi", '2',2);
     add_child(root, child2);
-    MenuNode* child4 = create_node("Entre SSID", '1',3);
-    add_child(child2, child4);
-    MenuNode* child3 = create_node("Entre constraseña", '2',4);
-    add_child(child2, child3);
+
+        MenuNode* child4 = create_node("Entre SSID", '1',3);
+        add_child(child2, child4);
+
+        MenuNode* child3 = create_node("Entre constraseña", '2',4);
+        add_child(child2, child3);
+
     MenuNode* child5 = create_node("Configuracion PWM", '3',5);
     add_child(root, child5);
+
+        MenuNode* child8 = create_node("Modificar Duty Cycle del PWM", '1',8);
+        add_child(child5, child8);
+
+        MenuNode* child9 = create_node("Modificar frecuencia del PWM", '2',9);
+        add_child(child5, child9);
+
+        MenuNode* child10 = create_node("Modificar valor maximo del PWM", '3',10);
+        add_child(child5, child10);
+
+        MenuNode* child11 = create_node("Presione enter + el valor maximo de DutyCycle permitido", '1',11);
+        add_child(child10, child11);
+
     MenuNode* child6 = create_node("Modo de funcionamiento", '4',6);
     add_child(root, child6);
-    MenuNode* child7 = create_node("Presiona enter + y para pasar a modo SEND DATA o enter + n para desactivar", '1',7);
-    add_child(child6, child7);
-    MenuNode* child8 = create_node("Modificar Duty Cycle del PWM", '1',8);
-    add_child(child5, child8);
-    MenuNode* child9 = create_node("Modificar frecuencia del PWM", '2',9);
-    add_child(child5, child9);
-    MenuNode* child10 = create_node("Modificar valor maximo del PWM", '3',9);
-    add_child(child5, child10);
-    MenuNode* child11 = create_node("Presione enter + el valor maximo de DutyCycle permitido", '1',10);
-    add_child(child10, child11);
-    MenuNode* child12 = create_node("Fecha y hora", '5',11);
+
+        MenuNode* child7 = create_node("Presiona enter + y para pasar a modo SEND DATA o enter + n para desactivar", '1',7);
+        add_child(child6, child7);
+
+
+    MenuNode* child12 = create_node("Fecha y hora", '5',12);
     add_child(root, child12);
+
+    MenuNode* child13 = create_node("Curva de carga", '6',13);
+    add_child(root, child13);
+
+        MenuNode* child14 = create_node("Crear curva de carga", '1',14);
+        add_child(child13, child14);
+
+            MenuNode* child17 = create_node("Agregar Pin", '1',17);
+            add_child(child14, child17);
+
+            MenuNode* child18 = create_node("Agregar puntos", '2',18);
+            add_child(child14, child18);
+                MenuNode* child19 = create_node("Seleccionar curva", '1',19);
+                add_child(child18, child19);
+
+                MenuNode* child20 = create_node("Agregar punto a la curva", '2',20);
+                add_child(child18, child20);
+
+        MenuNode* child15 = create_node("Ver curvas", '2',15);
+        add_child(child13, child15);
+
+        MenuNode* child16 = create_node("Activar curvas", '3',16);
+        add_child(child13, child16);
+
     return root;
 }
 

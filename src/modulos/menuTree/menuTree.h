@@ -5,6 +5,7 @@
 #include <cstring>  // Para strncpy
 #include <queue>
 
+#define MAX_CHILDREN 10 // Número máximo de hijos por nodo (ajustable)
 // Definición del nodo del árbol del menú
 
 
@@ -12,7 +13,7 @@ typedef struct MenuNode {
     char title[70];                     // Nombre del menú (ej: "MENU1")
     char key;                         // Teclas para acceder a los hijos
     struct MenuNode *parent;         // Nodo padre (para volver atrás)
-    struct MenuNode *children[5];    // Punteros a hijos (máx 5, ajustable)
+    struct MenuNode *children[MAX_CHILDREN];    // Punteros a hijos (máx MAX_CHILDREN, ajustable)
     int child_count;                 // Número de hijos
     int id;                         // Identificador unico del nodo
 } MenuNode;

@@ -5,7 +5,7 @@
 #include "modulos/queueCom/queueCom.h"
 #include <modulos/carga_electronica/carga_electronica.h>
 #include <modulos/time/time.h>
-
+#include <modulos/simuladorCurvas/simuladorCurvas.h>
 
 #define MAX_DATA_BUFFER 30
 #define ESC 27
@@ -17,6 +17,13 @@ static MenuNode *menu = nullptr;
 String data_buffer = ""; //Variable para almacenar los datos recibidos
 bool aceptandoDatos=false;
 bool updateScreen=false;
+
+curve_t** array=NULL;
+int arrayPos=0;//Posiciones ocupadas del arreglo de curvas
+int arraySize=0;
+bool arraySelected=false;
+int arraySelectedPos=-1;
+
 void moveCursor(int row, int col);
 void procesarDatos(String data);
 void printSensorData();
@@ -24,7 +31,7 @@ bool loadConfiguration();
 void saveValueNVS(const char* key, bool value);
 bool readValueNVS(const char* key);
 void printSensor(ADCData data);
-
+bool parseStringToInts(String str, int *num1, int *num2);
 void userInterfaceInit(){
     serialComInit();
     clearScreen();//Borra mensajes del ESP32 al iniciar el programa
@@ -38,6 +45,13 @@ void userInterfaceInit(){
         writeSerialComln("Configuracion cargada correctamente");
     } else{
         writeSerialComln("Error al cargar la configuracion");
+    }
+
+    array=newCurveArray(arraySize);
+    if(array==NULL){
+        writeSerialComln("Arreglo de curvas inicializado");
+    }else{
+        writeSerialComln("Arreglo de curvas fallo al inicializarse");
     }
 
 }
@@ -203,9 +217,66 @@ void procesarDatos(String data) {
             writeSerialComln("Valor máximo de Duty Cycle inválido. Debe estar entre 0 y 100.");
         }
     }
-    if(menu->id ==11){
-        writeSerialComln("Fecha y hora: " + getFormattedDateTime());
+    if(menu->id ==17){
+        //Cargo el arreglo de curvas
+        if(array==NULL){
+            array=newCurveArray(3);
+            if(array==NULL){
+                writeSerialComln("Error al crear el arreglo de curvas");
+                return;
+            }
+            arraySize=3;
+        }
+        //Creo la curva
+        curve_t* curve_aux=createCurve(data.toInt());
+        if(curve_aux==NULL){
+            writeSerialComln("Error al crear la curva");
+            return;
+        }
+        array[arrayPos]=curve_aux;
+        arrayPos++;
+        writeSerialComln("Curva creada");
+
+
     }
+    if(menu->id ==19){
+        int aux=data.toInt();
+        if(aux<0 && aux>=arrayPos){
+            writeSerialComln("Error: Curva no valida");
+            return;
+        }else{
+            arraySelected=true;
+            arraySelectedPos=aux;
+            writeSerialComln("Curva seleccionada: "+String(aux));
+        }
+    }
+
+    if(menu->id ==20){
+        if(arraySelected==false){
+            writeSerialComln("Error: No se ha seleccionado una curva");
+            return;
+        }else{
+            int tiempo,value;
+            if(parseStringToInts(data.c_str(), &tiempo, &value)){
+                array[arraySelectedPos]=addPoint(array[arraySelectedPos],tiempo,value);
+                if(array[arraySelectedPos]==NULL){
+                    writeSerialComln("Error: No se pudo agregar el punto");
+                    return;
+                }else{
+                    writeSerialComln("Punto agregado: ["+String(tiempo)+","+String(value)+"]");
+                }
+
+            }
+
+        }
+    }
+    
+
+    if(menu->id ==15){
+        printCurves(array,arraySize);
+    }
+
+
 
 
     
@@ -239,4 +310,14 @@ void printSensor(ADCData data){
     writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
     writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
     //writeSerialComln(String("\tTiempo: ") + getFormattedDateTime());
+}
+
+bool parseStringToInts(String str, int *num1, int *num2) {
+    writeSerialComln(String("Parseando: ") + str);
+
+    // Convertir el String de Arduino a un const char* para sscanf
+    if (sscanf(str.c_str(), "%d,%d", num1, num2) == 2) {
+        return true;  // Se leyeron correctamente ambos números
+    }
+    return false;     // No se leyeron correctamente
 }

@@ -5,3 +5,6 @@ el texto(Se podria usar la funcion moveCursor())
 
 
 Agregar tiempos reales a los datos
+
+
+en el modulo de simuylador de Curvas no se imprimen todoas los puntos, nunca se imprime el ultimo agregado
