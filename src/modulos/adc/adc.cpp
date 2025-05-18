@@ -6,6 +6,7 @@
 #include <modulos/serialCom/serialCom.h>
 #include <modulos/userInterface/userInterface.h>
 #include <modulos/time/time.h>
+#include <modulos/carga_electronica/carga_electronica.h>
 #define NUMBER_OF_SENSORS 1 // Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 void adcInit() {
     // Inicializar el buffer
@@ -26,6 +27,9 @@ void  leerADC(){
   int i =0;
   while(i<NUMBER_OF_SENSORS){//Cantidad de sensores
       if(getData(temp,i)==true){
+        //Envia el valor de corriente al modulo de la carga electronica para que lo utilice para el
+        //lazo de control PID
+        sendToActuator(temp.current_mA); 
       //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
         if(sendDataStatus() ==true){
             getTime(temp.timestampDate,temp.timestampMillis);

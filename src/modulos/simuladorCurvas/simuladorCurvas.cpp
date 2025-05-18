@@ -65,20 +65,21 @@ curve_t* addPoint(curve_t *curve, int tiempo, int value) {
 
 
     if(value > curve->Imax){
-        (curve->point[curve->contador+1]).value = curve->Imax;
+        (curve->point[curve->contador]).value = curve->Imax;
     }else if(value < curve->Imin){
-        (curve->point[curve->contador+1]).value = curve->Imin;
+        (curve->point[curve->contador]).value = curve->Imin;
     }else{
-        (curve->point[curve->contador+1]).value = value;
+        (curve->point[curve->contador]).value = value;
     }
-    if(tiempo<curve->point[curve->contador].tiempo){
+    //Si el nuevo tiempo es menor que el del punto anterior es invalido
+    if(tiempo<=curve->point[curve->contador-1].tiempo){
         writeSerialComln("Error: Tiempo no valido");
-        (curve->point[curve->contador+1]).value = 0;
+        (curve->point[curve->contador]).value = 0;
         return NULL;
     }
 
-    curve->point[curve->contador+1].tiempo = tiempo;
-    curve->point[curve->contador+1].value = value;
+    curve->point[curve->contador].tiempo = tiempo;
+    curve->point[curve->contador].value = value;
     curve->contador++;
 
     return curve;
@@ -89,6 +90,7 @@ void printCurves(curve_t** curveArray, int size){
         if(curveArray[i]!=NULL){
             writeSerialComln("Curva "+String(i));
             writeSerialComln("Pin: "+String(curveArray[i]->pin));
+            writeSerialComln("Cantidad de puntos: "+String(curveArray[i]->contador));           
             writeSerialComln("Puntos:[Tiempo, Valor]");
             for(int j=0;j<curveArray[i]->contador;j++){
                 writeSerialComln(String('\t')+String('[')+String(curveArray[i]->point[j].tiempo)+String(',')+String(curveArray[i]->point[j].value+String(']')));

@@ -75,8 +75,9 @@ void userInterfaceUpdate(){
     if(charReceived=='\n'){//Si se presiona enter se cambia el estado de recvir datos
         if(aceptandoDatos==true){
             aceptandoDatos=false;
-            writeSerialComln("Datos recibidos");
-            writeSerialComln(String(data_buffer));
+            //Loopback
+            //writeSerialComln("Datos recibidos");
+            //writeSerialComln(String(data_buffer));
             procesarDatos(data_buffer);
 
             data_buffer="";
@@ -240,11 +241,16 @@ void procesarDatos(String data) {
 
     }
     if(menu->id ==19){
+        printCurves(array,arraySize);
         int aux=data.toInt();
         if(aux<0 && aux>=arrayPos){
             writeSerialComln("Error: Curva no valida");
             return;
         }else{
+            if(aux<0 || aux>=arrayPos){
+                writeSerialComln("Esa curva no existe");
+                return;
+            }
             arraySelected=true;
             arraySelectedPos=aux;
             writeSerialComln("Curva seleccionada: "+String(aux));
