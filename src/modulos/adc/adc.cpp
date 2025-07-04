@@ -7,6 +7,7 @@
 #include <modulos/userInterface/userInterface.h>
 #include <modulos/time/time.h>
 #include <modulos/carga_electronica/carga_electronica.h>
+#define DATA 0 //Define el tipo de mensaje como dato
 #define NUMBER_OF_SENSORS 1 // Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 void adcInit() {
     // Inicializar el buffer
@@ -33,7 +34,7 @@ void  leerADC(){
       //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
         if(sendDataStatus() ==true){
             getTime(temp.timestampDate,temp.timestampMillis);
-            writeSerialComln(String(temp.timestampMillis)+String(',')+
+            writeSerialComln(String(',')+String(temp.timestampMillis)+String(',')+
             String(temp.shuntVoltage_mV)+String(',')+
             String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+
             String(',')+String(temp.power_mW)+String(',')+

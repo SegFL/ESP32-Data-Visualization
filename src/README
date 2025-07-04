@@ -27,3 +27,7 @@ Modificaciones:
     Se podria agregar un modo mixto a la referncia de la carga electronica:
         //mixto: Podria agregar un mix de los 2 modos anteriores: Le hago caso a la curva
         //Pero dejo la posibilidad de setear el valor actual al usuario
+
+
+Podria agregar la siguiente modificacion para diferenciar entre lineas de datos y configuracion, deberia modificar elparser que graba el csv 
+String(DATA)+
