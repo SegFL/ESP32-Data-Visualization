@@ -29,5 +29,9 @@ Modificaciones:
         //Pero dejo la posibilidad de setear el valor actual al usuario
 
 
-Podria agregar la siguiente modificacion para diferenciar entre lineas de datos y configuracion, deberia modificar elparser que graba el csv 
-String(DATA)+
+Problema con GUI:
+
+    Cuando envio dato,por ejemplo 1, se entra almenu de datos analogicos, pero cuandos e envia cualquier otro no.
+    Es como que los titulos de los nodos del menu no se imprimieran.
+
+

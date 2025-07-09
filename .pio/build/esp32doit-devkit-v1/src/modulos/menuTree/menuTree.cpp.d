@@ -133,4 +133,6 @@
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash_counters.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
- C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
+ src/modulos/serialCom/serialCom.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h

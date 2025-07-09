@@ -8,7 +8,6 @@
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
 
 #define MAX_DATA_BUFFER 30
-#define ESC 27
 #define SEND_DATA true
 #define NOT_SEND_DATA false
 
