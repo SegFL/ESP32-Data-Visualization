@@ -18,8 +18,6 @@ void adcInit() {
 }
 
 
-
-
 void  leerADC(){
 
 
@@ -50,9 +48,3 @@ void  leerADC(){
 
   
 }
-
-
-
-
-
-

@@ -136,17 +136,9 @@
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
  src/modulos/serialCom/serialCom.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h \
- src/modulos/serialCom/serialCom.h \
- src/modulos/carga_electronica/carga_electronica.h \
- C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-ledc.h \
- C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
- src/modulos/userInterface/userInterface.h \
- src/modulos/userInterface/../menuTree/menuTree.h \
- src/modulos/userInterface/../serialCom/serialCom.h \
- src/modulos/userInterface/../WiFi/WiFi.h src/modulos/queueCom/queueCom.h \
- src/modulos/queueCom/../serialCom/serialCom.h \
  src/modulos/ina219/ina219.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
  .pio/libdeps/esp32doit-devkit-v1/Adafruit\ INA219/Adafruit_INA219.h \
  .pio/libdeps/esp32doit-devkit-v1/Adafruit\ BusIO/Adafruit_BusIO_Register.h \
  .pio/libdeps/esp32doit-devkit-v1/Adafruit\ BusIO/Adafruit_GenericDevice.h \
@@ -154,6 +146,17 @@
  .pio/libdeps/esp32doit-devkit-v1/Adafruit\ BusIO/Adafruit_SPIDevice.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
+ src/modulos/adc/../queueCom/queueCom.h \
+ src/modulos/adc/../queueCom/../serialCom/serialCom.h \
+ src/modulos/serialCom/serialCom.h \
+ src/modulos/carga_electronica/carga_electronica.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-ledc.h \
+ src/modulos/userInterface/userInterface.h \
+ src/modulos/userInterface/../menuTree/menuTree.h \
+ src/modulos/userInterface/../serialCom/serialCom.h \
+ src/modulos/userInterface/../WiFi/WiFi.h src/modulos/queueCom/queueCom.h \
+ src/modulos/queueCom/../serialCom/serialCom.h \
+ src/modulos/ina219/ina219.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs_flash.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs.h \
  src/modulos/time/time.h \

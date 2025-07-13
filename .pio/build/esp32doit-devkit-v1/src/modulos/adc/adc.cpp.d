@@ -146,6 +146,8 @@
  .pio/libdeps/esp32doit-devkit-v1/Adafruit\ BusIO/Adafruit_SPIDevice.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
+ src/modulos/adc/../queueCom/queueCom.h \
+ src/modulos/adc/../queueCom/../serialCom/serialCom.h \
  src/modulos/queueCom/queueCom.h \
  src/modulos/queueCom/../serialCom/serialCom.h \
  src/modulos/userInterface/userInterface.h \

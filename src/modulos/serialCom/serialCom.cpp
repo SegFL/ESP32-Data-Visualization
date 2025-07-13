@@ -58,6 +58,7 @@ void writeSerialComln(String data) {
     writeSerialCom(String(COMMAND)+String(',')+data + "\n\r");
 }
 
+
 // Función original para String
 void writeSerialCom(String data) {
     Serial.print(data);
