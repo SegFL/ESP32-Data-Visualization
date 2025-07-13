@@ -13,6 +13,9 @@
 void initQueue();
 
 bool sendSensorDataToUserInterface(ADCData data);//adc->userInterface
+
 //Recive un vector de 4 datos de ADCData
 bool receiveSensorDataToUserInterface(ADCData data[]);//userInterface->adc(No se deberia utilizar)
 void queueInit();
+
+

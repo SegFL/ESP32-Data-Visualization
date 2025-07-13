@@ -22,6 +22,9 @@ QueueHandle_t xQueueComSerial;         // Handle para la queue
 
 
 
+
+
+
 // Definimos los manejadores de las tareas
 TaskHandle_t Task1Handle = NULL;
 TaskHandle_t Task2Handle = NULL;
@@ -42,6 +45,7 @@ void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de 
 // Función de la tarea 2
 void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
   while (true) {
+
     String buffer="";
 
     leerADC();
@@ -64,6 +68,7 @@ void Task3(void *pvParameters) {//Tarea encargada de leer datos del ADC
 
 void setup() {
   userInterfaceInit();
+
   queueInit();
   ina219Init();
   adcInit(); 
@@ -75,6 +80,7 @@ void setup() {
     nvs_flash_erase();
     nvs_flash_init();
   }
+
 
       // Crear la queue
     xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
@@ -92,7 +98,8 @@ void setup() {
   xTaskCreate(
     Task1,          // Función que implementa la tarea
     "Task1",        // Nombre de la tarea
-    2000,           // Tamaño del stack en palabras
+
+    4000,           // Tamaño del stack en palabras
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task1Handle    // Manejador de la tarea
@@ -102,7 +109,10 @@ void setup() {
   xTaskCreate(
     Task2,          // Función que implementa la tarea
     "Task2",        // Nombre de la tarea
-    2000,           // Tamaño del stack en palabras
+
+
+    4000,           // Tamaño del stack en palabras
+
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task2Handle    // Manejador de la tarea
@@ -119,7 +129,7 @@ void setup() {
   );
 
 
-  //vTaskStartScheduler();
+  vTaskStartScheduler();
 
 
 

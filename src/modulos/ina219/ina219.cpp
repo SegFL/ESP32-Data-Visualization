@@ -3,7 +3,9 @@
 #include <ADCData.h>
 
 
+
 #define NUM_SENSORS 1 // Número de sensores INA219. Si se cambia tambien se deberia cambiar el valor en adc.cpp
+
 
 // Crear un vector de punteros para manejar múltiples sensores
 Adafruit_INA219* ina219[NUM_SENSORS];
@@ -19,7 +21,7 @@ void ina219Init(){
     // Inicializar los sensores en sus respectivas direcciones
     for (int i = 0; i < NUM_SENSORS; i++) {
         ina219[i] = new Adafruit_INA219(sensorAddresses[i]); // Crear instancia con dirección específica
-        if (!ina219[i]->begin()) {
+        if (!ina219[i]->begin()) {  //Se inicializa la comunicacion I2C
             writeSerialCom("Error al inicializar el sensor INA219 en la dirección 0x");
             writeSerialComln(String(sensorAddresses[i]));
             sensorAvailable[i] = false; // Marcar como no disponible

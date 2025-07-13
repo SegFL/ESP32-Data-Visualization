@@ -20,6 +20,7 @@ void queueInit(){
 // Enviar datos del sensor a la cola
 bool sendSensorDataToUserInterface(ADCData data){
 
+
     if (xQueueSend(xQueueAdcUserInterface, &data, pdMS_TO_TICKS(100)) == pdTRUE) {
         return true;
     }
@@ -59,3 +60,4 @@ bool receiveSensorDataToUserInterface(ADCData data[]) {//Leo todos los datos de 
 
     return true; // Se obtuvo al menos un dato
 }
+

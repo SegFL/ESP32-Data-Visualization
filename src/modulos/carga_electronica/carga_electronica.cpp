@@ -4,6 +4,10 @@
 const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
 const int PWM_FREQ = 312000;     // Frecuencia PWM deseada: 312 kHz
 const int PWM_RESOLUTION = 8;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
+//La resolucion maxima depende de la frecuecnia utilizada, si se quiere mas frecuencia se tiene que
+//sacrificar resolucion
+
+
 
 const int MAX_DUTY_CYCLE = (int)(pow(2, PWM_RESOLUTION) - 1); // Valor máximo del duty cycle
 const int LED_OUTPUT_PIN = 18;   // Pin GPIO donde se genera la señal PWM
