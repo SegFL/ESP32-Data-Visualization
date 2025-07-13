@@ -17,6 +17,7 @@ void serialComInit();
 char readSerialChar();
 void writeSerialComln(String data);
 void writeSerialComlnDATA(String data);
+void writeSerialComlnCOMMAND(String data);
 //Cambia elmodo de funcionameinto del sistmea
 //TRUE: Envia los datos de los sensores por la interfaz serie
 //FALSE: El sistema funciona normalmente como menu

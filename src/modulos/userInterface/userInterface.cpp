@@ -204,31 +204,10 @@ void procesarDatos(String data) {
     }
     
 
-<<<<<<< HEAD
 
 
 
 
-=======
-}
-
-
-
-void printSensorData() {
-    //ADCData data;
-    ADCData data = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
-
-    if(receiveSensorDataToUserInterface(data)==false){
-        return;
-    }
- 
-    writeSerialComln(String("Pin: ") + String(data.pin));
-    writeSerialComln(String("\tBus Voltage: ") + String(data.busVoltage_V) + String(" V"));
-    writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
-    writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
-    writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
-    writeSerialComln(String("\tTimestamp: ") + String(data.timestamp));
->>>>>>> main
 
     if(menu->id==8){
         int dutyCycle = data.toInt(); // Convertir el String a entero
@@ -350,7 +329,7 @@ bool parseStringToInts(String str, int *num1, int *num2) {
 }
 
 
-<<<<<<< HEAD
+
 
 void printSensorData() {
     ADCData data;
@@ -367,5 +346,3 @@ void printSensorData() {
     writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
 
 }
-=======
->>>>>>> main

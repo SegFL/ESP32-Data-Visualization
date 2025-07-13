@@ -61,7 +61,7 @@ void writeSerialComlnDATA(String data) {
     writeSerialCom(String(DATA)+String(',')+data + "\n\r");
 }
 
-void writeSerialComln(String data) {
+void writeSerialComlnCOMMAND(String data) {
     writeSerialCom(String(COMMAND)+String(',')+data + "\n\r");
 }
 
