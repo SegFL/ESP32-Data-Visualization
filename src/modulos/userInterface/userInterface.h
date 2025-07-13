@@ -1,7 +1,10 @@
 
 #include "../menuTree/menuTree.h"
 #include "../serialCom/serialCom.h"
-#include "../queueCom/queueCom.h"
+
+#include "../WiFi/WiFi.h"
+
+
 
 
 void userInterfaceInit();

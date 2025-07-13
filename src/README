@@ -1,0 +1,33 @@
+
+
+Volver mas eficiente laimpresion de datos por pantalla escirbiendo los valores de los sensores y no todo 
+el texto(Se podria usar la funcion moveCursor())
+
+
+Agregar tiempos reales a los datos
+
+
+Eliminar el modulo de adc que podria agregarse al de ina219
+
+
+Implementar logica de PID un cargaElectronica y viuslaizacion y configuracion desde la interfaz de usuario:
+    setPID_P
+    setPID_I
+    setPID_D
+    getPID_x... 
+
+Deberia pensar que pasa si con el lazo de control PID de la carga cargaElectronica
+activo no se inicializa el sensor INA219 o pasa algo y se reciven mal los datos
+
+
+No funciona la fecha y hora por wifi
+
+
+Modificaciones:
+    Se podria agregar un modo mixto a la referncia de la carga electronica:
+        //mixto: Podria agregar un mix de los 2 modos anteriores: Le hago caso a la curva
+        //Pero dejo la posibilidad de setear el valor actual al usuario
+
+
+Podria agregar la siguiente modificacion para diferenciar entre lineas de datos y configuracion, deberia modificar elparser que graba el csv 
+String(DATA)+

@@ -1,16 +1,21 @@
 
 
 #include "adc.h"
-
-
-//Este flag se usa para saber si es necesario pasar los datos a la interfaz de usuario
-bool userInterfaceAvailable=false;
-
+#include <modulos/ina219/ina219.h>
+#include <modulos/queueCom/queueCom.h>
+#include <modulos/serialCom/serialCom.h>
+#include <modulos/userInterface/userInterface.h>
+#include <modulos/time/time.h>
+#include <modulos/carga_electronica/carga_electronica.h>
+#define DATA 0 //Define el tipo de mensaje como dato
+#define NUMBER_OF_SENSORS 1 // Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 void adcInit() {
     // Inicializar el buffer
 
+
     // Configuración de pines
     pinMode(36, INPUT);
+
 }
 
 
@@ -21,20 +26,30 @@ void  leerADC(){
 
   ADCData temp;
   int i =0;
-  while(i<1){
-    
-    if(getData(temp,i)==false){//Leo cada uno de los sensores(3)
-        temp.pin=i; 
-        temp.timestamp=micros();
-        //adcBuffer->addData(temp);
-        //writeSerialComln(String(temp.busVoltage_V));
-        //temp.busVoltage_V=analogRead(36);
-        //if(sendSensorDataToUserInterface(temp)==true){//Envia datos a la interfaz de usuario
-          //writeSerialCom("Datos enviados a la interfaz de usuario");
-        //}
 
-    i++;
-    }
+  while(i<NUMBER_OF_SENSORS){//Cantidad de sensores
+      if(getData(temp,i)==true){
+        //Envia el valor de corriente al modulo de la carga electronica para que lo utilice para el
+        //lazo de control PID
+        sendToActuator(temp.current_mA); 
+      //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
+        if(sendDataStatus() ==true){
+            getTime(temp.timestampDate,temp.timestampMillis);
+            writeSerialComln(String(',')+String(temp.timestampMillis)+String(',')+
+            String(temp.shuntVoltage_mV)+String(',')+
+            String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+
+            String(',')+String(temp.power_mW)+String(',')+
+            //String(temp.timestampDate)+String(',')+
+            String(temp.pin));
+          }else{
+            if (sendSensorDataToUserInterface(temp)) {
+              //Serial.println("Dato enviado: "+String(temp2.timestamp));
+            } 
+        }
+      }
+      i++;
+  }
+
 
   
   }

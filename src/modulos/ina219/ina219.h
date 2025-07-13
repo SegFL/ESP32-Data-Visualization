@@ -4,7 +4,12 @@
 #include "ADCData.h"
 
 
-//Pines de la interfaz I2C
+
+/*
+Las comunicaciones i2c con el sensor se cargan automaticamente pero 
+SDA=D21
+SCL=D22
+*/
 
 void ina219Init();
 
