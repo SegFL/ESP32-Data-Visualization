@@ -3,9 +3,11 @@
 #include "userInterface.h"
 #include <ADCData.h>
 #include "modulos/queueCom/queueCom.h"
+
 #include <modulos/carga_electronica/carga_electronica.h>
 #include <modulos/time/time.h>
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
+
 
 #define MAX_DATA_BUFFER 30
 #define ESC 27
@@ -27,11 +29,13 @@ int arraySelectedPos=-1;
 void moveCursor(int row, int col);
 void procesarDatos(String data);
 void printSensorData();
+
 bool loadConfiguration();
 void saveValueNVS(const char* key, bool value);
 bool readValueNVS(const char* key);
 void printSensor(ADCData data);
 bool parseStringToInts(String str, int *num1, int *num2);
+
 void userInterfaceInit(){
     serialComInit();
     clearScreen();//Borra mensajes del ESP32 al iniciar el programa
@@ -97,6 +101,7 @@ void userInterfaceUpdate(){
         }
         clearScreen();
         printNode(menu);
+
         //En el caso que se cambie al estado de menu 1 se ejecuta este if una sola vez(solo cuando se cambia de estado del menu),
         //el resto de las veces lo hago automaticamente
         if(updateScreen==false){
@@ -105,6 +110,7 @@ void userInterfaceUpdate(){
                 updateScreen=true;
             }
         }
+
 
 
 
@@ -170,6 +176,7 @@ void procesarDatos(String data) {
     if (data.isEmpty() || menu == nullptr) { // Mejor forma de validar String vacío
         return;
     }
+
     if (menu->id == 3) {
         setSSID(data); // Cambiar el SSID
         writeSerialComln("SSID cambiado a: " + data);
@@ -190,7 +197,32 @@ void procesarDatos(String data) {
             writeSerialComln("Modo SEND DATA desactivado");
             saveValueNVS("mode", NOT_SEND_DATA); 
         }
+
     }
+    if(menu->id==1){
+        writeSerialComln("Datos de sensor");
+        printSensorData();
+    }
+    
+
+}
+
+
+
+void printSensorData() {
+    //ADCData data;
+    ADCData data = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
+
+    if(receiveSensorDataToUserInterface(data)==false){
+        return;
+    }
+ 
+    writeSerialComln(String("Pin: ") + String(data.pin));
+    writeSerialComln(String("\tBus Voltage: ") + String(data.busVoltage_V) + String(" V"));
+    writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
+    writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
+    writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
+    writeSerialComln(String("\tTimestamp: ") + String(data.timestamp));
 
     if(menu->id==8){
         int dutyCycle = data.toInt(); // Convertir el String a entero
@@ -327,3 +359,5 @@ bool parseStringToInts(String str, int *num1, int *num2) {
     }
     return false;     // No se leyeron correctamente
 }
+
+

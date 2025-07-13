@@ -26,6 +26,7 @@ void  leerADC(){
 
   ADCData temp;
   int i =0;
+
   while(i<NUMBER_OF_SENSORS){//Cantidad de sensores
       if(getData(temp,i)==true){
         //Envia el valor de corriente al modulo de la carga electronica para que lo utilice para el
@@ -49,7 +50,9 @@ void  leerADC(){
       i++;
   }
 
+
   
+  }
 }
 
 

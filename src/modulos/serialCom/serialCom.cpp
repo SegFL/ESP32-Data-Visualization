@@ -22,6 +22,13 @@ char readSerialChar() {
     return '\0'; // Retorna un carácter nulo si no hay datos
 }
 
+//Este funcion tiene que recivir un String
+//Si recive un char* provoca un overflow
+void writeSerialComln(String data) {
+    writeSerialCom(data + "\n\r");
+}
+
+
 
 void clearScreen() {
     writeSerialCom("\033[2J\033[H");  // Borra pantalla ANSI

@@ -19,8 +19,6 @@
         "type_traits": "cpp",
         "utility": "cpp",
         "new": "cpp",
-        "string.h": "c",
-        "stdlib.h": "c",
-        "cmath": "cpp"
+        "queue": "cpp"
     }
 }
