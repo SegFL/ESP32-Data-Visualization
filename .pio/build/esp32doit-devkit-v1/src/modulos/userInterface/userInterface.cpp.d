@@ -138,10 +138,10 @@
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
- src/modulos/userInterface/../serialCom/serialCom.h \
+ src/modulos/serialCom/serialCom.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h \
- src/modulos/userInterface/../WiFi/WiFi.h \
- src/modulos/serialCom/serialCom.h src/ADCData.h \
+ src/modulos/userInterface/../serialCom/serialCom.h \
+ src/modulos/userInterface/../WiFi/WiFi.h src/ADCData.h \
  src/modulos/queueCom/queueCom.h \
  src/modulos/queueCom/../serialCom/serialCom.h \
  src/modulos/carga_electronica/carga_electronica.h \

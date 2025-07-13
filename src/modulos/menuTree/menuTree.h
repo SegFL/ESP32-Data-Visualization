@@ -4,8 +4,11 @@
 #include <Arduino.h>
 #include <cstring>  // Para strncpy
 #include <queue>
+#include <modulos/serialCom/serialCom.h>
+
 
 #define MAX_CHILDREN 10 // Número máximo de hijos por nodo (ajustable)
+#define GO_BACK 60 // <  // Código ASCII para la tecla ESC (para volver al padre)
 // Definición del nodo del árbol del menú
 
 

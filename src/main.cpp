@@ -92,7 +92,7 @@ void setup() {
         printf("Error: No se pudo crear la queue.\n");
         while (1); // Detener el sistema o manejarlo según sea necesario
     }
-*/
+
 
     // Crear la tarea 1
   xTaskCreate(

@@ -26,13 +26,13 @@ MenuNode* create_node(const char* title, char key, int id) {
 // Agregar hijo con tecla de acceso
 void add_child(MenuNode *parent, MenuNode *child) {
     if (parent == nullptr || child == nullptr) {
-        Serial.println("Error: Invalid parent or child node");
+        writeSerialComln("Error: Invalid parent or child node");
         return;
     }
 
     // Verificar si ya existe un hijo con la misma tecla
     if (hasChildWithKey(parent, child->key)) {
-        Serial.println("Error: Child with this key already exists");
+        writeSerialComln("Error: Child with this key already exists");
         return;
     }
 
@@ -49,7 +49,7 @@ void add_child(MenuNode *parent, MenuNode *child) {
             child->parent = parent;  // Se asigna el nodo padre
             parent->child_count++;
         } else {
-            Serial.println("Error: No space available for new child");
+            writeSerialComln("Error: No space available for new child");
         }
     }
 }
@@ -57,7 +57,7 @@ void add_child(MenuNode *parent, MenuNode *child) {
 MenuNode* menuInit() {
     MenuNode* root = create_node("Bienvenido al menu de configuracion", 'a',0);
     if (root == nullptr) {
-        Serial.println("Error: Failed to create root node");
+        writeSerialComln("Error: Failed to create root node");
         return nullptr;
     }
 
@@ -130,7 +130,7 @@ void menuUpdate(char caracter, MenuNode **current) {
         return;  // Verifica que 'current' y '*current' no sean nulos
     }
 
-    if (caracter == 27 && (*current)->parent) {  // Si es ESC, sube al nodo padre
+    if (caracter == GO_BACK && (*current)->parent) {  // Si es ESC, sube al nodo padre
         *current = (*current)->parent;
     } else {
         // Buscar si el carácter ingresado corresponde a un hijo
@@ -148,15 +148,15 @@ void printNode(MenuNode *node) {
     }
 
     // Imprime el título del nodo padre
-    Serial.println(node->title);
+    writeSerialComln(String(node->title));
 
     // Imprime los hijos con su respectiva clave y título
     for (int i = 0; i < node->child_count; i++) {
         if (node->children[i] != nullptr) {
-            Serial.print("\t");  // Tabulación para los hijos
-            Serial.print(node->children[i]->key);
-            Serial.print(" -> ");
-            Serial.println(node->children[i]->title);
+            writeSerialComln(String("\t"));  // Tabulación para los hijos
+            writeSerialComln(String(node->children[i]->key));
+            writeSerialComln(String(" -> "));
+            writeSerialComln(String(node->children[i]->title));
         }
     }
 }
@@ -178,11 +178,11 @@ void printFullMenu(MenuNode *root) {
 
         // Imprime la indentación según el nivel del nodo
         for (int i = 0; i < level; i++) {
-            Serial.print("\t");
+            writeSerialComln("\t");
         }
 
         // Imprime el nodo actual
-        Serial.println(current->title);
+        writeSerialComln(current->title);
 
         // Agrega los hijos a la cola con el siguiente nivel
         for (int i = 0; i < current->child_count; i++) {

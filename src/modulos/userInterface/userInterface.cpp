@@ -10,7 +10,6 @@
 
 
 #define MAX_DATA_BUFFER 30
-#define ESC 27
 #define SEND_DATA true
 #define NOT_SEND_DATA false
 
@@ -76,7 +75,7 @@ void userInterfaceUpdate(){
         return;
     }
 
-    if(charReceived=='\n'){//Si se presiona enter se cambia el estado de recvir datos
+    if(charReceived=='-'){//Si se presiona enter se cambia el estado de recvir datos
         if(aceptandoDatos==true){
             aceptandoDatos=false;
             //Loopback
@@ -205,6 +204,12 @@ void procesarDatos(String data) {
     }
     
 
+<<<<<<< HEAD
+
+
+
+
+=======
 }
 
 
@@ -223,6 +228,7 @@ void printSensorData() {
     writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
     writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
     writeSerialComln(String("\tTimestamp: ") + String(data.timestamp));
+>>>>>>> main
 
     if(menu->id==8){
         int dutyCycle = data.toInt(); // Convertir el String a entero
@@ -323,23 +329,6 @@ void printSensorData() {
 
 
 
-void printSensorData() {
-
-
-    const int cant=4;
-    ADCData data[cant]={};
-
-    if (receiveSensorDataToUserInterface(data)) {
-        for (int i = 0; i < cant; i++){
-            printSensor(data[i]);
-            writeSerialComln("\n");
-        }
-        
-    } 
-  
-
-
-}
 
 void printSensor(ADCData data){
     writeSerialComln(String("Pin: ") + String(data.pin));
@@ -361,3 +350,22 @@ bool parseStringToInts(String str, int *num1, int *num2) {
 }
 
 
+<<<<<<< HEAD
+
+void printSensorData() {
+    ADCData data;
+    //ADCData data = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
+
+    if(receiveSensorDataToUserInterface(&data)==false){
+        return;
+    }
+ 
+    writeSerialComln(String("Pin: ") + String(data.pin));
+    writeSerialComln(String("\tBus Voltage: ") + String(data.busVoltage_V) + String(" V"));
+    writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
+    writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
+    writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
+
+}
+=======
+>>>>>>> main

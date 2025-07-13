@@ -3,6 +3,9 @@
 #include "serialCom.h"
 
 
+#define DATA 0 //Define el tipo de mensaje como dato
+#define COMMAND 1 //Define el tipo de mensaje como comando
+
 bool MODE_SEND_DATA=false;
 
 
@@ -54,11 +57,14 @@ bool sendDataStatus(){
     return MODE_SEND_DATA;
 }
 
-
+void writeSerialComlnDATA(String data) {
+    writeSerialCom(String(DATA)+String(',')+data + "\n\r");
+}
 
 void writeSerialComln(String data) {
-    writeSerialCom(data + "\n\r");
+    writeSerialCom(String(COMMAND)+String(',')+data + "\n\r");
 }
+
 
 // Función original para String
 void writeSerialCom(String data) {
