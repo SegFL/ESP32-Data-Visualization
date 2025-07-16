@@ -33,7 +33,10 @@ TaskHandle_t Task3Handle = NULL;
 void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de usuario
 
   while (true) {
+    writeSerialComln(String("------Task1"));
     userInterfaceUpdate();
+        
+
     TimeUpdate();
 
     
@@ -45,25 +48,15 @@ void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de 
 // Función de la tarea 2
 void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
   while (true) {
-
+      writeSerialComln(String("------Task2"));
     String buffer="";
 
     leerADC();
     CargaElectronicaUpdate();
-
-
-
-    
     vTaskDelay(pdMS_TO_TICKS(100)); // 
   }
 }
-void Task3(void *pvParameters) {//Tarea encargada de leer datos del ADC
-  while (true) {
 
-
-    vTaskDelay(pdMS_TO_TICKS(100)); // 
-  }
-}
 
 
 void setup() {
@@ -89,7 +82,7 @@ void setup() {
     if (xQueueComSerial == NULL)
     {
         // Manejar error: No se pudo crear la queue
-        printf("Error: No se pudo crear la queue.\n");
+        writeSerialComln(String("Error: No se pudo crear la queue.\n"));
         while (1); // Detener el sistema o manejarlo según sea necesario
     }
 
@@ -99,7 +92,7 @@ void setup() {
     Task1,          // Función que implementa la tarea
     "Task1",        // Nombre de la tarea
 
-    4000,           // Tamaño del stack en palabras
+    6000,           // Tamaño del stack en palabras
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task1Handle    // Manejador de la tarea
@@ -111,7 +104,7 @@ void setup() {
     "Task2",        // Nombre de la tarea
 
 
-    4000,           // Tamaño del stack en palabras
+    6000,           // Tamaño del stack en palabras
 
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
@@ -119,15 +112,10 @@ void setup() {
   );
 
     // Crear la tarea 2
-  xTaskCreate(
-    Task3,          // Función que implementa la tarea
-    "Task3",        // Nombre de la tarea
-    2000,           // Tamaño del stack en palabras
-    NULL,           // Parámetro que se pasa a la tarea
-    1,              // Prioridad de la tarea
-    &Task3Handle    // Manejador de la tarea
-  );
 
+
+
+  writeSerialComln(String("------Termine de inicializar las tareas"));
 
   vTaskStartScheduler();
 
