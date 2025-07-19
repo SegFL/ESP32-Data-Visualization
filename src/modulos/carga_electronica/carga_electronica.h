@@ -14,8 +14,8 @@ typedef enum {
 } modoFuncionamiento_t;
 //selecciona de donde viene la referencia
 typedef enum {
-    interface,//Interfaz de usuario(manual)
-    curve//Simulador de curvas
+    interface_state,//Interfaz de usuario(manual)
+    curve_state//Simulador de curvas
     //mixto: Podria agregar un mix de los 2 modos anteriores: Le hago caso a la curva
     //Pero dejo la posibilidad de setear el valor actual al usuario
 } referenceMode_t;

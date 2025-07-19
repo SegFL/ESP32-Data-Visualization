@@ -1,6 +1,10 @@
 #include "carga_electronica.h"
+//#define PRUEBA_CURVAS 0 //Si se define como 1 se habilita la prueba de curvas, si no se deja como 0
 
-
+#ifdef PRUEBA_CURVAS
+#include <modulos/simuladorCurvas/simuladorCurvas.h>
+    curve_t* curve = NULL; 
+#endif
 const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
 const int PWM_FREQ = 312000;     // Frecuencia PWM deseada: 312 kHz
 const int PWM_RESOLUTION = 8;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
@@ -19,7 +23,7 @@ int max_dc_value = 0; // Valor máximo del duty cycle (0-100%)
 
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
 modoFuncionamiento_t modoFuncionamiento = NONE; // Modo de funcionamiento inicial (PID o directo/NONE)
-referenceMode_t referenceMode = interface; // Modo de referencia inicial (interfaz o curva)
+referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
 int getDCPID(int dc);
 
@@ -34,6 +38,22 @@ void CargaElectronicaInit(){
   max_dc_value=0; // Inicializar el valor máximo del duty cycle a 0
   ledcWrite(PWM_CHANNEL, 0); // Inicializar el PWM a 0 (apagado)
 
+
+  #ifdef PRUEBA_CURVAS
+    curve = createCurve(0);
+    if(curve == NULL) {
+        writeSerialComln(String("Error al crear la curva"));
+        return;
+    }
+    addPoint(curve, 10, 10);
+    addPoint(curve, 20, 20);
+    addPoint(curve, 30, 30);
+    addPoint(curve, 40, 40);
+    addPoint(curve, 50, 30);
+    addPoint(curve, 60, 20);
+    addPoint(curve, 70, 50);
+  #endif
+
 }
 
 void CargaElectronicaUpdate(){
@@ -41,11 +61,11 @@ void CargaElectronicaUpdate(){
   int dutyCycleAux=0;
 
   switch(referenceMode){
-    case interface:{
+    case interface_state:{
 
     }
     break;
-    case curve:{
+    case curve_state:{
 
     }
     break;

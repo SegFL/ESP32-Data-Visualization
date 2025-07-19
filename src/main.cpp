@@ -33,14 +33,17 @@ TaskHandle_t Task3Handle = NULL;
 void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de usuario
 
   while (true) {
-    writeSerialComln(String("------Task1"));
+    Serial.printf("Hilo 1 init:Heap libre: %u bytes\n", ESP.getFreeHeap());
     userInterfaceUpdate();
-        
+    Serial.printf("Free heap: %u bytes\n", ESP.getFreeHeap());
+     
 
     TimeUpdate();
 
-    
+    Serial.printf("Hilo 1 end:Heap libre: %u bytes\n", ESP.getFreeHeap());
+
    vTaskDelay(pdMS_TO_TICKS(300)); // Espera 0.5 segundos
+
 
   }
 }
@@ -48,18 +51,26 @@ void Task1(void *pvParameters) {//Tarea encargada de administrar la interfaz de 
 // Función de la tarea 2
 void Task2(void *pvParameters) {//Tarea encargada de leer datos del ADC
   while (true) {
-      writeSerialComln(String("------Task2"));
+    Serial.printf("Hilo 2 init:Heap libre: %u bytes\n", ESP.getFreeHeap());
+
     String buffer="";
 
     leerADC();
+    Serial.printf("Hilo 2 medio:Heap libre: %u bytes\n", ESP.getFreeHeap());
+
     CargaElectronicaUpdate();
-    vTaskDelay(pdMS_TO_TICKS(100)); // 
+    Serial.printf("Hilo 2 end:Heap libre: %u bytes\n", ESP.getFreeHeap());
+
+    vTaskDelay(pdMS_TO_TICKS(100)); //
+ 
   }
 }
 
 
 
 void setup() {
+  esp_log_level_set("*", ESP_LOG_VERBOSE);
+
   userInterfaceInit();
 
   queueInit();
@@ -92,7 +103,7 @@ void setup() {
     Task1,          // Función que implementa la tarea
     "Task1",        // Nombre de la tarea
 
-    6000,           // Tamaño del stack en palabras
+    8000,           // Tamaño del stack en palabras
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea
     &Task1Handle    // Manejador de la tarea
@@ -104,7 +115,7 @@ void setup() {
     "Task2",        // Nombre de la tarea
 
 
-    6000,           // Tamaño del stack en palabras
+    8000,           // Tamaño del stack en palabras
 
     NULL,           // Parámetro que se pasa a la tarea
     1,              // Prioridad de la tarea

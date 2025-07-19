@@ -1,5 +1,12 @@
+Formas para debugear
+1) agregar estas lineas a platformio
+    build_type = debug
+    monitor_filters = esp32_exception_decoder
+2) compilar yabrir monitor de platformio
+    pio run -t upload
+    pio device monitor
 
-
+    
 Volver mas eficiente laimpresion de datos por pantalla escirbiendo los valores de los sensores y no todo 
 el texto(Se podria usar la funcion moveCursor())
 

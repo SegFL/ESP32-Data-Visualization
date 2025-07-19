@@ -74,7 +74,7 @@ void userInterfaceUpdate(){
     if(charReceived=='\0'||menu==nullptr){
         return;
     }
-writeSerialComln(String("------Task1.1"));
+
     if(charReceived=='-'){//Si se presiona enter se cambia el estado de recvir datos
         if(aceptandoDatos==true){
             aceptandoDatos=false;

@@ -516,6 +516,7 @@
                 "ARDUINO_VARIANT=\"doitESP32devkitV1\"",
                 "ARDUINO_BOARD=\"DOIT ESP32 DEVKIT V1\"",
                 "ARDUINO_PARTITION_default",
+                "__PLATFORMIO_BUILD_DEBUG__",
                 ""
             ],
             "cStandard": "gnu99",
