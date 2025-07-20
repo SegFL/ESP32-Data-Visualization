@@ -117,6 +117,7 @@ MenuNode* menuInit() {
         MenuNode* child15 = create_node("Ver curvas", '2',15);
         add_child(child13, child15);
 
+
         MenuNode* child16 = create_node("Activar curvas", '3',16);
         add_child(child13, child16);
 
@@ -130,7 +131,7 @@ void menuUpdate(char caracter, MenuNode **current) {
         return;  // Verifica que 'current' y '*current' no sean nulos
     }
 
-    if (caracter == GO_BACK && (*current)->parent) {  // Si es ESC, sube al nodo padre
+    if (caracter == GO_BACK && (*current)->parent) {  // Si es GO_BACK, sube al nodo padre
         *current = (*current)->parent;
     } else {
         // Buscar si el carácter ingresado corresponde a un hijo
@@ -178,7 +179,7 @@ void printFullMenu(MenuNode *root) {
 
         // Imprime la indentación según el nivel del nodo
         for (int i = 0; i < level; i++) {
-            writeSerialComln("\t");
+            writeSerialCom(String("\t"));
         }
 
         // Imprime el nodo actual

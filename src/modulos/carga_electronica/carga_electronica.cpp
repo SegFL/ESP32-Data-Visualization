@@ -39,21 +39,6 @@ void CargaElectronicaInit(){
   ledcWrite(PWM_CHANNEL, 0); // Inicializar el PWM a 0 (apagado)
 
 
-  
-    curve = createCurve(0);
-    if(curve == NULL) {
-        writeSerialComln(String("Error al crear la curva"));
-        return;
-    }
-    addPoint(curve, 10, 10);
-    addPoint(curve, 20, 20);
-    addPoint(curve, 30, 30);
-    addPoint(curve, 40, 40);
-    addPoint(curve, 50, 30);
-    addPoint(curve, 60, 20);
-    addPoint(curve, 70, 50);
- 
-
 }
 
 void CargaElectronicaUpdate(){

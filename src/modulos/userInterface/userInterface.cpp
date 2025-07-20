@@ -253,7 +253,20 @@ void procesarDatos(String data) {
         }
         array[arrayPos]=curve_aux;
         arrayPos++;
+        
+
+        addPoint(curve_aux, 10, 10);
+        addPoint(curve_aux, 20, 20);
+        addPoint(curve_aux, 30, 30);
+        addPoint(curve_aux, 40, 40);
+        addPoint(curve_aux, 50, 30);
+        addPoint(curve_aux, 60, 20);
+        addPoint(curve_aux, 70, 50);
+
         writeSerialComln(String("Curva creada"));
+        printCurves(array,arraySize);
+ 
+        
 
 
     }

@@ -53,6 +53,9 @@ void UpdateCurve(curve_t *curve) {
 
 }
 
+
+
+
 curve_t* addPoint(curve_t *curve, int tiempo, int value) {
     // Verifica que curve y curve->point no sean NULL
     if (!curve || !curve->point) return NULL;
