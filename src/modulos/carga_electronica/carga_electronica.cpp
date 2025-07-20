@@ -1,10 +1,10 @@
 #include "carga_electronica.h"
 //#define PRUEBA_CURVAS 0 //Si se define como 1 se habilita la prueba de curvas, si no se deja como 0
 
-#ifdef PRUEBA_CURVAS
+
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
-    curve_t* curve = NULL; 
-#endif
+curve_t* curve = NULL; 
+
 const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
 const int PWM_FREQ = 312000;     // Frecuencia PWM deseada: 312 kHz
 const int PWM_RESOLUTION = 8;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
@@ -39,7 +39,7 @@ void CargaElectronicaInit(){
   ledcWrite(PWM_CHANNEL, 0); // Inicializar el PWM a 0 (apagado)
 
 
-  #ifdef PRUEBA_CURVAS
+  
     curve = createCurve(0);
     if(curve == NULL) {
         writeSerialComln(String("Error al crear la curva"));
@@ -52,7 +52,7 @@ void CargaElectronicaInit(){
     addPoint(curve, 50, 30);
     addPoint(curve, 60, 20);
     addPoint(curve, 70, 50);
-  #endif
+ 
 
 }
 

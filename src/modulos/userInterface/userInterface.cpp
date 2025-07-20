@@ -40,21 +40,21 @@ void userInterfaceInit(){
     clearScreen();//Borra mensajes del ESP32 al iniciar el programa
     menu=menuInit();
     if(menu){
-        writeSerialComln("Menu inicializado");
+        writeSerialComln(String("Menu inicializado"));
     }else{
-        writeSerialComln("Menu no inicializado");
+        writeSerialComln(String("Menu no inicializado"));
     }
     if(loadConfiguration()){
-        writeSerialComln("Configuracion cargada correctamente");
+        writeSerialComln(String("Configuracion cargada correctamente"));
     } else{
-        writeSerialComln("Error al cargar la configuracion");
+        writeSerialComln(String("Error al cargar la configuracion"));
     }
 
     array=newCurveArray(arraySize);
     if(array==NULL){
-        writeSerialComln("Arreglo de curvas inicializado");
+        writeSerialComln(String("Arreglo de curvas inicializado"));
     }else{
-        writeSerialComln("Arreglo de curvas fallo al inicializarse");
+        writeSerialComln(String("Arreglo de curvas fallo al inicializarse"));
     }
 
 }
@@ -125,11 +125,11 @@ void userInterfaceUpdate(){
 bool loadConfiguration(){
     if (readValueNVS("mode") == SEND_DATA) { // Si el modo es SEND_DATA, se activa la opción de enviar datos
         changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
-        writeSerialComln("Modo SEND DATA activado");
+        writeSerialComln(String("Modo SEND DATA activado"));
         return true;
     } else {
         changeMode(NOT_SEND_DATA); // Cambiar el modo a RECEIVE_DATA
-        writeSerialComln("Modo SEND DATA desactivado");
+        writeSerialComln(String("Modo SEND DATA desactivado"));
         return false;
     }
 }
@@ -145,7 +145,7 @@ void saveValueNVS(const char* key, bool value) {
         }
         nvs_close(my_handle); // Cerrar el handle
     } else {
-        writeSerialComln("Error al abrir NVS");
+        writeSerialComln(String("Error al abrir NVS"));
     }
 }
 
@@ -159,12 +159,12 @@ bool readValueNVS(const char* key) {
         if (err == ESP_OK) {
             return value; // Retornar el valor leído
         } else if (err == ESP_ERR_NVS_NOT_FOUND) {
-            writeSerialComln("Clave no encontrada en NVS");
+            writeSerialComln(String("Clave no encontrada en NVS"));
         } else {
-            writeSerialComln("Error al leer NVS");
+            writeSerialComln(String("Error al leer NVS"));
         }
     } else {
-        writeSerialComln("Error al abrir NVS");
+        writeSerialComln(String("Error al abrir NVS"));
     }
     return false; // Retornar false en caso de error
 }
@@ -178,28 +178,28 @@ void procesarDatos(String data) {
 
     if (menu->id == 3) {
         setSSID(data); // Cambiar el SSID
-        writeSerialComln("SSID cambiado a: " + data);
+        writeSerialComln(String("SSID cambiado a: ") + data);
     }
     if (menu->id == 4) {
         setPassWord(data); // Cambiar el PASSWORD
-        writeSerialComln("SSID cambiado a *** " );
+        writeSerialComln(String("SSID cambiado a *** "));
     }
     if (menu->id == 7) {
         if (data.equalsIgnoreCase("y")) { // Comparación más eficiente
             changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
-            writeSerialComln("Modo SEND DATA activado");
+            writeSerialComln(String("Modo SEND DATA activado"));
             saveValueNVS("mode", SEND_DATA); // Guardar el modo en NVS
         }
         
         if (data.equalsIgnoreCase("n")) { 
             changeMode(NOT_SEND_DATA); 
-            writeSerialComln("Modo SEND DATA desactivado");
+            writeSerialComln(String("Modo SEND DATA desactivado"));
             saveValueNVS("mode", NOT_SEND_DATA); 
         }
 
     }
     if(menu->id==1){
-        writeSerialComln("Datos de sensor");
+        writeSerialComln(String("Datos de sensor"));
         printSensorData();
     }
     
@@ -213,26 +213,26 @@ void procesarDatos(String data) {
         int dutyCycle = data.toInt(); // Convertir el String a entero
         int dc=PWMSetDC(dutyCycle);
         if (dc>=0 && dc<=100) {
-            writeSerialComln("Duty Cycle cambiado a: " + String(dc) + "%");
+            writeSerialComln(String("Duty Cycle cambiado a: ") + String(dc) + "%");
             
         } else {
-            writeSerialComln("Valor de Duty Cycle inválido. Debe estar entre 0 y 100.");
+            writeSerialComln(String("Valor de Duty Cycle inválido. Debe estar entre 0 y 100."));
         }
     }
     if(menu->id ==9){
         int frequency = data.toInt(); // Convertir el String a entero
         if (PWMSetFrequency(frequency)==true) {
-            writeSerialComln("Frecuencia cambiada a: " + String(frequency) + " Hz");
+            writeSerialComln(String("Frecuencia cambiada a: ") + String(frequency) + " Hz");
         } else {
-            writeSerialComln("Valor de frecuencia inválido. Debe ser mayor que 0.");
+            writeSerialComln(String("Valor de frecuencia inválido. Debe ser mayor que 0."));
         }
     }
     if(menu->id ==10){
         int maxDC = data.toInt(); // Convertir el String a entero
         if (PWMSetMaxDC(maxDC)==true) {
-            writeSerialComln("Valor máximo de Duty Cycle cambiado a: " + String(maxDC) + "%");
+            writeSerialComln(String("Valor máximo de Duty Cycle cambiado a: ") + String(maxDC) + "%");
         } else {
-            writeSerialComln("Valor máximo de Duty Cycle inválido. Debe estar entre 0 y 100.");
+            writeSerialComln(String("Valor máximo de Duty Cycle inválido. Debe estar entre 0 y 100."));
         }
     }
     if(menu->id ==17){
@@ -240,7 +240,7 @@ void procesarDatos(String data) {
         if(array==NULL){
             array=newCurveArray(3);
             if(array==NULL){
-                writeSerialComln("Error al crear el arreglo de curvas");
+                writeSerialComln(String("Error al crear el arreglo de curvas"));
                 return;
             }
             arraySize=3;
@@ -248,12 +248,12 @@ void procesarDatos(String data) {
         //Creo la curva
         curve_t* curve_aux=createCurve(data.toInt());
         if(curve_aux==NULL){
-            writeSerialComln("Error al crear la curva");
+            writeSerialComln(String("Error al crear la curva"));
             return;
         }
         array[arrayPos]=curve_aux;
         arrayPos++;
-        writeSerialComln("Curva creada");
+        writeSerialComln(String("Curva creada"));
 
 
     }
@@ -261,32 +261,32 @@ void procesarDatos(String data) {
         printCurves(array,arraySize);
         int aux=data.toInt();
         if(aux<0 && aux>=arrayPos){
-            writeSerialComln("Error: Curva no valida");
+            writeSerialComln(String("Error: Curva no valida"));
             return;
         }else{
             if(aux<0 || aux>=arrayPos){
-                writeSerialComln("Esa curva no existe");
+                writeSerialComln(String("Esa curva no existe"));
                 return;
             }
             arraySelected=true;
             arraySelectedPos=aux;
-            writeSerialComln("Curva seleccionada: "+String(aux));
+            writeSerialComln(String("Curva seleccionada: ") + String(aux));
         }
     }
 
     if(menu->id ==20){
         if(arraySelected==false){
-            writeSerialComln("Error: No se ha seleccionado una curva");
+            writeSerialComln(String("Error: No se ha seleccionado una curva"));
             return;
         }else{
             int tiempo,value;
             if(parseStringToInts(data.c_str(), &tiempo, &value)){
                 array[arraySelectedPos]=addPoint(array[arraySelectedPos],tiempo,value);
                 if(array[arraySelectedPos]==NULL){
-                    writeSerialComln("Error: No se pudo agregar el punto");
+                    writeSerialComln(String("Error: No se pudo agregar el punto"));
                     return;
                 }else{
-                    writeSerialComln("Punto agregado: ["+String(tiempo)+","+String(value)+"]");
+                    writeSerialComln(String("Punto agregado: [") + String(tiempo) + "," + String(value) + "]");
                 }
 
             }

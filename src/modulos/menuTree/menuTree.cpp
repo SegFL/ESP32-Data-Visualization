@@ -26,13 +26,13 @@ MenuNode* create_node(const char* title, char key, int id) {
 // Agregar hijo con tecla de acceso
 void add_child(MenuNode *parent, MenuNode *child) {
     if (parent == nullptr || child == nullptr) {
-        writeSerialComln("Error: Invalid parent or child node");
+        writeSerialComln(String("Error: Invalid parent or child node"));
         return;
     }
 
     // Verificar si ya existe un hijo con la misma tecla
     if (hasChildWithKey(parent, child->key)) {
-        writeSerialComln("Error: Child with this key already exists");
+        writeSerialComln(String("Error: Child with this key already exists"));
         return;
     }
 
@@ -49,7 +49,7 @@ void add_child(MenuNode *parent, MenuNode *child) {
             child->parent = parent;  // Se asigna el nodo padre
             parent->child_count++;
         } else {
-            writeSerialComln("Error: No space available for new child");
+            writeSerialComln(String("Error: No space available for new child"));
         }
     }
 }
@@ -57,7 +57,7 @@ void add_child(MenuNode *parent, MenuNode *child) {
 MenuNode* menuInit() {
     MenuNode* root = create_node("Bienvenido al menu de configuracion", 'a',0);
     if (root == nullptr) {
-        writeSerialComln("Error: Failed to create root node");
+        writeSerialComln(String("Error: Failed to create root node"));
         return nullptr;
     }
 
@@ -182,7 +182,7 @@ void printFullMenu(MenuNode *root) {
         }
 
         // Imprime el nodo actual
-        writeSerialComln(current->title);
+        writeSerialComln(String(current->title));
 
         // Agrega los hijos a la cola con el siguiente nivel
         for (int i = 0; i < current->child_count; i++) {

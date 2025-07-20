@@ -16,7 +16,7 @@ bool sensorAvailable[4] = {false, false, false, false}; // Estado de disponibili
 void ina219Init(){
   // Iniciar la comunicación serie
     
-    writeSerialComln("Inicializando sensores INA219...");
+    writeSerialComln(String("Inicializando sensores INA219..."));
 
     // Inicializar los sensores en sus respectivas direcciones
     for (int i = 0; i < NUM_SENSORS; i++) {
@@ -31,7 +31,7 @@ void ina219Init(){
         sensorAvailable[i] = true; // Marcar como disponible
         writeSerialCom("INA219 en dirección 0x");
         writeSerialCom(String(sensorAddresses[i], HEX));
-        writeSerialComln(" inicializado correctamente.");
+        writeSerialComln(String(" inicializado correctamente."));
     }
 
 }

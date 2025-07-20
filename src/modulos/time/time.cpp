@@ -41,6 +41,8 @@ el tiempo en milisegundos desde la utlimaacutalizacion de epoch time.
 
 
 void TimeUpdate() {
+
+
     if(WiFiConected==false){
         if(connectWiFi()==true){
             WiFiConected=true;
@@ -55,12 +57,16 @@ void TimeUpdate() {
         }
         
     }
-    timeClient.update();
-    epochTime = timeClient.getEpochTime();
-    millisTranscurridos = millis(); // Calcular el tiempo transcurrido desde el inicio
-    if(customMillis() > 3600000){//Hora=3600000ms
-        enviarComandoCrearArchivo();
+
+    if(timeClient.update()==true){
+        timeClient.update();
+        epochTime = timeClient.getEpochTime();
+        millisTranscurridos = millis(); // Calcular el tiempo transcurrido desde el inicio
+        if(customMillis() > 3600000){//Hora=3600000ms
+            enviarComandoCrearArchivo();
+        }
     }
+
 
 
     

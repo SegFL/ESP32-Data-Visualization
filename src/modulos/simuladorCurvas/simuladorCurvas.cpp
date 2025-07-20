@@ -23,14 +23,14 @@ curve_t** newCurveArray(int size){
 curve_t* createCurve(int pin) {
     curve_t *curve = (curve_t *)malloc(sizeof(curve_t));
     if (curve == NULL) {
-        // Manejar error: No se pudo asignar memoria
+        writeSerialComln(String("Error al crear la curva"));
         return NULL;
     }
 
     curve->point = (point_t *)malloc( sizeof(point_t)*10);
     if (curve->point == NULL) {
-        // Manejar error: No se pudo asignar memoria
         free(curve);
+        writeSerialComln(String("Error al crear los puntos de la curva"));
         return NULL;
     }
     curve->size = 10;
@@ -46,7 +46,7 @@ curve_t* createCurve(int pin) {
     curve->point[0].tiempo = 0;
     curve->point[0].value = 0;
     curve->contador = 1;
-
+    writeSerialComln(String("Curva creada"));
     return curve;
 }
 void UpdateCurve(curve_t *curve) {
@@ -54,30 +54,27 @@ void UpdateCurve(curve_t *curve) {
 }
 
 curve_t* addPoint(curve_t *curve, int tiempo, int value) {
-    if (curve->contador >= curve->size) {
-        curve->point=(point_t*)realloc(curve->point, sizeof(point_t) * (curve->size + 10));
-        if (curve->point == NULL) {
-            // Manejar error: No se pudo asignar memoria
-            return NULL;
-        }
-        return NULL;        
-    }
+    // Verifica que curve y curve->point no sean NULL
+    if (!curve || !curve->point) return NULL;
 
-
-    if(value > curve->Imax){
-        (curve->point[curve->contador]).value = curve->Imax;
-    }else if(value < curve->Imin){
-        (curve->point[curve->contador]).value = curve->Imin;
-    }else{
-        (curve->point[curve->contador]).value = value;
-    }
-    //Si el nuevo tiempo es menor que el del punto anterior es invalido
-    if(tiempo<=curve->point[curve->contador-1].tiempo){
-        writeSerialComln("Error: Tiempo no valido");
-        (curve->point[curve->contador]).value = 0;
+    // El tiempo debe ser mayor al último punto agregado
+    if (tiempo <= curve->point[curve->contador - 1].tiempo) {
+        writeSerialComln(String("Error: Tiempo no valido"));
         return NULL;
     }
 
+    // Si se llena el array, realoca espacio
+    if (curve->contador >= curve->size) {
+        point_t* new_points = (point_t*)realloc(curve->point, sizeof(point_t) * (curve->size + 10));
+        if (new_points == NULL) {
+            writeSerialComln(String("Error: No se pudo realocar memoria para puntos"));
+            return NULL;
+        }
+        curve->point = new_points;
+        curve->size += 10;
+    }
+
+    // Asigna el valor (puedes ajustar los límites si lo deseas)
     curve->point[curve->contador].tiempo = tiempo;
     curve->point[curve->contador].value = value;
     curve->contador++;
@@ -88,10 +85,10 @@ curve_t* addPoint(curve_t *curve, int tiempo, int value) {
 void printCurves(curve_t** curveArray, int size){
     for(int i=0;i<size;i++){
         if(curveArray[i]!=NULL){
-            writeSerialComln("Curva "+String(i));
-            writeSerialComln("Pin: "+String(curveArray[i]->pin));
-            writeSerialComln("Cantidad de puntos: "+String(curveArray[i]->contador));           
-            writeSerialComln("Puntos:[Tiempo, Valor]");
+            writeSerialComln(String("Curva ") + String(i));
+            writeSerialComln(String("Pin: ") + String(curveArray[i]->pin));
+            writeSerialComln(String("Cantidad de puntos: ") + String(curveArray[i]->contador));           
+            writeSerialComln(String("Puntos:[Tiempo, Valor]"));
             for(int j=0;j<curveArray[i]->contador;j++){
                 writeSerialComln(String('\t')+String('[')+String(curveArray[i]->point[j].tiempo)+String(',')+String(curveArray[i]->point[j].value+String(']')));
             }

@@ -13,7 +13,7 @@ void queueInit(){
     // Crear la cola para los datos del sensor
     xQueueAdcUserInterface = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
     if (xQueueAdcUserInterface == NULL) {
-        writeSerialComln("Error al crear la cola");
+        writeSerialComln(String("Error al crear la cola"));
     }
 }
 

@@ -6,20 +6,20 @@ String password = "17727630";
 
 bool connectWiFi() {
     WiFi.begin(ssid.c_str(), password.c_str());
-    writeSerialComln("Conectando a Wi-Fi...");
+    writeSerialComln(String("Conectando a Wi-Fi..."));
 
     // Esperar hasta 5 segundos para conectar
     int maxRetries = 10;
     while (WiFi.status() != WL_CONNECTED && maxRetries-- > 0) {
         delay(500);
-        writeSerialCom(".");
+        writeSerialCom(String("."));
     }
 
     if (WiFi.status() == WL_CONNECTED) {
-        writeSerialComln("\nConectado a Wi-Fi");
+        writeSerialComln(String("\nConectado a Wi-Fi"));
         return true;
     } else {
-        writeSerialComln("\nError al conectar a Wi-Fi");
+        writeSerialComln(String("\nError al conectar a Wi-Fi"));
         return false;
     }
 }
