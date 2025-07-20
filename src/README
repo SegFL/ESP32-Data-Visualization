@@ -41,4 +41,6 @@ Problema con GUI:
     Cuando envio dato,por ejemplo 1, se entra almenu de datos analogicos, pero cuandos e envia cualquier otro no.
     Es como que los titulos de los nodos del menu no se imprimieran.
 
+Ultimo cambio...
 
+    se agregaron cambios leves a menu para crear un curva por defecto(solo para probar). Faltaria seguir con el desarrollo del simulador de curvas, fijarse si se pueden imprimir en lamisma pantalla que la corriente en la GUI y luego ver de actuar sobre el modulo de la carga electronica.
