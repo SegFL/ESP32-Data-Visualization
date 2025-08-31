@@ -7,6 +7,7 @@
 #include <HardwareSerial.h>
 #include <modulos/serialCom/serialCom.h>
 
+
 //selecciona si se usa un PID o un lazo abierto de control
 typedef enum {
     PID,
@@ -20,10 +21,18 @@ typedef enum {
     //Pero dejo la posibilidad de setear el valor actual al usuario
 } referenceMode_t;
 
+typedef enum {
+    ON_t,
+    OFF_t
+} curve_mode_t;
+
 void CargaElectronicaInit();
 void CargaElectronicaUpdate();
 int PWMSetDC(int dc);
 bool PWMSetFrequency(int frecuencies);
 bool PWMSetMaxDC(int dc);
-void sendToActuator(int current_mA);
+void PWMSetCurveMode(curve_mode_t mode);
+
+void printCargaElectronica(); 
+
 #endif

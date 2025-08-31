@@ -20,34 +20,19 @@ void adcInit() {
 
 void  leerADC(){
 
+  ADCData temp = {0}; // Inicializar todos los campos a 0
+  int i = 0;
 
-  ADCData temp;
-  int i =0;
-
-  while(i<NUMBER_OF_SENSORS){//Cantidad de sensores
-      if(getData(temp,i)==true){
-        //Envia el valor de corriente al modulo de la carga electronica para que lo utilice para el
-        //lazo de control PID
-        sendToActuator(temp.current_mA); 
-      //temp = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
-        if(sendDataStatus() ==true){
-            getTime(temp.timestampDate,temp.timestampMillis);
-            writeSerialComlnDATA(String(temp.timestampMillis)+String(',')+
-            String(temp.shuntVoltage_mV)+String(',')+
-            String(temp.busVoltage_V)+String(',')+String(temp.current_mA)+
-            String(',')+String(temp.power_mW)+String(',')+
-            //String(temp.timestampDate)+String(',')+
-            String(temp.pin));
-          }else{
-            if (sendSensorDataToUserInterface(temp)) {
-              //Serial.println("Dato enviado: "+String(temp2.timestamp));
-            } 
+  while(i < NUMBER_OF_SENSORS){
+      if(getData(temp, i) == true){
+        // Solo enviar la corriente al actuador
+        //sendToActuator(temp.current_mA); 
+        
+        sendSensorDataToUserInterface(temp);
+        if(sendDataStatus()==true){
+          writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.current_mA)+","+String(temp.power_mW)+","+String(temp.pin));
         }
       }
       i++;
   }
-
-
-  
-  
 }

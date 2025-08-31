@@ -111,8 +111,9 @@ MenuNode* menuInit() {
                 MenuNode* child19 = create_node("Seleccionar curva", '1',19);
                 add_child(child18, child19);
 
-                MenuNode* child20 = create_node("Agregar punto a la curva", '2',20);
+                MenuNode* child20 = create_node("Agregar punto a la curva: [Curva,tiempo,valor]", '2',20);
                 add_child(child18, child20);
+
 
         MenuNode* child15 = create_node("Ver curvas", '2',15);
         add_child(child13, child15);
@@ -120,6 +121,9 @@ MenuNode* menuInit() {
 
         MenuNode* child16 = create_node("Activar curvas", '3',16);
         add_child(child13, child16);
+
+        MenuNode* child21 = create_node("Activar modo curva (Y/N)", '4',21);
+        add_child(child13, child21);
 
     return root;
 }

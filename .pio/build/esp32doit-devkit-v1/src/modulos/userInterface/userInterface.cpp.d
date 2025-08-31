@@ -141,12 +141,13 @@
  src/modulos/serialCom/serialCom.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h \
  src/modulos/userInterface/../serialCom/serialCom.h \
- src/modulos/userInterface/../WiFi/WiFi.h src/ADCData.h \
- src/modulos/queueCom/queueCom.h \
- src/modulos/queueCom/../serialCom/serialCom.h \
- src/modulos/carga_electronica/carga_electronica.h \
+ src/modulos/userInterface/../WiFi/WiFi.h \
+ src/modulos/userInterface/../carga_electronica/carga_electronica.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-ledc.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
+ src/ADCData.h src/modulos/queueCom/queueCom.h \
+ src/modulos/queueCom/../serialCom/serialCom.h \
+ src/modulos/carga_electronica/carga_electronica.h \
  src/modulos/time/time.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFi.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \

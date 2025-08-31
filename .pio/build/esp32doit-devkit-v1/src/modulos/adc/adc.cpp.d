@@ -153,7 +153,10 @@
  src/modulos/userInterface/userInterface.h \
  src/modulos/userInterface/../menuTree/menuTree.h \
  src/modulos/userInterface/../serialCom/serialCom.h \
- src/modulos/userInterface/../WiFi/WiFi.h src/modulos/time/time.h \
+ src/modulos/userInterface/../WiFi/WiFi.h \
+ src/modulos/userInterface/../carga_electronica/carga_electronica.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-ledc.h \
+ src/modulos/time/time.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFi.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/IPv6Address.h \
@@ -217,5 +220,4 @@
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFiUdp.h \
  .pio/libdeps/esp32doit-devkit-v1/NTPClient/NTPClient.h \
  .pio/libdeps/esp32doit-devkit-v1/Time/TimeLib.h src/modulos/WiFi/WiFi.h \
- src/modulos/carga_electronica/carga_electronica.h \
- C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-ledc.h
+ src/modulos/carga_electronica/carga_electronica.h

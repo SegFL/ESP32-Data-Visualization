@@ -24,9 +24,15 @@ typedef struct {
 
 
 
-curve_t* createCurve(int pin) ;
-curve_t* addPoint(curve_t *curve, int tiempo, int value);
+int createCurve(int pin);
+int addPointToCurve(int curveId, int tiempo, int value); // NUEVA: Función encapsulada
 void UpdateCurve(curve_t *curve) ;
 curve_t** newCurveArray(int size);
-void printCurves(curve_t** curveArray, int size);
+void printCurves();
+int getCurveValue(int curveId);
+bool validateCurve(curve_t *curve); // NUEVA: Función de validación
+void sendCurves();
+void simuladorCurvasInit(int size);
+bool deleteCurve(int curveId); // NUEVA: Función para eliminar curva
+int getCurveCount(); // NUEVA: Función para obtener cantidad de curvas
 

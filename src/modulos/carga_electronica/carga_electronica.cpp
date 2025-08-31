@@ -3,7 +3,7 @@
 
 
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
-curve_t* curve = NULL; 
+// CORRECCIÓN: Eliminada variable global curve innecesaria que causaba confusión 
 
 const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
 const int PWM_FREQ = 312000;     // Frecuencia PWM deseada: 312 kHz
@@ -23,7 +23,14 @@ int max_dc_value = 0; // Valor máximo del duty cycle (0-100%)
 
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
 modoFuncionamiento_t modoFuncionamiento = NONE; // Modo de funcionamiento inicial (PID o directo/NONE)
-referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
+//referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
+
+curve_mode_t curveMode = OFF_t; // Decide si le hace caso a los datos de la curva o a los del usuario
+
+bool arraySelected=false;
+int arraySelectedPos=-1;
+
+
 
 int getDCPID(int dc);
 
@@ -38,49 +45,92 @@ void CargaElectronicaInit(){
   max_dc_value=0; // Inicializar el valor máximo del duty cycle a 0
   ledcWrite(PWM_CHANNEL, 0); // Inicializar el PWM a 0 (apagado)
 
+  simuladorCurvasInit(3);
+
+        //Crear la curva usando la nueva función encapsulada
+        int curveId = createCurve(0);
+        if(curveId == -1){
+            writeSerialComln(String("Error al crear la curva"));
+            return;
+        }
+        
+        //Agregar puntos a la curva usando la nueva función encapsulada
+        addPointToCurve(curveId, 10, 10);
+        addPointToCurve(curveId, 20, 20);
+        addPointToCurve(curveId, 30, 30);
+        addPointToCurve(curveId, 40, 40);
+        addPointToCurve(curveId, 50, 30);
+        addPointToCurve(curveId, 60, 20);
+        addPointToCurve(curveId, 70, 50);
+
+        writeSerialComln(String("Curva creada con ID: ") + String(curveId));
+        // Las funciones sendCurves y printCurves ahora usan el array interno
+        sendCurves();
+        printCurves();
+ 
+        
 
 }
-
 void CargaElectronicaUpdate(){
+  // CORRECCIÓN CRÍTICA: Función ultra-simplificada para evitar stack overflow
+  // Eliminamos TODOS los logs para reducir el uso de stack
+  int dutyCycleAux = 0;
+  int referencia = 0;
+  int aux = 0;
 
-  int dutyCycleAux=0;
-
-  switch(referenceMode){
-    case interface_state:{
-
-    }
-    break;
-    case curve_state:{
-
-    }
-    break;
-    default:
+  // Selección de referencia
+  switch(curveMode){
+    case OFF_t:
+      referencia = DC; // Usar siempre valor manual
       break;
 
+    case ON_t:        
+      aux = getCurveValue(0);
+      // ⚠️ Ojo: este log puede consumir stack, comentar si hay problemas
+      writeSerialComln(String("Valor de la curva: ") + String(aux));
+      if(aux != -1){
+        referencia = aux; // Usar valor de la curva si es válido
+      } else {
+        // Si no hay valor válido, salir sin cambiar nada
+        return;
+      }
+      break;
+
+    default:
+      referencia = 0;
+      break;
   }
 
-  int referencia = DC; 
-
+  // Selección de modo de funcionamiento
   switch(modoFuncionamiento){
     case PID: 
       dutyCycleAux = getDCPID(referencia);
       break;
+
     case NONE: 
-      dutyCycleAux = referencia; // En modo manual, el duty cycle es el valor actual
+      dutyCycleAux = referencia;
       break;
+
     default:
+      dutyCycleAux = 0;
       break;
   }
-
-
-  // Aplicar el duty cycle actual
-  int pwmValue = ((100-dutyCycleAux) * MAX_DUTY_CYCLE) / 100; // Escalar a 0-255 e invierto por el hardware utilizado
+  
+  // Aplicar el duty cycle actual (invertido)
+  int pwmValue = ((100 - dutyCycleAux) * MAX_DUTY_CYCLE) / 100;
   ledcWrite(PWM_CHANNEL, pwmValue);
-
 }
+
+
 //Cambia elvalor del duty cycle
 // Se espera un valor entre 0 y 100, si el valor es mayor al máximo permitido se limita al máximo permitido
 int PWMSetDC(int dc){
+  //Si el sistema esta en modo curva no se modifica el valor del duty cycle
+  /*
+  if(curveMode == ON){
+    return -1;
+  }
+  */
   if(dc>=0 && dc<=100){
     if(dc<=max_dc_value){
       DC = dc; 
@@ -91,6 +141,16 @@ int PWMSetDC(int dc){
   }
   return -1; // Valor inválido
 }
+
+void PWMSetCurveMode(curve_mode_t state){
+  curveMode = state;
+}
+
+void printCargaElectronica(){
+    // Ahora usa el array interno del módulo simuladorCurvas
+    printCurves();
+}
+
 
 bool PWMSetFrequency(int frecuencies){
   if(frecuencies>0 && frecuencies<500000){
@@ -118,13 +178,6 @@ int getDCPID(int dc){
   return dc;
 }
 
-void sendToActuator(int current_mA){
 
-//Dato recivido del sensor, se recive un valor en mA de la corriente de salida
 
-  if(current_mA>=0){
-    valorSensado= current_mA;
-  }
-
-}
 

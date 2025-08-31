@@ -1,5 +1,4 @@
 .pio/build/esp32doit-devkit-v1/src/main.cpp.o: src/main.cpp \
- src/modulos/adc/adc.h src/ADCData.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp_arduino_version.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include/freertos/FreeRTOS.h \
@@ -134,7 +133,7 @@
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
- src/modulos/serialCom/serialCom.h \
+ src/modulos/adc/adc.h src/ADCData.h src/modulos/serialCom/serialCom.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h \
  src/modulos/ina219/ina219.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
@@ -154,12 +153,11 @@
  src/modulos/userInterface/userInterface.h \
  src/modulos/userInterface/../menuTree/menuTree.h \
  src/modulos/userInterface/../serialCom/serialCom.h \
- src/modulos/userInterface/../WiFi/WiFi.h src/modulos/queueCom/queueCom.h \
+ src/modulos/userInterface/../WiFi/WiFi.h \
+ src/modulos/userInterface/../carga_electronica/carga_electronica.h \
+ src/modulos/queueCom/queueCom.h \
  src/modulos/queueCom/../serialCom/serialCom.h \
- src/modulos/ina219/ina219.h \
- C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs_flash.h \
- C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs.h \
- src/modulos/time/time.h \
+ src/modulos/ina219/ina219.h src/modulos/time/time.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFi.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/IPv6Address.h \
@@ -223,4 +221,5 @@
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFiUdp.h \
  .pio/libdeps/esp32doit-devkit-v1/NTPClient/NTPClient.h \
  .pio/libdeps/esp32doit-devkit-v1/Time/TimeLib.h src/modulos/WiFi/WiFi.h \
- src/modulos/simuladorCurvas/simuladorCurvas.h
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs_flash.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs.h

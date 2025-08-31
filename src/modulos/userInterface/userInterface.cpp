@@ -1,4 +1,7 @@
 #include <nvs.h>
+#include <string>
+#include <ctype.h>
+
 
 #include "userInterface.h"
 #include <ADCData.h>
@@ -8,6 +11,7 @@
 #include <modulos/time/time.h>
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
 
+#define ARRAY_SIZE 3 // Tamaño del arreglo de curvas
 
 #define MAX_DATA_BUFFER 30
 #define SEND_DATA true
@@ -19,11 +23,7 @@ String data_buffer = ""; //Variable para almacenar los datos recibidos
 bool aceptandoDatos=false;
 bool updateScreen=false;
 
-curve_t** array=NULL;
-int arrayPos=0;//Posiciones ocupadas del arreglo de curvas
-int arraySize=0;
-bool arraySelected=false;
-int arraySelectedPos=-1;
+
 
 void moveCursor(int row, int col);
 void procesarDatos(String data);
@@ -34,6 +34,8 @@ void saveValueNVS(const char* key, bool value);
 bool readValueNVS(const char* key);
 void printSensor(ADCData data);
 bool parseStringToInts(String str, int *num1, int *num2);
+
+bool parseStringToInts(const char* str, int* curve, int* tiempo, int* value);
 
 void userInterfaceInit(){
     serialComInit();
@@ -50,12 +52,9 @@ void userInterfaceInit(){
         writeSerialComln(String("Error al cargar la configuracion"));
     }
 
-    array=newCurveArray(arraySize);
-    if(array==NULL){
-        writeSerialComln(String("Arreglo de curvas inicializado"));
-    }else{
-        writeSerialComln(String("Arreglo de curvas fallo al inicializarse"));
-    }
+    // CORRECCIÓN CRÍTICA: NO inicializar simuladorCurvas aquí
+    // Ya se inicializa en CargaElectronicaInit() y causar heap corruption
+    // simuladorCurvasInit(ARRAY_SIZE); // DESHABILITADO - CAUSABA HEAP CORRUPTION
 
 }
 
@@ -211,8 +210,10 @@ void procesarDatos(String data) {
 
     if(menu->id==8){
         int dutyCycle = data.toInt(); // Convertir el String a entero
-        int dc=PWMSetDC(dutyCycle);
+        //ToDo//int dc=PWMSetDC(dutyCycle);
+        int dc=dutyCycle;
         if (dc>=0 && dc<=100) {
+            PWMSetDC(dc); // Cambiar el Duty Cycle
             writeSerialComln(String("Duty Cycle cambiado a: ") + String(dc) + "%");
             
         } else {
@@ -227,7 +228,7 @@ void procesarDatos(String data) {
             writeSerialComln(String("Valor de frecuencia inválido. Debe ser mayor que 0."));
         }
     }
-    if(menu->id ==10){
+    if(menu->id ==11){
         int maxDC = data.toInt(); // Convertir el String a entero
         if (PWMSetMaxDC(maxDC)==true) {
             writeSerialComln(String("Valor máximo de Duty Cycle cambiado a: ") + String(maxDC) + "%");
@@ -236,80 +237,44 @@ void procesarDatos(String data) {
         }
     }
     if(menu->id ==17){
-        //Cargo el arreglo de curvas
-        if(array==NULL){
-            array=newCurveArray(3);
-            if(array==NULL){
-                writeSerialComln(String("Error al crear el arreglo de curvas"));
-                return;
-            }
-            arraySize=3;
-        }
-        //Creo la curva
-        curve_t* curve_aux=createCurve(data.toInt());
-        if(curve_aux==NULL){
-            writeSerialComln(String("Error al crear la curva"));
-            return;
-        }
-        array[arrayPos]=curve_aux;
-        arrayPos++;
-        
 
-        addPoint(curve_aux, 10, 10);
-        addPoint(curve_aux, 20, 20);
-        addPoint(curve_aux, 30, 30);
-        addPoint(curve_aux, 40, 40);
-        addPoint(curve_aux, 50, 30);
-        addPoint(curve_aux, 60, 20);
-        addPoint(curve_aux, 70, 50);
-
-        writeSerialComln(String("Curva creada"));
-        printCurves(array,arraySize);
- 
-        
 
 
     }
     if(menu->id ==19){
-        printCurves(array,arraySize);
-        int aux=data.toInt();
-        if(aux<0 && aux>=arrayPos){
-            writeSerialComln(String("Error: Curva no valida"));
-            return;
-        }else{
-            if(aux<0 || aux>=arrayPos){
-                writeSerialComln(String("Esa curva no existe"));
-                return;
-            }
-            arraySelected=true;
-            arraySelectedPos=aux;
-            writeSerialComln(String("Curva seleccionada: ") + String(aux));
-        }
+
+        printCargaElectronica();
+
+
+
     }
 
     if(menu->id ==20){
-        if(arraySelected==false){
-            writeSerialComln(String("Error: No se ha seleccionado una curva"));
-            return;
-        }else{
-            int tiempo,value;
-            if(parseStringToInts(data.c_str(), &tiempo, &value)){
-                array[arraySelectedPos]=addPoint(array[arraySelectedPos],tiempo,value);
-                if(array[arraySelectedPos]==NULL){
-                    writeSerialComln(String("Error: No se pudo agregar el punto"));
-                    return;
-                }else{
-                    writeSerialComln(String("Punto agregado: [") + String(tiempo) + "," + String(value) + "]");
-                }
-
+        int curve, tiempo, value;
+        if (parseStringToInts(data.c_str(), &curve, &tiempo, &value)) {
+            if (addPointToCurve(curve, tiempo, value) == 0) {
+                // OK
             }
-
+        } else {
+            Serial.println("❌ Formato inválido. Use [curve,tiempo,value]");
         }
     }
     
 
     if(menu->id ==15){
-        printCurves(array,arraySize);
+        printCargaElectronica();
+    }
+    if(menu->id ==21){
+        if(data.equalsIgnoreCase("y")){
+            PWMSetCurveMode(ON_t);
+            writeSerialComln(String("Modo curva activado"));
+        }else if(data.equalsIgnoreCase("n")){
+            PWMSetCurveMode(OFF_t);
+            writeSerialComln(String("Modo curva desactivado"));
+        }else{
+            writeSerialComln(String("Error: Valor invalido"));
+        }
+
     }
 
 
@@ -358,4 +323,28 @@ void printSensorData() {
     writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
     writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
 
+}
+
+
+
+bool parseStringToInts(const char* str, int* curve, int* tiempo, int* value) {
+    if (!str || !curve || !tiempo || !value) return false;
+
+    // Saltar espacios iniciales
+    while (isspace((unsigned char)*str)) str++;
+
+    // Debe empezar con '['
+    if (*str != '[') return false;
+    str++;
+
+    // Leer primer número (curve)
+    if (sscanf(str, " %d , %d , %d", curve, tiempo, value) != 3) {
+        return false;
+    }
+
+    // Verificar que haya ']' al final
+    const char* cierre = strrchr(str, ']');
+    if (!cierre) return false;
+
+    return true;
 }
