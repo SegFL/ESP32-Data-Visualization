@@ -3,6 +3,7 @@
 #include "simuladorCurvas.h"
 #include <stdio.h>
 #include <modulos/serialCom/serialCom.h>
+#include "nvs.h"
 
 curve_t** curveArray=NULL;
 int curveArraySize=0;
@@ -69,7 +70,7 @@ int createCurve(int pin) {
     curve->Pmin = 0;
     curve->enabled = false;
     curve->pin = pin;
-    curve->timestamp = millis(); // CORRECCIÓN: Inicializar con tiempo actual
+    curve->timestamp =0; // CORRECCIÓN: Inicializar con tiempo actual
     curve->point[0].tiempo = 0;
     curve->point[0].value = 0;
     curve->contador = 1;
@@ -146,12 +147,27 @@ int getCurveValue(int curveId) {
         return -1;
     }
 
+
+    if(curve->enabled == false){
+        return -1;
+    }else{
+        //Reinicio la curva
+    }
+
     unsigned long currentTime = millis();
 
     //Me fijo si paso el tiempo suficiente como
     //para avanzar al siguiente punto
-    if(currentTime > curve->timestamp) {   
-        // CORRECCIÓN: Verificar límites antes de acceder al array
+
+
+
+    if(currentTime > curve->timestamp+curve->point[curve->contador].tiempo*1000){   
+
+    writeSerialComln(String("currentTime: ") + String(currentTime));
+    writeSerialComln(String("curve->timestamp: ") + String(curve->timestamp));
+    writeSerialComln(String("curve->point[curve->contador].tiempo*1000: ") + String(curve->point[curve->contador].tiempo*1000));
+    writeSerialComln(String("curve->contador: ") + String(curve->contador));
+ // CORRECCIÓN: Verificar límites antes de acceder al array
         if(curve->contador < curve->size) {
             int value = curve->point[curve->contador].value;
             curve->contador++;
@@ -242,10 +258,11 @@ void printCurves(){
         if(curveArray[i]!=NULL){
             writeSerialComln(String("Curva ") + String(i));
             writeSerialComln(String("Pin asociado: ") + String(curveArray[i]->pin));
-            writeSerialComln(String("Estado ") + String(curveArray[i]->enabled ? "Habilitada" : "Deshabilitada"));
-            writeSerialComln(String("Cantidad de puntos: ") + String(curveArray[i]->contador));           
+            writeSerialComln(String("Estado :") + String(curveArray[i]->enabled ? "Habilitada" : "Deshabilitada"));
+            writeSerialComln(String("Timestamp: ") + String(curveArray[i]->timestamp));
+            writeSerialComln(String("Cantidad de puntos: ") + String(curveArray[i]->size));           
             writeSerialComln(String("Puntos:[Tiempo, Valor]"));
-            for(int j=0;j<curveArray[i]->contador;j++){
+            for(int j=0;j<curveArray[i]->size;j++){
                     char buffer[50];
                     sprintf(buffer, ",[%d,%d]", curveArray[i]->point[j].tiempo, curveArray[i]->point[j].value);
                     writeSerialCom(String(buffer));
@@ -374,3 +391,146 @@ int getCurveCount() {
     
     return count;
 }
+
+//Habilita una curva para que comience a ejecutarse
+bool enableCurve(int curveId) {
+    if(curveArray == NULL) {
+        writeSerialComln(String("Error: Array de curvas no inicializado"));
+        return false;
+    }
+    if (curveId < 0 || curveId >= curveArraySize) {
+        writeSerialComln(String("Error: Curva no valida"));
+        return false;
+    }
+    if(curveArray[curveId] == NULL) {
+        writeSerialComln(String("Error: Curva no existe"));
+        return false;
+    }
+
+    //Si esta habilitada desahbilita y viceversa
+
+    curveArray[curveId]->enabled = !curveArray[curveId]->enabled;
+    if(curveArray[curveId]->enabled==true)
+        curveArray[curveId]->timestamp = millis();
+    curveArray[curveId]->contador=1; //Reinicio la curva
+    return curveArray[curveId]->enabled;
+}
+
+
+
+void saveCurveNVS(const char* key, int curveId) {
+    nvs_handle_t handle;
+    if(curveArray == NULL) {
+        writeSerialComln(String("Error: Array de curvas no inicializado"));
+        return;
+    }
+    if (curveId < 0 || curveId >= curveArraySize) {
+        writeSerialComln(String("Error: Curva no valida"));
+        return;
+    }
+    curve_t *curve = curveArray[curveId];
+    if (curve == NULL) {
+        writeSerialComln(String("Error: Curva no existe"));
+        return;
+    }
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        writeSerialComln("Error al abrir NVS");
+        return;
+    }
+
+    // Guardar enteros y banderas
+    nvs_set_i32(handle, (String(key) + "_Imax").c_str(), curve->Imax);
+    nvs_set_i32(handle, (String(key) + "_Imin").c_str(), curve->Imin);
+    nvs_set_i32(handle, (String(key) + "_Vmax").c_str(), curve->Vmax);
+    nvs_set_i32(handle, (String(key) + "_Vmin").c_str(), curve->Vmin);
+    nvs_set_i32(handle, (String(key) + "_Pmax").c_str(), curve->Pmax);
+    nvs_set_i32(handle, (String(key) + "_Pmin").c_str(), curve->Pmin);
+    nvs_set_i32(handle, (String(key) + "_contador").c_str(), curve->contador);
+    nvs_set_i32(handle, (String(key) + "_size").c_str(), curve->size);
+    nvs_set_i32(handle, (String(key) + "_pin").c_str(), curve->pin);
+    nvs_set_u32(handle, (String(key) + "_timestamp").c_str(), curve->timestamp);
+    nvs_set_u8(handle, (String(key) + "_enabled").c_str(), curve->enabled ? 1 : 0);
+
+    // Guardar los puntos como BLOB
+    if (curve->point != NULL && curve->size > 0) {
+        nvs_set_blob(handle, (String(key) + "_points").c_str(),
+                     curve->point, sizeof(point_t) * curve->size);
+    }
+
+    // Confirmar
+    err = nvs_commit(handle);
+    if (err != ESP_OK) {
+        writeSerialComln("Error al hacer commit en NVS");
+    }
+
+    nvs_close(handle);
+}
+
+
+bool loadCurveNVS(const char* key) {
+    if(curveArray == NULL) {
+        writeSerialComln(String("Error: Array de curvas no inicializado"));
+        return false;
+    }
+    int i=0;
+    for(i=0;i<curveArraySize;i++){
+        if(curveArray[i]==NULL){
+            writeSerialComln(String("Cargando curva en posición ") + String(i));
+            curveArray[i] = (curve_t *)malloc(sizeof(curve_t));
+            if (curveArray[i] == NULL) {
+                writeSerialComln(String("Error al crear la curva"));
+                return false;
+            }
+            break;
+        }
+    }
+    curve_t *curve = curveArray[i];
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        writeSerialComln("Error al abrir NVS para lectura");
+        return false;
+    }
+
+    // Leer enteros y banderas
+    nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &curve->Imax);
+    nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &curve->Imin);
+    nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &curve->Vmax);
+    nvs_get_i32(handle, (String(key) + "_Vmin").c_str(), &curve->Vmin);
+    nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &curve->Pmax);
+    nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &curve->Pmin);
+    nvs_get_i32(handle, (String(key) + "_contador").c_str(), &curve->contador);
+    nvs_get_i32(handle, (String(key) + "_size").c_str(), &curve->size);
+    nvs_get_i32(handle, (String(key) + "_pin").c_str(), &curve->pin);
+    nvs_get_u32(handle, (String(key) + "_timestamp").c_str(), &curve->timestamp);
+    uint8_t enabled;
+    nvs_get_u8(handle, (String(key) + "_enabled").c_str(), &enabled);
+    curve->enabled = (enabled != 0);
+
+    // Leer los puntos como BLOB
+    if (curve->size > 0) {
+        size_t blob_size = sizeof(point_t) * curve->size;
+        curve->point = (point_t*) malloc(blob_size);
+        if (curve->point == NULL) {
+            writeSerialComln("Error al reservar memoria para points");
+            nvs_close(handle);
+            return false;
+        }
+        err = nvs_get_blob(handle, (String(key) + "_points").c_str(),
+                           curve->point, &blob_size);
+        if (err != ESP_OK) {
+            writeSerialComln("Error al leer blob de points");
+            free(curve->point);
+            curve->point = NULL;
+            nvs_close(handle);
+            return false;
+        }
+    } else {
+        curve->point = NULL;
+    }
+
+    nvs_close(handle);
+    return true;
+}
+

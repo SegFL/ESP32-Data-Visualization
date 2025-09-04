@@ -23,6 +23,8 @@ String data_buffer = ""; //Variable para almacenar los datos recibidos
 bool aceptandoDatos=false;
 bool updateScreen=false;
 
+static int lastMenuId = -1;
+
 
 
 void moveCursor(int row, int col);
@@ -37,6 +39,8 @@ bool parseStringToInts(String str, int *num1, int *num2);
 
 bool parseStringToInts(const char* str, int* curve, int* tiempo, int* value);
 
+static void onEnterNode(MenuNode* n);
+static bool nodeRequiresInput(int id);
 void userInterfaceInit(){
     serialComInit();
     clearScreen();//Borra mensajes del ESP32 al iniciar el programa
@@ -99,6 +103,11 @@ void userInterfaceUpdate(){
         }
         clearScreen();
         printNode(menu);
+        // Disparar acciones SOLO cuando realmente cambió de nodo
+        if (lastMenuId != menu->id) {
+            lastMenuId = menu->id;
+            onEnterNode(menu);
+        }
 
         //En el caso que se cambie al estado de menu 1 se ejecuta este if una sola vez(solo cuando se cambia de estado del menu),
         //el resto de las veces lo hago automaticamente
@@ -260,9 +269,21 @@ void procesarDatos(String data) {
         }
     }
     
+    if(menu)
 
     if(menu->id ==15){
+        int curveId = data.toInt();
+        writeSerialComln(String("Curvas actuales:"));
         printCargaElectronica();
+    }
+
+    if(menu->id ==16){
+        int curveId = data.toInt();
+        if(enableCurve(curveId)==true){
+            writeSerialComln(String("Curva ") + String(curveId) + String(" habilitada"));
+        }else{
+            writeSerialComln(String("Curva ") + String(curveId) + String(" deshabilitada"));
+        }
     }
     if(menu->id ==21){
         if(data.equalsIgnoreCase("y")){
@@ -276,7 +297,18 @@ void procesarDatos(String data) {
         }
 
     }
+    if(menu->id ==22){
+        writeSerialComln(String("Selecciona la curva a guardar (ID):"));
+        printCargaElectronica();
+        int curveId = data.toInt();
+        saveCurveNVS(("curve" + String(curveId)).c_str(), curveId);
 
+    }
+    if(menu->id ==23){
+        loadCurveNVS(("curve" + String(data.toInt())).c_str());
+        printCargaElectronica();
+
+    }
 
 
 
@@ -348,3 +380,64 @@ bool parseStringToInts(const char* str, int* curve, int* tiempo, int* value) {
 
     return true;
 }
+
+
+
+
+static bool nodeRequiresInput(int id) {
+    switch (id) {
+        case 3:  // Entre SSID
+        case 4:  // Entre contraseña
+        case 7:  // Activar/desactivar SEND DATA (y/n)
+        case 8:  // Duty cycle
+        case 9:  // Frecuencia
+        case 11: // Max DC
+        case 16: // Activar curva -> requiere ID
+        case 20: // Agregar punto [curva,tiempo,valor]
+        case 21: // Activar modo curva (Y/N)
+        case 22: // Guardar curva -> requiere ID
+        case 23: // Cargar curva -> requiere ID
+            return true;
+        default:
+            return false;
+    }
+}
+
+static void onEnterNode(MenuNode* n) {
+    if (!n) return;
+
+    // Acciones inmediatas (sin pedir datos)
+    switch (n->id) {
+        case 1:  // Entradas analógicas
+            printSensorData();
+            updateScreen = true; // ya lo usabas para refrescar periódicamente
+            break;
+        case 15: // Ver curvas
+        case 19: // Seleccionar curva (al menos mostrar algo útil)
+            printCargaElectronica();
+            break;
+        default:
+            break;
+    }
+
+    // Nodos que requieren datos: activar captura y mostrar prompt
+    if (nodeRequiresInput(n->id)) {
+        aceptandoDatos = true;
+        data_buffer = "";
+        switch (n->id) {
+            case 3:  writeSerialComln("Ingrese SSID y presione '-' para confirmar"); break;
+            case 4:  writeSerialComln("Ingrese PASSWORD y presione '-'"); break;
+            case 7:  writeSerialComln("Ingrese 'y' o 'n' y presione '-'"); break;
+            case 8:  writeSerialComln("Ingrese DutyCycle (0-100) y presione '-'"); break;
+            case 9:  writeSerialComln("Ingrese frecuencia (>0) y presione '-'"); break;
+            case 11: writeSerialComln("Ingrese Max DC (0-100) y presione '-'"); break;
+            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y presione '-'"); break;
+            case 20: writeSerialComln("Formato: [curva,tiempo,valor] y presione '-'"); break;
+            case 21: writeSerialComln("Activar modo curva (Y/N) y presione '-'"); break;
+            case 22: writeSerialComln("ID de curva a GUARDAR y presione '-'"); break;
+            case 23: writeSerialComln("ID de curva a CARGAR y presione '-'"); break;
+            default: break;
+        }
+    }
+}
+

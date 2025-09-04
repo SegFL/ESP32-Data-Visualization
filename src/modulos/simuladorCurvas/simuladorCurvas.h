@@ -1,4 +1,6 @@
 
+#include <stdint.h>
+
 // Definición del typedef para un punto con dos enteros
 typedef struct {
     int tiempo;
@@ -18,7 +20,7 @@ typedef struct {
     int contador;
     int size;
     int pin;
-    unsigned long timestamp;
+    uint32_t timestamp;
     bool enabled;
 } curve_t;
 
@@ -35,4 +37,7 @@ void sendCurves();
 void simuladorCurvasInit(int size);
 bool deleteCurve(int curveId); // NUEVA: Función para eliminar curva
 int getCurveCount(); // NUEVA: Función para obtener cantidad de curvas
+bool enableCurve(int curveId);
+void saveCurveNVS(const char* key, int curveId);
+bool loadCurveNVS(const char* key);
 

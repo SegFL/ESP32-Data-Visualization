@@ -103,9 +103,6 @@ MenuNode* menuInit() {
         MenuNode* child14 = create_node("Crear curva de carga", '1',14);
         add_child(child13, child14);
 
-            MenuNode* child17 = create_node("Agregar Pin", '1',17);
-            add_child(child14, child17);
-
             MenuNode* child18 = create_node("Agregar puntos", '2',18);
             add_child(child14, child18);
                 MenuNode* child19 = create_node("Seleccionar curva", '1',19);
@@ -124,6 +121,12 @@ MenuNode* menuInit() {
 
         MenuNode* child21 = create_node("Activar modo curva (Y/N)", '4',21);
         add_child(child13, child21);
+
+        MenuNode* child22 = create_node("Guardar curva", '5',22);
+        add_child(child13, child22);
+
+        MenuNode* child23 = create_node("Cargar curva", '6',23);
+        add_child(child13, child23);
 
     return root;
 }
@@ -158,10 +161,8 @@ void printNode(MenuNode *node) {
     // Imprime los hijos con su respectiva clave y título
     for (int i = 0; i < node->child_count; i++) {
         if (node->children[i] != nullptr) {
-            writeSerialComln(String("\t"));  // Tabulación para los hijos
-            writeSerialComln(String(node->children[i]->key));
-            writeSerialComln(String(" -> "));
-            writeSerialComln(String(node->children[i]->title));
+            writeSerialComln(String("\t") + String(node->children[i]->key) + " -> " + String(node->children[i]->title));
+
         }
     }
 }
