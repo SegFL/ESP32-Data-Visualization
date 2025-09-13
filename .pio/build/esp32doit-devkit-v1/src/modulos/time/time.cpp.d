@@ -199,4 +199,7 @@
  .pio/libdeps/esp32doit-devkit-v1/NTPClient/NTPClient.h \
  src/modulos/serialCom/serialCom.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/HardwareSerial.h \
- .pio/libdeps/esp32doit-devkit-v1/Time/TimeLib.h src/modulos/WiFi/WiFi.h
+ .pio/libdeps/esp32doit-devkit-v1/Time/TimeLib.h src/modulos/WiFi/WiFi.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs_flash.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs.h

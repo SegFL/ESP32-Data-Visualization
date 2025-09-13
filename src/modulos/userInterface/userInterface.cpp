@@ -40,6 +40,7 @@ bool parseStringToInts(String str, int *num1, int *num2);
 bool parseStringToInts(const char* str, int* curve, int* tiempo, int* value);
 
 static void onEnterNode(MenuNode* n);
+static void onUpdateNode(MenuNode* n);
 static bool nodeRequiresInput(int id);
 void userInterfaceInit(){
     serialComInit();
@@ -64,71 +65,72 @@ void userInterfaceInit(){
 
 
 
-
-void userInterfaceUpdate(){
-
+void userInterfaceUpdate() {
     char charReceived = readSerialChar();
 
-    if(updateScreen==true){//Caso especial pq se actualizan los datos de los sensores
+    // Caso especial: refrescar sensores en pantalla
+    if (updateScreen == true) {
         clearScreen();
         printNode(menu);
         printSensorData();
     }
-    if(charReceived=='\0'||menu==nullptr){
+
+    // Si no hay caracter recibido o menú no inicializado, no hacemos nada
+    if (charReceived == '\0' || menu == nullptr) {
+        // 🔹 Ejecutar actualizaciones periódicas igual
+        onUpdateNode(menu);
         return;
     }
 
-    if(charReceived=='-'){//Si se presiona enter se cambia el estado de recvir datos
-        if(aceptandoDatos==true){
-            aceptandoDatos=false;
-            //Loopback
-            //writeSerialComln("Datos recibidos");
-            //writeSerialComln(String(data_buffer));
+    // Cambiar estado de aceptar datos
+    if (charReceived == '-') {
+        if (aceptandoDatos == true) {
+            aceptandoDatos = false;
             procesarDatos(data_buffer);
-
-            data_buffer="";
-        }else{
-            aceptandoDatos=true;
-            data_buffer="";
+            data_buffer = "";
+        } else {
+            aceptandoDatos = true;
+            data_buffer = "";
         }
         return;
     }
 
-
-    if(aceptandoDatos==false){
-
+    // 🔹 Si NO estamos aceptando datos, procesamos navegación de menú
+    if (aceptandoDatos == false) {
         menuUpdate(charReceived, &menu);
-        if(menu->id!=1){
-            updateScreen=false;
+
+        if (menu->id != 1) {
+            updateScreen = false;
         }
+
         clearScreen();
         printNode(menu);
-        // Disparar acciones SOLO cuando realmente cambió de nodo
+
+        // Solo disparar acciones si realmente cambió el nodo
         if (lastMenuId != menu->id) {
             lastMenuId = menu->id;
-            onEnterNode(menu);
+            onEnterNode(menu);   // Ejecutar solo una vez al entrar
         }
 
-        //En el caso que se cambie al estado de menu 1 se ejecuta este if una sola vez(solo cuando se cambia de estado del menu),
-        //el resto de las veces lo hago automaticamente
-        if(updateScreen==false){
-            if(menu->id==1){
+        // Manejo especial del menú 1 (sensores) → primer refresh
+        if (updateScreen == false) {
+            if (menu->id == 1) {
                 printSensorData();
-                updateScreen=true;
+                updateScreen = true;
             }
         }
 
-
-
-
-    }else{
-        //writeSerialComln("Guarde:"+String(charReceived));
-        data_buffer += charReceived;  // Agregarlo al buffer
+    } else {
+        // Estamos recibiendo datos → agregarlos al buffer
+        data_buffer += charReceived;
     }
 
+    // 🔹 Ejecutar siempre la lógica de actualización periódica
+    onUpdateNode(menu);
 
     return;
 }
+
 
 bool loadConfiguration(){
     if (readValueNVS("mode") == SEND_DATA) { // Si el modo es SEND_DATA, se activa la opción de enviar datos
@@ -245,6 +247,10 @@ void procesarDatos(String data) {
             writeSerialComln(String("Valor máximo de Duty Cycle inválido. Debe estar entre 0 y 100."));
         }
     }
+
+    if (menu->id == 12){
+    }
+    
     if(menu->id ==17){
 
 
@@ -308,6 +314,20 @@ void procesarDatos(String data) {
         loadCurveNVS(("curve" + String(data.toInt())).c_str());
         printCargaElectronica();
 
+    }
+
+    if(menu->id ==25){
+        // Formato esperado: "DD/MM/AAAA HH:MM"
+        int day, month, year, hour, minute;
+        if (sscanf(data.c_str(), "%d/%d/%d %d:%d", &day, &month, &year, &hour, &minute) == 5) {
+            if (setDateTime(day, month, year, hour, minute)) {
+                writeSerialComln(String("Fecha y hora actualizadas a: ") + data);
+            } else {
+                writeSerialComln(String("Error: Fecha u hora inválida."));
+            }
+        } else {
+            writeSerialComln(String("Error: Formato inválido. Use DD/MM/AAAA HH:MM"));
+        }
     }
 
 
@@ -397,6 +417,7 @@ static bool nodeRequiresInput(int id) {
         case 21: // Activar modo curva (Y/N)
         case 22: // Guardar curva -> requiere ID
         case 23: // Cargar curva -> requiere ID
+        case 25: // Modificar fecha
             return true;
         default:
             return false;
@@ -406,13 +427,14 @@ static bool nodeRequiresInput(int id) {
 static void onEnterNode(MenuNode* n) {
     if (!n) return;
 
-    // Acciones inmediatas (sin pedir datos)
+    // Acciones inmediatas (sin pedir datos) y automaticas en elupdate
     switch (n->id) {
         case 1:  // Entradas analógicas
             printSensorData();
             updateScreen = true; // ya lo usabas para refrescar periódicamente
             break;
         case 15: // Ver curvas
+
         case 19: // Seleccionar curva (al menos mostrar algo útil)
             printCargaElectronica();
             break;
@@ -436,8 +458,31 @@ static void onEnterNode(MenuNode* n) {
             case 21: writeSerialComln("Activar modo curva (Y/N) y presione '-'"); break;
             case 22: writeSerialComln("ID de curva a GUARDAR y presione '-'"); break;
             case 23: writeSerialComln("ID de curva a CARGAR y presione '-'"); break;
+            case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione '-'"); break;
             default: break;
         }
     }
 }
+
+
+static void onUpdateNode(MenuNode* n) {
+    if (!n) return;
+
+    switch (n->id) {
+        case 1: // Menú de sensores
+            printSensorData(); // refrescar siempre
+            break;
+        case 24: // Ver fecha
+            clearScreen();
+            printNode(n);
+            writeSerialComln(String("Fecha actual: ") + getFormattedDateTime());
+            break;
+
+        default:
+            // Otros menús no se refrescan constantemente
+            break;
+    }
+}
+
+
 

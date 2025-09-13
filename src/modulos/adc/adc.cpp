@@ -30,7 +30,7 @@ void  leerADC(){
         
         sendSensorDataToUserInterface(temp);
         if(sendDataStatus()==true){
-          writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.current_mA)+","+String(temp.power_mW)+","+String(temp.pin));
+          writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.current_mA)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.power_mW)+","+String(temp.pin));
         }
       }
       i++;

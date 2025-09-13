@@ -212,4 +212,6 @@
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFiUdp.h \
  .pio/libdeps/esp32doit-devkit-v1/NTPClient/NTPClient.h \
  .pio/libdeps/esp32doit-devkit-v1/Time/TimeLib.h src/modulos/WiFi/WiFi.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs_flash.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs.h \
  src/modulos/simuladorCurvas/simuladorCurvas.h

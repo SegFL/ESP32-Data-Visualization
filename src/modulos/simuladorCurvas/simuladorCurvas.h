@@ -18,6 +18,7 @@ typedef struct {
     int Pmax;
     int Pmin;
     int contador;
+    int currentIndex;  
     int size;
     int pin;
     uint32_t timestamp;

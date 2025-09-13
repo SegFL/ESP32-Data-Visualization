@@ -146,17 +146,7 @@
  .pio/libdeps/esp32doit-devkit-v1/Adafruit\ BusIO/Adafruit_SPIDevice.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
- src/modulos/adc/../queueCom/queueCom.h \
- src/modulos/adc/../queueCom/../serialCom/serialCom.h \
- src/modulos/queueCom/queueCom.h \
- src/modulos/queueCom/../serialCom/serialCom.h \
- src/modulos/userInterface/userInterface.h \
- src/modulos/userInterface/../menuTree/menuTree.h \
- src/modulos/userInterface/../serialCom/serialCom.h \
- src/modulos/userInterface/../WiFi/WiFi.h \
- src/modulos/userInterface/../carga_electronica/carga_electronica.h \
- C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-ledc.h \
- src/modulos/time/time.h \
+ src/modulos/ina219/../../modulos/time/time.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFi.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/IPv6Address.h \
@@ -220,4 +210,18 @@
  C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src/WiFiUdp.h \
  .pio/libdeps/esp32doit-devkit-v1/NTPClient/NTPClient.h \
  .pio/libdeps/esp32doit-devkit-v1/Time/TimeLib.h src/modulos/WiFi/WiFi.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs_flash.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/nvs_flash/include/nvs.h \
+ src/modulos/adc/../queueCom/queueCom.h \
+ src/modulos/adc/../queueCom/../serialCom/serialCom.h \
+ src/modulos/queueCom/queueCom.h \
+ src/modulos/queueCom/../serialCom/serialCom.h \
+ src/modulos/userInterface/userInterface.h \
+ src/modulos/userInterface/../menuTree/menuTree.h \
+ src/modulos/userInterface/../serialCom/serialCom.h \
+ src/modulos/userInterface/../WiFi/WiFi.h \
+ src/modulos/userInterface/../carga_electronica/carga_electronica.h \
+ C:/Users/segus/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-ledc.h \
+ src/modulos/time/time.h \
  src/modulos/carga_electronica/carga_electronica.h

@@ -82,10 +82,11 @@ void CargaElectronicaUpdate(){
       break;
 
     case ON_t:        
-      aux = getCurveValue(0);
+      aux = getCurveValue(1);
       // ⚠️ Ojo: este log puede consumir stack, comentar si hay problemas
-      writeSerialComln(String("Valor de la curva: ") + String(aux));
+      //writeSerialComln(String("Valor de la curva: ") + String(aux));
       if(aux != -1){
+        writeSerialComln(String("Valor de la curva: ") + String(aux));
         referencia = aux; // Usar valor de la curva si es válido
       } else {
         // Si no hay valor válido, salir sin cambiar nada

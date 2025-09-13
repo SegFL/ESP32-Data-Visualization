@@ -44,3 +44,14 @@ Problema con GUI:
 Ultimo cambio...
 
     se agregaron cambios leves a menu para crear un curva por defecto(solo para probar). Faltaria seguir con el desarrollo del simulador de curvas, fijarse si se pueden imprimir en lamisma pantalla que la corriente en la GUI y luego ver de actuar sobre el modulo de la carga electronica.
+
+
+
+
+
+
+
+
+Curva 0 que se simula
+
+[0,0],[10,10],[20,20],[30,30],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0]

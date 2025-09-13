@@ -74,6 +74,8 @@ int createCurve(int pin) {
     curve->point[0].tiempo = 0;
     curve->point[0].value = 0;
     curve->contador = 1;
+    curve->currentIndex=0;  
+
     
     // CORRECCIÓN: Inicializar todos los puntos restantes para evitar valores basura
     for(int i = 1; i < curve->size; i++) {
@@ -130,61 +132,42 @@ int getCurveValue(int curveId) {
         writeSerialComln(String("Error: Array de curvas no inicializado"));
         return -1;
     }
-    if (curveId < 0 || curveId >= curveArraySize) {
+    if(curveId < 0 || curveId >= curveArraySize) {
         writeSerialComln(String("Error: Curva no valida"));
-        return -1; // Curva no válida
+        return -1;
     }
-    curve_t *curve = curveArray[curveId];
-    // Verifica que curve y curve->point no sean NULL   
-    if (!curve || !curve->point || curve->contador < 2) return -1;
 
-    // CORRECCIÓN CRÍTICA: Verificar límites ANTES de cualquier acceso
-    if(curve->contador >= curve->size || curve->contador < 0) {
-        // Si llegamos al final de la curva, mantener el último valor válido
-        if(curve->size > 0) {
-            return curve->point[curve->size - 1].value;
+    //Selecciono laprimer curva habilitada(solo para probar)
+    int i = 0;
+    while(curveArray[i]!=NULL){
+        if(curveArray[i]->enabled==true ){
+            curveId = i;
+            break;
+
         }
-        return -1;
     }
 
 
-    if(curve->enabled == false){
-        return -1;
-    }else{
-        //Reinicio la curva
+    
+    curve_t *curve = curveArray[curveId];
+    if(!curve || !curve->point || curve->contador <= 0) {
+        return -1; // no hay puntos válidos
     }
+
 
     unsigned long currentTime = millis();
 
-    //Me fijo si paso el tiempo suficiente como
-    //para avanzar al siguiente punto
 
-
-
-    if(currentTime > curve->timestamp+curve->point[curve->contador].tiempo*1000){   
-
-    writeSerialComln(String("currentTime: ") + String(currentTime));
-    writeSerialComln(String("curve->timestamp: ") + String(curve->timestamp));
-    writeSerialComln(String("curve->point[curve->contador].tiempo*1000: ") + String(curve->point[curve->contador].tiempo*1000));
-    writeSerialComln(String("curve->contador: ") + String(curve->contador));
- // CORRECCIÓN: Verificar límites antes de acceder al array
-        if(curve->contador < curve->size) {
-            int value = curve->point[curve->contador].value;
-            curve->contador++;
-            return value;
-        } else {
-            // Ya estamos al final, mantener el último valor
-            return curve->point[curve->size - 1].value;
-        }
-    }else{
-        // CORRECCIÓN: Verificar límites antes de acceder
-        if(curve->contador < curve->size) {
-            return curve->point[curve->contador].value;
-        } else {
-            return curve->point[curve->size - 1].value;
-        }
+    // Si pasamos el tiempo del siguiente punto, avanzamos
+    if(curve->currentIndex > 1 && currentTime >= curve->timestamp + curve->point[curve->currentIndex-1].tiempo*1000) {
+        // Si ya llegamos al final, devolvemos el último punto válido
+        return curve->point[curve->currentIndex-1].value;
     }
+
+    // Si no, devolvemos el último punto válido
+    return curve->point[curve->currentIndex-1].value;
 }
+
 
 
 
@@ -246,33 +229,40 @@ int addPointToCurve(int curveId, int tiempo, int value) {
 
 //Imprime por consola una curva en particular
 //La app no toma como valida una curva enviada por esta funcion
-void printCurves(){
+void printCurves() {
     if(curveArray == NULL) {
         writeSerialComln(String("Error: Array de curvas es NULL"));
         return;
     }
     writeSerialComln(String("curveArraySize: ") + String(curveArraySize));
 
-    for(int i=0;i<curveArraySize;i++){
+    for(int i = 0; i < curveArraySize; i++) {
         writeSerialComln(String("==================================="));
-        if(curveArray[i]!=NULL){
+        if(curveArray[i] != NULL) {
             writeSerialComln(String("Curva ") + String(i));
             writeSerialComln(String("Pin asociado: ") + String(curveArray[i]->pin));
             writeSerialComln(String("Estado :") + String(curveArray[i]->enabled ? "Habilitada" : "Deshabilitada"));
             writeSerialComln(String("Timestamp: ") + String(curveArray[i]->timestamp));
-            writeSerialComln(String("Cantidad de puntos: ") + String(curveArray[i]->size));           
+            writeSerialComln(String("Cantidad de puntos: ") + String(curveArray[i]->contador));
             writeSerialComln(String("Puntos:[Tiempo, Valor]"));
-            for(int j=0;j<curveArray[i]->size;j++){
+
+            int lastIndex = curveArray[i]->contador - 1; // Último punto válido
+            for(int j = 0; j <= lastIndex; j++) {
+                int t = curveArray[i]->point[j].tiempo;
+                int v = curveArray[i]->point[j].value;
+
+                // Siempre imprimir el primero y el último
+                if(j == 0 || j == lastIndex || (t != 0 || v != 0)) {
                     char buffer[50];
-                    sprintf(buffer, ",[%d,%d]", curveArray[i]->point[j].tiempo, curveArray[i]->point[j].value);
+                    sprintf(buffer, ",[%d,%d]", t, v);
                     writeSerialCom(String(buffer));
+                }
+            }
+            writeSerialComln(""); // Nueva línea al final
         }
-        writeSerialComln(""); // Nueva línea al final
-        }
-
     }
-
 }
+
 
 
 //Envia por puerto serie las curvas en un formato entendible por la App
@@ -412,7 +402,8 @@ bool enableCurve(int curveId) {
     curveArray[curveId]->enabled = !curveArray[curveId]->enabled;
     if(curveArray[curveId]->enabled==true)
         curveArray[curveId]->timestamp = millis();
-    curveArray[curveId]->contador=1; //Reinicio la curva
+    curveArray[curveId]->currentIndex = 0;
+
     return curveArray[curveId]->enabled;
 }
 

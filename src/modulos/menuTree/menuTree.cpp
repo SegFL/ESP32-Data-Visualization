@@ -97,6 +97,13 @@ MenuNode* menuInit() {
     MenuNode* child12 = create_node("Fecha y hora", '5',12);
     add_child(root, child12);
 
+        MenuNode* child24 = create_node("Ver fecha", '1',24);
+        add_child(child12, child24);
+
+        MenuNode* child25 = create_node("Modificar fecha", '2',25);
+        add_child(child12, child25);
+
+
     MenuNode* child13 = create_node("Curva de carga", '6',13);
     add_child(root, child13);
 

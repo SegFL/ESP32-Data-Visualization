@@ -27,6 +27,7 @@ void Task1(void *pvParameters) {
     }
 
     userInterfaceUpdate(); // Mantenerla si no bloquea más de unos ms
+    TimeUpdate();
     vTaskDelay(pdMS_TO_TICKS(200)); // Cede CPU al resto de tareas
   }
 }
@@ -44,21 +45,22 @@ void Task2(void *pvParameters) {
 }
 
 void setup() {
+  userInterfaceInit();
   writeSerialComln("=== INICIO DEL SISTEMA ===");
   writeSerialComln(String("Memoria inicial: ") + ESP.getFreeHeap());
+  esp_err_t err = nvs_flash_init();
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    nvs_flash_erase();
+    nvs_flash_init();
+  }
 
-  userInterfaceInit();
   queueInit();
   ina219Init();
   adcInit();
   TimeInit();
   CargaElectronicaInit();
 
-  esp_err_t err = nvs_flash_init();
-  if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    nvs_flash_erase();
-    nvs_flash_init();
-  }
+
 
   xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
   timeRequestQueue = xQueueCreate(10, sizeof(int));
