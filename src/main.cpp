@@ -40,7 +40,7 @@ void Task2(void *pvParameters) {
     int request = 1;
     xQueueSend(timeRequestQueue, &request, pdMS_TO_TICKS(20));
 
-    vTaskDelay(pdMS_TO_TICKS(100)); // Tiempo suficiente para no saturar el CPU
+    vTaskDelay(pdMS_TO_TICKS(200)); // Tiempo suficiente para no saturar el CPU
   }
 }
 

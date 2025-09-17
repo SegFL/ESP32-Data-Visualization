@@ -1,5 +1,12 @@
 
 #include <stdint.h>
+#include "../../modulos/time/time.h"
+
+#include <stdio.h>
+#include <modulos/serialCom/serialCom.h>
+#include "nvs.h"
+
+
 
 // Definición del typedef para un punto con dos enteros
 typedef struct {

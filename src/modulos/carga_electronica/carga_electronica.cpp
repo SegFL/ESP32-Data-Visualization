@@ -25,7 +25,7 @@ int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
 modoFuncionamiento_t modoFuncionamiento = NONE; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
-curve_mode_t curveMode = OFF_t; // Decide si le hace caso a los datos de la curva o a los del usuario
+curve_mode_t curveMode = ON_t; // Decide si le hace caso a los datos de la curva o a los del usuario
 
 bool arraySelected=false;
 int arraySelectedPos=-1;
@@ -55,11 +55,13 @@ void CargaElectronicaInit(){
         }
         
         //Agregar puntos a la curva usando la nueva función encapsulada
-        addPointToCurve(curveId, 10, 10);
-        addPointToCurve(curveId, 20, 20);
         addPointToCurve(curveId, 30, 30);
-
-
+        addPointToCurve(curveId, 40, 40);
+        addPointToCurve(curveId, 50, 50);
+        addPointToCurve(curveId, 60, 30);
+        addPointToCurve(curveId, 70, 50);
+        addPointToCurve(curveId, 80, 0);
+        
         writeSerialComln(String("Curva creada con ID: ") + String(curveId));
         // Las funciones sendCurves y printCurves ahora usan el array interno
         sendCurves();
@@ -82,11 +84,12 @@ void CargaElectronicaUpdate(){
       break;
 
     case ON_t:        
-      aux = getCurveValue(1);
+      aux = getCurveValue(0);
       // ⚠️ Ojo: este log puede consumir stack, comentar si hay problemas
-      //writeSerialComln(String("Valor de la curva: ") + String(aux));
+      writeSerialComln(String("Valor de la curva: ") + String(aux));
+      writeSerialComln(String("Valor de la curva: ") + String(aux));
+
       if(aux != -1){
-        writeSerialComln(String("Valor de la curva: ") + String(aux));
         referencia = aux; // Usar valor de la curva si es válido
       } else {
         // Si no hay valor válido, salir sin cambiar nada

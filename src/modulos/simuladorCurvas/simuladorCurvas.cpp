@@ -1,10 +1,7 @@
 
 
 #include "simuladorCurvas.h"
-#include <stdio.h>
-#include <modulos/serialCom/serialCom.h>
-#include "nvs.h"
-
+#include "../../modulos/time/time.h"
 curve_t** curveArray=NULL;
 int curveArraySize=0;
 
@@ -128,44 +125,38 @@ bool initCurve(curve_t *curve) {
 //No implemente los limites seteados en el createCurve(): Antes del return deveria validas los valores maximos y minimos
 //Recive comoparametro elnumero de IDde la curva en el array
 int getCurveValue(int curveId) {
-    if(curveArray == NULL) {
-        writeSerialComln(String("Error: Array de curvas no inicializado"));
+    if (curveArray == NULL) {
+        writeSerialComln("Error: Array de curvas no inicializado");
         return -1;
     }
-    if(curveId < 0 || curveId >= curveArraySize) {
-        writeSerialComln(String("Error: Curva no valida"));
+    if (curveId < 0 || curveId >= curveArraySize) {
+        writeSerialComln("Error: Curva no válida");
         return -1;
     }
 
-    //Selecciono laprimer curva habilitada(solo para probar)
-    int i = 0;
-    while(curveArray[i]!=NULL){
-        if(curveArray[i]->enabled==true ){
-            curveId = i;
-            break;
+    curve_t *curve = curveArray[curveId];
+    if (!curve || !curve->point || curve->contador <= 0) {
+        return -1; // no hay puntos válidos
+    }
+    if (!curve->enabled) {
+        return -1; // curva deshabilitada
+    }
 
+    unsigned long currentTime = getCurrentEpoch();
+    writeSerialComln(String("Current Time: ") + String(currentTime) +
+                     ", Curve Timestamp: " + String(curve->timestamp));
+
+    // Avanzar solo si no llegamos al último punto
+    if (curve->currentIndex < curve->contador - 1) {
+        unsigned long nextPointTime = curve->timestamp + curve->point[curve->currentIndex + 1].tiempo;
+
+        if (currentTime >= nextPointTime) {
+            curve->currentIndex++;
         }
     }
 
-
-    
-    curve_t *curve = curveArray[curveId];
-    if(!curve || !curve->point || curve->contador <= 0) {
-        return -1; // no hay puntos válidos
-    }
-
-
-    unsigned long currentTime = millis();
-
-
-    // Si pasamos el tiempo del siguiente punto, avanzamos
-    if(curve->currentIndex > 1 && currentTime >= curve->timestamp + curve->point[curve->currentIndex-1].tiempo*1000) {
-        // Si ya llegamos al final, devolvemos el último punto válido
-        return curve->point[curve->currentIndex-1].value;
-    }
-
-    // Si no, devolvemos el último punto válido
-    return curve->point[curve->currentIndex-1].value;
+    // Devolver el valor actual (sin pasarse del último)
+    return curve->point[curve->currentIndex].value;
 }
 
 
@@ -399,9 +390,12 @@ bool enableCurve(int curveId) {
 
     //Si esta habilitada desahbilita y viceversa
 
+    unsigned long t0 = getCurrentEpoch();
+
+
     curveArray[curveId]->enabled = !curveArray[curveId]->enabled;
     if(curveArray[curveId]->enabled==true)
-        curveArray[curveId]->timestamp = millis();
+        curveArray[curveId]->timestamp = t0;
     curveArray[curveId]->currentIndex = 0;
 
     return curveArray[curveId]->enabled;

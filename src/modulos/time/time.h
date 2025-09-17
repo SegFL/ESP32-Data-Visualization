@@ -17,4 +17,5 @@ bool setDateTime(int day, int month, int year, int hour, int minute);
 
 //Envia el tiempo en milisegundos desde el la ultima vez que se envio elcomando de crear archivo
 unsigned long customMillis();
+unsigned long getCurrentEpoch();
 

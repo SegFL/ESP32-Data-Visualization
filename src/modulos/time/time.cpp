@@ -3,6 +3,7 @@
 // Configuración de Wi-Fi
 bool saveManualDateTime(int year_, int month_, int day_, int hour_, int minute_, int second_);
 
+
 static unsigned long millisInit = 0; // milisegundos desde el incio del programa
 static unsigned long millisTranscurridos = 0; // milisegundos transcurridos desde el incio del programa
 static String timeString = ""; // Variable para almacenar la hora formateada
@@ -77,28 +78,24 @@ void TimeUpdate() {
     // Actualizar NTP
     if (timeClient.update()) {
         epochTime = timeClient.getEpochTime();
-        millisTranscurridos = millis();
 
-        // ⚡️ Avisar a la PC que la hora cambió
-        enviarComandoCrearArchivo();
     }
 
     // Si pasó más de 1 hora desde el último CREATE_FILE
-    if (customMillis() > 3600000) {
+    if (customMillis() > 3600000000) {
         enviarComandoCrearArchivo();
     }
 }
 
 void enviarComandoCrearArchivo() {
-    unsigned long epoch = 0;
-    unsigned long millisTranscurridos = 0;
-    getTime(epoch, millisTranscurridos);
+    unsigned long epoch, millisMedicion;
+    getTime(epoch, millisMedicion);
 
-    // Enviar solo epoch
     writeSerialComln(String("CREATE_FILE") + String(",") + String(epoch));
 
-    offsetMillis = millis(); // Reseteo el contador
+    offsetMillis = millis(); // aquí sí reiniciamos, porque es el tiempo de referencia para customMillis()
 }
+
 
 
 
@@ -246,4 +243,12 @@ bool setDateTime(int day, int month, int year, int hour, int minute) {
 
     return err == ESP_OK;
 }
+
+
+unsigned long getCurrentEpoch() {
+    time_t now;
+    time(&now);               // obtiene el epoch actual del sistema
+    return (unsigned long)now;
+}
+
 
