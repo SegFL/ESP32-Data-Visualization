@@ -118,30 +118,25 @@ void CargaElectronicaUpdate(){
   }
   
   // Aplicar el duty cycle actual (invertido)
-  int pwmValue = ((100 - dutyCycleAux) * MAX_DUTY_CYCLE) / 100;
+  int pwmValue = (int)((100.0 - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0);
   ledcWrite(PWM_CHANNEL, pwmValue);
 }
 
 
 //Cambia elvalor del duty cycle
 // Se espera un valor entre 0 y 100, si el valor es mayor al máximo permitido se limita al máximo permitido
-int PWMSetDC(int dc){
-  //Si el sistema esta en modo curva no se modifica el valor del duty cycle
-  /*
-  if(curveMode == ON){
-    return -1;
-  }
-  */
-  if(dc>=0 && dc<=100){
-    if(dc<=max_dc_value){
+float PWMSetDC(float dc) {
+  if (dc >= 0.0 && dc <= 100.0) {
+    if (dc <= max_dc_value) {
       DC = dc; 
-    }else{
+    } else {
       DC = max_dc_value; 
     }
     return DC;
   }
-  return -1; // Valor inválido
+  return -1.0; // Valor inválido
 }
+
 
 void PWMSetCurveMode(curve_mode_t state){
   curveMode = state;
@@ -161,8 +156,7 @@ bool PWMSetFrequency(int frecuencies){
   return false;
 
 }
-
-bool PWMSetMaxDC(int dc){
+bool PWMSetMaxDC(float dc){
   if(dc>=0 && dc<=100){
     max_dc_value = dc;
     return true;

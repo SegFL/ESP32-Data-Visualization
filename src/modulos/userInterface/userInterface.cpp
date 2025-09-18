@@ -220,9 +220,9 @@ void procesarDatos(String data) {
 
 
     if(menu->id==8){
-        int dutyCycle = data.toInt(); // Convertir el String a entero
+        float dutyCycle = data.toFloat(); // Convertir el String a entero
         //ToDo//int dc=PWMSetDC(dutyCycle);
-        int dc=dutyCycle;
+        float dc=dutyCycle;
         if (dc>=0 && dc<=100) {
             PWMSetDC(dc); // Cambiar el Duty Cycle
             writeSerialComln(String("Duty Cycle cambiado a: ") + String(dc) + "%");

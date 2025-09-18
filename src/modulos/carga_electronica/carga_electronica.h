@@ -28,9 +28,10 @@ typedef enum {
 
 void CargaElectronicaInit();
 void CargaElectronicaUpdate();
-int PWMSetDC(int dc);
+float PWMSetDC(float dc);
 bool PWMSetFrequency(int frecuencies);
-bool PWMSetMaxDC(int dc);
+
+bool PWMSetMaxDC(float dc);
 void PWMSetCurveMode(curve_mode_t mode);
 
 void printCargaElectronica(); 
