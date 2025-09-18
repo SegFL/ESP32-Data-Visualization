@@ -6,8 +6,8 @@
 // CORRECCIÓN: Eliminada variable global curve innecesaria que causaba confusión 
 
 const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
-const int PWM_FREQ = 312000;     // Frecuencia PWM deseada: 312 kHz
-const int PWM_RESOLUTION = 8;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
+const int PWM_FREQ = 19500;     // Frecuencia PWM deseada: 312 kHz
+const int PWM_RESOLUTION = 12;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
 //La resolucion maxima depende de la frecuecnia utilizada, si se quiere mas frecuencia se tiene que
 //sacrificar resolucion
 
@@ -149,7 +149,7 @@ void printCargaElectronica(){
 
 
 bool PWMSetFrequency(int frecuencies){
-  if(frecuencies>0 && frecuencies<500000){
+  if(frecuencies>0 && frecuencies<195000){
     ledcSetup(PWM_CHANNEL, frecuencies, PWM_RESOLUTION);
     return true;
   }

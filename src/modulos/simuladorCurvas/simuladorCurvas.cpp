@@ -153,6 +153,10 @@ int getCurveValue(int curveId) {
         if (currentTime >= nextPointTime) {
             curve->currentIndex++;
         }
+    }else{
+        // Si llegamos al último punto, deshabilitar la curva
+        curve->enabled = false;
+        writeSerialComln(String("Curva ") + String(curveId) + String(" finalizada y deshabilitada."));
     }
 
     // Devolver el valor actual (sin pasarse del último)
