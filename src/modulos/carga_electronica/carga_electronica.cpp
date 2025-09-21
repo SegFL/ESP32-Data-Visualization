@@ -6,8 +6,8 @@
 // CORRECCIÓN: Eliminada variable global curve innecesaria que causaba confusión 
 
 const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
-const int PWM_FREQ = 19500;     // Frecuencia PWM deseada: 312 kHz
-const int PWM_RESOLUTION = 12;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
+const int PWM_FREQ = 78125;     // Frecuencia PWM deseada: 312 kHz
+const int PWM_RESOLUTION = 10;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
 //La resolucion maxima depende de la frecuecnia utilizada, si se quiere mas frecuencia se tiene que
 //sacrificar resolucion
 
@@ -17,9 +17,9 @@ const int MAX_DUTY_CYCLE = (int)(pow(2, PWM_RESOLUTION) - 1); // Valor máximo d
 const int LED_OUTPUT_PIN = 18;   // Pin GPIO donde se genera la señal PWM
 
 // Variables globales
-int DC = 0;  // Duty cycle actual (0-100%)
+float DC = 0;  // Duty cycle actual (0-100%)
 
-int max_dc_value = 0; // Valor máximo del duty cycle (0-100%)
+float max_dc_value = 0; // Valor máximo del duty cycle (0-100%)
 
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
 modoFuncionamiento_t modoFuncionamiento = NONE; // Modo de funcionamiento inicial (PID o directo/NONE)
@@ -32,7 +32,7 @@ int arraySelectedPos=-1;
 
 
 
-int getDCPID(int dc);
+float getDCPID(float dc);
 
 void CargaElectronicaInit(){
 
@@ -55,12 +55,12 @@ void CargaElectronicaInit(){
         }
         
         //Agregar puntos a la curva usando la nueva función encapsulada
-        addPointToCurve(curveId, 30, 30);
-        addPointToCurve(curveId, 40, 40);
-        addPointToCurve(curveId, 50, 50);
-        addPointToCurve(curveId, 60, 30);
-        addPointToCurve(curveId, 70, 50);
-        addPointToCurve(curveId, 80, 0);
+        addPointToCurve(curveId, 10, 30.0f,LINEAR);
+        addPointToCurve(curveId, 25, 40.0f,LINEAR);
+        //addPointToCurve(curveId, 50, 50.0f,LINEAR);
+        //addPointToCurve(curveId, 60, 30.0f,LINEAR);
+        //addPointToCurve(curveId, 70, 50.0f,LINEAR);
+        //addPointToCurve(curveId, 80, 0.0f,LINEAR);
         
         writeSerialComln(String("Curva creada con ID: ") + String(curveId));
         // Las funciones sendCurves y printCurves ahora usan el array interno
@@ -71,31 +71,23 @@ void CargaElectronicaInit(){
 
 }
 void CargaElectronicaUpdate(){
-  // CORRECCIÓN CRÍTICA: Función ultra-simplificada para evitar stack overflow
-  // Eliminamos TODOS los logs para reducir el uso de stack
-  int dutyCycleAux = 0;
-  int referencia = 0;
-  int aux = 0;
+
+  float dutyCycleAux = 0;
+  float referencia = 0;
+  float aux = 0;
 
   // Selección de referencia
   switch(curveMode){
-    case OFF_t:
-      referencia = DC; // Usar siempre valor manual
-      break;
-
+    // Usar siempre valor manual
+    case OFF_t:referencia = DC; break;
     case ON_t:        
       aux = getCurveValue(0);
       // ⚠️ Ojo: este log puede consumir stack, comentar si hay problemas
       writeSerialComln(String("Valor de la curva: ") + String(aux));
-      writeSerialComln(String("Valor de la curva: ") + String(aux));
-
       if(aux != -1){
         referencia = aux; // Usar valor de la curva si es válido
-      } else {
-        // Si no hay valor válido, salir sin cambiar nada
-        return;
-      }
-      break;
+      } else {return;// Si no hay valor válido, salir sin cambiar nada 
+      } break;
 
     default:
       referencia = 0;
@@ -104,21 +96,13 @@ void CargaElectronicaUpdate(){
 
   // Selección de modo de funcionamiento
   switch(modoFuncionamiento){
-    case PID: 
-      dutyCycleAux = getDCPID(referencia);
-      break;
-
-    case NONE: 
-      dutyCycleAux = referencia;
-      break;
-
-    default:
-      dutyCycleAux = 0;
-      break;
+    case PID:  dutyCycleAux = getDCPID(referencia);break;
+    case NONE: dutyCycleAux = referencia;break;
+    default:   dutyCycleAux = 0; break;
   }
   
   // Aplicar el duty cycle actual (invertido)
-  int pwmValue = (int)((100.0 - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0);
+  int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
   ledcWrite(PWM_CHANNEL, pwmValue);
 }
 
@@ -130,11 +114,12 @@ float PWMSetDC(float dc) {
     if (dc <= max_dc_value) {
       DC = dc; 
     } else {
+      
       DC = max_dc_value; 
     }
     return DC;
   }
-  return -1.0; // Valor inválido
+  return -1.0f; // Valor inválido
 }
 
 
@@ -149,7 +134,7 @@ void printCargaElectronica(){
 
 
 bool PWMSetFrequency(int frecuencies){
-  if(frecuencies>0 && frecuencies<195000){
+  if(frecuencies>0 && frecuencies<PWM_FREQ){
     ledcSetup(PWM_CHANNEL, frecuencies, PWM_RESOLUTION);
     return true;
   }
@@ -166,7 +151,7 @@ bool PWMSetMaxDC(float dc){
 
 //Recivo el DutyCycle que busco poner a la salida y lo comparo con el valor en mA que me da
 //el sensor de corriente(INA219) obteniendo un valor de DC que pongo a la salida del uC
-int getDCPID(int dc){
+float getDCPID(float dc){
   // Implementar la lógica del PID aquí
   // Por ahora, simplemente devolver el valor de DC
   //Si no pongo nada basicamente estoy abriendo el lazo de control

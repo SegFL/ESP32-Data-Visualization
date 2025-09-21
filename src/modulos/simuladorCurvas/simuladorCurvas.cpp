@@ -5,6 +5,13 @@
 curve_t** curveArray=NULL;
 int curveArraySize=0;
 
+#define NUMERO_PASOS_XSEG 5//Cantidad de veces que se llamaa getcurvevalue por segundo t=200ms==>5 veces por segundo
+#define PERIODO_INTERRUPCION 0.2f // segundos (200ms)
+
+//Variables usadas para el modo lineal por incrementos
+static int index_pasos,numero_pasos=0; //Contador de pasos dentro del segmento
+static float delta_v,delta_t,pendiente,incremento=0.0f;
+
 
 
 curve_t** newCurveArray(int size){
@@ -69,7 +76,7 @@ int createCurve(int pin) {
     curve->pin = pin;
     curve->timestamp =0; // CORRECCIÓN: Inicializar con tiempo actual
     curve->point[0].tiempo = 0;
-    curve->point[0].value = 0;
+    curve->point[0].value = 0.0f;
     curve->contador = 1;
     curve->currentIndex=0;  
 
@@ -77,7 +84,7 @@ int createCurve(int pin) {
     // CORRECCIÓN: Inicializar todos los puntos restantes para evitar valores basura
     for(int i = 1; i < curve->size; i++) {
         curve->point[i].tiempo = 0;
-        curve->point[i].value = 0;
+        curve->point[i].value = 0.0f;
     }
     
     // Asignar la curva a la posición disponible en el array
@@ -125,6 +132,7 @@ bool initCurve(curve_t *curve) {
 //No implemente los limites seteados en el createCurve(): Antes del return deveria validas los valores maximos y minimos
 //Recive comoparametro elnumero de IDde la curva en el array
 int getCurveValue(int curveId) {
+    bool punto_nuevo=false;
     if (curveArray == NULL) {
         writeSerialComln("Error: Array de curvas no inicializado");
         return -1;
@@ -147,18 +155,66 @@ int getCurveValue(int curveId) {
                      ", Curve Timestamp: " + String(curve->timestamp));
 
     // Avanzar solo si no llegamos al último punto
-    if (curve->currentIndex < curve->contador - 1) {
+    if (curve->currentIndex < curve->contador -1) {
         unsigned long nextPointTime = curve->timestamp + curve->point[curve->currentIndex + 1].tiempo;
 
         if (currentTime >= nextPointTime) {
             curve->currentIndex++;
+            punto_nuevo=true;
         }
     }else{
+
         // Si llegamos al último punto, deshabilitar la curva
         curve->enabled = false;
         writeSerialComln(String("Curva ") + String(curveId) + String(" finalizada y deshabilitada."));
     }
 
+
+    if(punto_nuevo==true){
+        //Seleccion del tipo de punto (LINEAL o STEP)
+        if(curve->point[curve->currentIndex].type==LINEAR){
+            //Si elpunto es nuevo calculo los incrementos
+            index_pasos=0;//Reinicio el contador de pasos
+            delta_v=(curve->point[curve->currentIndex].value - curve->point[curve->currentIndex - 1].value);
+            delta_t=(curve->point[curve->currentIndex].tiempo - curve->point[curve->currentIndex - 1].tiempo);
+            numero_pasos=delta_t*NUMERO_PASOS_XSEG;
+            if(delta_t!=0){
+                pendiente=delta_v/delta_t;
+            }else{
+                pendiente=0;
+            }
+            incremento=pendiente*PERIODO_INTERRUPCION; //Valor a incrementar en cada ciclo
+        }else{
+            //Si es STEP no hay incrementos
+            incremento=0;
+        }
+
+        writeSerialComln(String("Curva ") + String(curveId) + String(" avanzó al punto index: ") + String(curve->currentIndex) +
+                         String(" [Tiempo: ") + String(curve->point[curve->currentIndex].tiempo) +
+                         String(", Valor: ") + String(curve->point[curve->currentIndex].value) +
+                         String(", Tipo: ") + (curve->point[curve->currentIndex].type == LINEAR ? "LINEAR" : "STEP") + String("]")+
+                         String(" incremento:")+String(incremento)+String(" numero_pasos:")+String(numero_pasos)+
+                         String(" delta_t:")+String(delta_t)+String(" delta_v:")+String(delta_v)+
+                         String(" pendiente:")+String(pendiente)
+                         );
+        punto_nuevo=false;
+    }
+
+
+    if(curve->point[curve->currentIndex].type==LINEAR){
+        writeSerialComln(String("Curva en modo LINEAL"));
+        //Devuelvo el valor anterior mas el incremento
+        if(index_pasos<numero_pasos) {
+            index_pasos++;
+
+        }else{
+            
+            //Si ya llegue al numero de pasos, devuelvo el valor actual
+            return curve->point[curve->currentIndex].value;
+        }
+
+        return curve->point[curve->currentIndex-1].value+(index_pasos)*incremento;
+    }
     // Devolver el valor actual (sin pasarse del último)
     return curve->point[curve->currentIndex].value;
 }
@@ -166,7 +222,7 @@ int getCurveValue(int curveId) {
 
 
 
-curve_t* addPoint(curve_t *curve, int tiempo, int value) {
+curve_t* addPoint(curve_t *curve, int tiempo, float value,aproximation_point_type_t type=STEP) {
     // Verifica que curve y curve->point no sean NULL
     if (!curve || !curve->point) return NULL;
 
@@ -185,18 +241,20 @@ curve_t* addPoint(curve_t *curve, int tiempo, int value) {
         }
         curve->point = new_points;
         curve->size += 10;
+        
     }
 
     // Asigna el valor del nuevo punto
     curve->point[curve->contador].tiempo = tiempo;
     curve->point[curve->contador].value = value;
+    curve->point[curve->contador].type = type;
     curve->contador++;
 
     return curve;
 }
 
 // NUEVA: Función encapsulada para agregar puntos por ID de curva
-int addPointToCurve(int curveId, int tiempo, int value) {
+int addPointToCurve(int curveId, int tiempo, float value,aproximation_point_type_t type) {
     if(curveArray == NULL) {
         writeSerialComln(String("Error: Array de curvas no inicializado"));
         return -1;
@@ -213,7 +271,7 @@ int addPointToCurve(int curveId, int tiempo, int value) {
         return -1;
     }
     
-    curve_t* result = addPoint(curve, tiempo, value);
+    curve_t* result = addPoint(curve, tiempo, value,type);
     if (result == NULL) {
         return -1;
     }
@@ -224,7 +282,7 @@ int addPointToCurve(int curveId, int tiempo, int value) {
 
 //Imprime por consola una curva en particular
 //La app no toma como valida una curva enviada por esta funcion
-void printCurves() {
+void printCurves() { 
     if(curveArray == NULL) {
         writeSerialComln(String("Error: Array de curvas es NULL"));
         return;
@@ -239,24 +297,40 @@ void printCurves() {
             writeSerialComln(String("Estado :") + String(curveArray[i]->enabled ? "Habilitada" : "Deshabilitada"));
             writeSerialComln(String("Timestamp: ") + String(curveArray[i]->timestamp));
             writeSerialComln(String("Cantidad de puntos: ") + String(curveArray[i]->contador));
-            writeSerialComln(String("Puntos:[Tiempo, Valor]"));
+            writeSerialComln(String("Puntos:[Tiempo, Valor, Tipo]"));
 
-            int lastIndex = curveArray[i]->contador - 1; // Último punto válido
+            int lastIndex = curveArray[i]->contador - 1; 
+            bool first = true; // 🚀 para controlar la coma
+
             for(int j = 0; j <= lastIndex; j++) {
                 int t = curveArray[i]->point[j].tiempo;
-                int v = curveArray[i]->point[j].value;
+                float v = curveArray[i]->point[j].value;
+                aproximation_point_type_t type = curveArray[i]->point[j].type;
 
-                // Siempre imprimir el primero y el último
+                char typeChar = '?';
+                switch(type) {
+                    case LINEAR: typeChar = 'L'; break;
+                    case STEP:   typeChar = 'S'; break;
+                    case S_CURVE: typeChar = 'C'; break;
+                }
+
                 if(j == 0 || j == lastIndex || (t != 0 || v != 0)) {
-                    char buffer[50];
-                    sprintf(buffer, ",[%d,%d]", t, v);
+                    char buffer[60];
+                    sprintf(buffer, "[%d,%.2f,%c]", t, v, typeChar);
+
+                    if (!first) {
+                        writeSerialCom(","); // solo agregar coma después del primero
+                    }
                     writeSerialCom(String(buffer));
+                    first = false;
                 }
             }
-            writeSerialComln(""); // Nueva línea al final
+            writeSerialComln(""); 
         }
     }
 }
+
+
 
 
 

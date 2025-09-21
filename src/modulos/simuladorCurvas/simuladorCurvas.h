@@ -6,12 +6,19 @@
 #include <modulos/serialCom/serialCom.h>
 #include "nvs.h"
 
+typedef enum {
+    STEP,
+    LINEAR,
+    S_CURVE //Sin implementar
 
+
+}aproximation_point_type_t;
 
 // Definición del typedef para un punto con dos enteros
 typedef struct {
     int tiempo;
-    int value;
+    float value;
+    aproximation_point_type_t type; 
 } point_t;
 
 // Definición del typedef para una estructura que contiene un puntero a point_t 
@@ -35,7 +42,7 @@ typedef struct {
 
 
 int createCurve(int pin);
-int addPointToCurve(int curveId, int tiempo, int value); // NUEVA: Función encapsulada
+int addPointToCurve(int curveId, int tiempo, float value,aproximation_point_type_t type);
 void UpdateCurve(curve_t *curve) ;
 curve_t** newCurveArray(int size);
 void printCurves();

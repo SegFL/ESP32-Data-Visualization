@@ -35,13 +35,16 @@ bool loadConfiguration();
 void saveValueNVS(const char* key, bool value);
 bool readValueNVS(const char* key);
 void printSensor(ADCData data);
-bool parseStringToInts(String str, int *num1, int *num2);
 
-bool parseStringToInts(const char* str, int* curve, int* tiempo, int* value);
+bool parseStringToPoint(String str, int* curve, int* tiempo, float* value, aproximation_point_type_t *type);
 
 static void onEnterNode(MenuNode* n);
 static void onUpdateNode(MenuNode* n);
 static bool nodeRequiresInput(int id);
+
+bool parseStringToInts(String str, int *num1, int *num2);
+
+
 void userInterfaceInit(){
     serialComInit();
     clearScreen();//Borra mensajes del ESP32 al iniciar el programa
@@ -223,7 +226,7 @@ void procesarDatos(String data) {
         float dutyCycle = data.toFloat(); // Convertir el String a entero
         //ToDo//int dc=PWMSetDC(dutyCycle);
         float dc=dutyCycle;
-        if (dc>=0 && dc<=100) {
+        if (dc>=0.0 && dc<=100.0) {
             PWMSetDC(dc); // Cambiar el Duty Cycle
             writeSerialComln(String("Duty Cycle cambiado a: ") + String(dc) + "%");
             
@@ -265,9 +268,11 @@ void procesarDatos(String data) {
     }
 
     if(menu->id ==20){
-        int curve, tiempo, value;
-        if (parseStringToInts(data.c_str(), &curve, &tiempo, &value)) {
-            if (addPointToCurve(curve, tiempo, value) == 0) {
+        int curve, tiempo;
+        float value;
+        aproximation_point_type_t type=STEP; //Por defecto es STEP
+        if (parseStringToPoint(data.c_str(), &curve, &tiempo, &value,&type)) {
+            if (addPointToCurve(curve, tiempo, value,type) == 0) {
                 // OK
             }
         } else {
@@ -357,6 +362,7 @@ bool parseStringToInts(String str, int *num1, int *num2) {
     }
     return false;     // No se leyeron correctamente
 }
+    
 
 
 
@@ -379,27 +385,25 @@ void printSensorData() {
 
 
 
-bool parseStringToInts(const char* str, int* curve, int* tiempo, int* value) {
-    if (!str || !curve || !tiempo || !value) return false;
+bool parseStringToPoint(String str, int *curve, int *tiempo, float *value, aproximation_point_type_t *type) {
+    writeSerialComln(String("Parseando: ") + str);
 
-    // Saltar espacios iniciales
-    while (isspace((unsigned char)*str)) str++;
+    int typeInt = 0;
 
-    // Debe empezar con '['
-    if (*str != '[') return false;
-    str++;
 
-    // Leer primer número (curve)
-    if (sscanf(str, " %d , %d , %d", curve, tiempo, value) != 3) {
-        return false;
+    if (sscanf(str.c_str(), "[%d,%d,%f,%d]", curve, tiempo, value, &typeInt) == 4) {
+        switch (typeInt) {
+            case 0: *type = STEP; break;
+            case 1: *type = LINEAR; break;
+            case 2: *type = S_CURVE; break;
+            default: return false;
+        }
+        return true;
     }
-
-    // Verificar que haya ']' al final
-    const char* cierre = strrchr(str, ']');
-    if (!cierre) return false;
-
-    return true;
+    return false;
 }
+
+
 
 
 
