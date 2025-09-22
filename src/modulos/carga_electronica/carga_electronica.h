@@ -1,6 +1,5 @@
-#ifndef PWM_H
-#define PWM_H
-
+#ifndef CARGA_ELECTRONICA_H
+#define CARGA_ELECTRONICA_H
 
 #include <esp32-hal-ledc.h>
 #include <esp32-hal.h>

@@ -1,3 +1,6 @@
+#ifndef SERIALCOM_H
+#define SERIALCOM_H
+
 #include <Arduino.h>
 #include <HardwareSerial.h>
 
@@ -42,5 +45,5 @@ void writeSerialCom(unsigned long data);
 
 
 
-
+#endif // SERIALCOM_H
 

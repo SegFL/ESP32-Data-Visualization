@@ -1,5 +1,5 @@
-
-#include <Arduino.h>
+#ifndef QUEUECOM_H
+#define QUEUECOM_H
 #include <queue>
 #include <ADCData.h>
 
@@ -19,3 +19,4 @@ bool receiveSensorDataToUserInterface(ADCData data[]);//userInterface->adc(No se
 void queueInit();
 
 
+#endif // QUEUECOM_H

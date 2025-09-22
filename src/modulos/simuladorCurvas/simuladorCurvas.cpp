@@ -77,6 +77,7 @@ int createCurve(int pin) {
     curve->timestamp =0; // CORRECCIÓN: Inicializar con tiempo actual
     curve->point[0].tiempo = 0;
     curve->point[0].value = 0.0f;
+    curve->point[0].type = STEP; // o LINEAR, pero definido
     curve->contador = 1;
     curve->currentIndex=0;  
 

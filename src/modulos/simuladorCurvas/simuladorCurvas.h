@@ -1,4 +1,5 @@
-
+#ifndef SIMULADORCURVAS_H
+#define SIMULADORCURVAS_H
 #include <stdint.h>
 #include "../../modulos/time/time.h"
 
@@ -56,3 +57,4 @@ bool enableCurve(int curveId);
 void saveCurveNVS(const char* key, int curveId);
 bool loadCurveNVS(const char* key);
 
+#endif // SIMULADORCURVAS_H

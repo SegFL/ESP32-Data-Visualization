@@ -1,3 +1,6 @@
+#ifndef TIME_H
+#define TIME_H
+
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
@@ -19,3 +22,4 @@ bool setDateTime(int day, int month, int year, int hour, int minute);
 unsigned long customMillis();
 unsigned long getCurrentEpoch();
 
+#endif // TIME_H

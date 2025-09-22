@@ -1,5 +1,5 @@
-
-
+#ifndef MENUTREE_H
+#define MENUTREE_H
 #include <stdlib.h>
 #include <Arduino.h>
 #include <cstring>  // Para strncpy
@@ -32,3 +32,5 @@ char* get_title(MenuNode* menu);
 void freeMenu(MenuNode *node);
 void printNode(MenuNode *node);
 void printFullMenu(MenuNode *node) ;
+
+#endif

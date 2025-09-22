@@ -1,4 +1,5 @@
-
+#ifndef USERINTERFACE_H
+#define USERINTERFACE_H
 #include "../menuTree/menuTree.h"
 #include "../serialCom/serialCom.h"
 
@@ -9,3 +10,5 @@
 
 void userInterfaceInit();
 void userInterfaceUpdate();
+
+#endif // USERINTERFACE_H
