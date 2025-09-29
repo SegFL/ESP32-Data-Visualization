@@ -86,6 +86,7 @@ int createCurve(int pin) {
     for(int i = 1; i < curve->size; i++) {
         curve->point[i].tiempo = 0;
         curve->point[i].value = 0.0f;
+        curve->point[i].type = STEP;
     }
     
     // Asignar la curva a la posición disponible en el array
@@ -168,6 +169,7 @@ int getCurveValue(int curveId) {
         // Si llegamos al último punto, deshabilitar la curva
         curve->enabled = false;
         writeSerialComln(String("Curva ") + String(curveId) + String(" finalizada y deshabilitada."));
+        return 0.0;
     }
 
 

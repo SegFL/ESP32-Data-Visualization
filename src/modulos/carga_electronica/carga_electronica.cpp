@@ -32,7 +32,6 @@ int arraySelectedPos=-1;
 
 
 
-float getDCPID(float dc);
 
 void CargaElectronicaInit(){
 
@@ -57,10 +56,10 @@ void CargaElectronicaInit(){
         //Agregar puntos a la curva usando la nueva función encapsulada
         addPointToCurve(curveId, 10, 30.0f,LINEAR);
         addPointToCurve(curveId, 25, 40.0f,LINEAR);
-        //addPointToCurve(curveId, 50, 50.0f,LINEAR);
-        //addPointToCurve(curveId, 60, 30.0f,LINEAR);
-        //addPointToCurve(curveId, 70, 50.0f,LINEAR);
-        //addPointToCurve(curveId, 80, 0.0f,LINEAR);
+        addPointToCurve(curveId, 50, 50.0f,LINEAR);
+        addPointToCurve(curveId, 60, 30.0f,LINEAR);
+        addPointToCurve(curveId, 70, 50.0f,LINEAR);
+        addPointToCurve(curveId, 80, 0.0f,LINEAR);
         
         writeSerialComln(String("Curva creada con ID: ") + String(curveId));
         // Las funciones sendCurves y printCurves ahora usan el array interno
@@ -81,7 +80,7 @@ void CargaElectronicaUpdate(){
     // Usar siempre valor manual
     case OFF_t:referencia = DC; break;
     case ON_t:        
-      aux = getCurveValue(0);
+      aux = getCurveValue(1);
       // ⚠️ Ojo: este log puede consumir stack, comentar si hay problemas
       writeSerialComln(String("Valor de la curva: ") + String(aux));
       if(aux != -1){
@@ -149,14 +148,7 @@ bool PWMSetMaxDC(float dc){
   return false;
 }
 
-//Recivo el DutyCycle que busco poner a la salida y lo comparo con el valor en mA que me da
-//el sensor de corriente(INA219) obteniendo un valor de DC que pongo a la salida del uC
-float getDCPID(float dc){
-  // Implementar la lógica del PID aquí
-  // Por ahora, simplemente devolver el valor de DC
-  //Si no pongo nada basicamente estoy abriendo el lazo de control
-  return dc;
-}
+
 
 
 

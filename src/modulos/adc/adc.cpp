@@ -7,6 +7,8 @@
 #include <modulos/userInterface/userInterface.h>
 #include <modulos/time/time.h>
 #include <modulos/carga_electronica/carga_electronica.h>
+
+float lastCurrent_mA = 0.0f; // Variable para almacenar la última corriente medida
 #define NUMBER_OF_SENSORS 1 // Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 void adcInit() {
     // Inicializar el buffer
@@ -33,6 +35,11 @@ void  leerADC(){
           writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.current_mA)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.power_mW)+","+String(temp.pin));
         }
       }
+      lastCurrent_mA = temp.current_mA; // Actualizar la última corriente medida
       i++;
   }
+}
+
+float getLastCurrentData(){
+  return lastCurrent_mA;
 }

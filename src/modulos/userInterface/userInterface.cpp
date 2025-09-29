@@ -273,10 +273,10 @@ void procesarDatos(String data) {
         aproximation_point_type_t type=STEP; //Por defecto es STEP
         if (parseStringToPoint(data.c_str(), &curve, &tiempo, &value,&type)) {
             if (addPointToCurve(curve, tiempo, value,type) == 0) {
-                // OK
+                writeSerialComln(String("Punto agregado a la curva ") + String(curve) + String(": [Tiempo: ") + String(tiempo) + String(", Valor: ") + String(value) + String(", Tipo: ") + (type == LINEAR ? "LINEAR" : (type == STEP ? "STEP" : "S_CURVE")) + String("]"));
             }
         } else {
-            Serial.println("❌ Formato inválido. Use [curve,tiempo,value]");
+            writeSerialComln(String("❌ Formato inválido. Use [curve,tiempo,value]"));
         }
     }
     
@@ -458,7 +458,7 @@ static void onEnterNode(MenuNode* n) {
             case 9:  writeSerialComln("Ingrese frecuencia (>0) y presione '-'"); break;
             case 11: writeSerialComln("Ingrese Max DC (0-100) y presione '-'"); break;
             case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y presione '-'"); break;
-            case 20: writeSerialComln("Formato: [curva,tiempo,valor] y presione '-'"); break;
+            case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione '-'"); break;
             case 21: writeSerialComln("Activar modo curva (Y/N) y presione '-'"); break;
             case 22: writeSerialComln("ID de curva a GUARDAR y presione '-'"); break;
             case 23: writeSerialComln("ID de curva a CARGAR y presione '-'"); break;

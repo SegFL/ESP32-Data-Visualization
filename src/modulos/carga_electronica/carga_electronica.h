@@ -5,6 +5,9 @@
 #include <esp32-hal.h>
 #include <HardwareSerial.h>
 #include <modulos/serialCom/serialCom.h>
+#include "../../modulos/pid/pid.h"
+#include "../../modulos/adc/adc.h"
+
 
 
 //selecciona si se usa un PID o un lazo abierto de control

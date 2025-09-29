@@ -1,78 +1,45 @@
-/*
-#define MAX_SAFE_CURRENT 400f
 
-// ---------- parámetros PID ----------
-float Kp = 0.3f;
-float Ti = 10.0f;   // segundos
-float Td = 0.0f;    // segundos
-float Ts = 0.2f;    // segundos (muestreo cada 200 ms)
 
-float I_max = 0.8f;  // límites integrador (en unidades de salida)
-float I_min = -0.8f;
+#include "pid.h"
+#define MAX_SAFE_CURRENT 400.0f
 
-float out_min = 0.0f;   // por ejemplo duty 0.0 .. 1.0
-float out_max = 1.0f;
 
-float integrator = 0.0f;
-float measured_prev = 0.0f;
+// ====== Parámetros PI ======
+float Kp = 0.05f;
+float Ki = 0.01f;
+float Ts = 0.1f;   // período de muestreo (segundos)
+float integral = 0.0f;
 
-// setpoint y mediciones
-volatile float setpoint_current = 0.0f; // en Amperios
-volatile float measured_current = 0.0f; // actualizar desde I2C read
+// ====== DutyCycle actual (normalizado 0..1) ======
+float duty_norm = 0.0f;
 
-// ---------- función de control, llamada cada Ts (ej: por timer o bucle con sleep) ----------
-void pid_control_step(void) {
-    float error = setpoint_current - measured_current;
+// ====== Función de control ======
+float getDCPID(float referencia_mA) {
+    // 1. Leer corriente medida
+    float I_meas = getLastCurrentData();  // en mA
 
-    // P
-    float P = Kp * error;
+    // 2. Calcular error
+    float error = referencia_mA - I_meas;
 
-    // I (usar incremento proporcional a Kp/Ti)
-    if (Ti > 0.0f) {
-        float I_increment = Kp * (Ts / Ti) * error;
-        integrator += I_increment;
-        if (integrator > I_max) integrator = I_max;
-        if (integrator < I_min) integrator = I_min;
-    } else {
-        integrator = 0.0f;
+    // 3. Integración
+    integral += error * Ts;
+
+    // 4. Acción de control PI (incremental en duty)
+    float u = Kp * error + Ki * integral;
+
+    duty_norm += u;
+
+    // 5. Saturar duty (0..1) y anti-windup
+    if (duty_norm > 1.0f) {
+        duty_norm = 1.0f;
+        integral -= error * Ts; // anti-windup
+    }
+    if (duty_norm < 0.0f) {
+        duty_norm = 0.0f;
+        integral -= error * Ts;
     }
 
-    // D (sobre medicion para evitar kick)
-    float D = 0.0f;
-
-    if (Td > 0.0f) {
-        D = -Kp * (Td / Ts) * (measured_current - measured_prev);
-    }
-   
-
-    // salida no saturada
-    float out_unsat = P + integrator + D;
-
-    // saturar salida
-    float out = out_unsat;
-    if (out > out_max) out = out_max;
-    if (out < out_min) out = out_min;
-
-    // Anti-windup simple (no integrar si saturado y error empuja más hacia saturación)
-    if ( (out == out_max && error > 0.0f) || (out == out_min && error < 0.0f) ) {
-        // revertir último incremento de integrador
-        if (Ti > 0.0f) integrator -= Kp * (Ts / Ti) * error;
-        // alternativa: usar back-calculation (más fino)
-    }
-
-    // aplicar salida al actuador
-    // ejemplo: actuador espera 0..1 float -> mapear a PWM o DAC
-
-    // protección rápida
-    if (measured_current > MAX_SAFE_CURRENT)
-        actuador_set(0.0f); // apagar
-
-    actuador_set(out);
-
-    // actualizar prev
-    measured_prev = measured_current;
-
-    // protección rápida
-    if (measured_current > MAX_SAFE_CURRENT) emergency_shutdown();
+    // 6. Devolver duty en rango [0..1]
+    return duty_norm;
 }
-*/
+

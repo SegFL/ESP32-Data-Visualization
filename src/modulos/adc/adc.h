@@ -9,7 +9,7 @@
 
 void adcInit() ;
 void  leerADC();
-
+float getLastCurrentData();
 bool ADCEmpty();
 
 #endif // ADC_H
