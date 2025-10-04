@@ -7,12 +7,12 @@ int curveArraySize=0;
 
 #define NUMERO_PASOS_XSEG 5//Cantidad de veces que se llamaa getcurvevalue por segundo t=200ms==>5 veces por segundo
 #define PERIODO_INTERRUPCION 0.2f // segundos (200ms)
-
+#define MAX_PINES 4
 //Variables usadas para el modo lineal por incrementos
 static int index_pasos,numero_pasos=0; //Contador de pasos dentro del segmento
 static float delta_v,delta_t,pendiente,incremento=0.0f;
-
-
+curve_t* pinToCurve[MAX_PINES];
+void calcular_incrementos(bool puntro_nuevo,curve_t* curve);
 
 curve_t** newCurveArray(int size){
     curve_t** newArray=(curve_t**)malloc(sizeof(curve_t*)*size);
@@ -22,6 +22,9 @@ curve_t** newCurveArray(int size){
     }
     for(int i=0;i<size;i++){
         newArray[i]=NULL;
+    }
+    for(int i=0;i<MAX_PINES;i++){
+        pinToCurve[i]=NULL;
     }
     return newArray;
 }
@@ -133,18 +136,19 @@ bool initCurve(curve_t *curve) {
 //Si no hay puntos, devuelve -1
 //No implemente los limites seteados en el createCurve(): Antes del return deveria validas los valores maximos y minimos
 //Recive comoparametro elnumero de IDde la curva en el array
-int getCurveValue(int curveId) {
+int getCurveValue(int pin) {
     bool punto_nuevo=false;
     if (curveArray == NULL) {
         writeSerialComln("Error: Array de curvas no inicializado");
         return -1;
     }
-    if (curveId < 0 || curveId >= curveArraySize) {
+    if (pin < 0 || pin >= MAX_PINES) {
         writeSerialComln("Error: Curva no válida");
         return -1;
     }
 
-    curve_t *curve = curveArray[curveId];
+    //Curva asociada al pin
+    curve_t *curve = pinToCurve[pin];
     if (!curve || !curve->point || curve->contador <= 0) {
         return -1; // no hay puntos válidos
     }
@@ -168,40 +172,13 @@ int getCurveValue(int curveId) {
 
         // Si llegamos al último punto, deshabilitar la curva
         curve->enabled = false;
-        writeSerialComln(String("Curva ") + String(curveId) + String(" finalizada y deshabilitada."));
+        writeSerialComln(String("Curva del pin") + String(pin) + String(" finalizada y deshabilitada."));
         return 0.0;
     }
 
 
-    if(punto_nuevo==true){
-        //Seleccion del tipo de punto (LINEAL o STEP)
-        if(curve->point[curve->currentIndex].type==LINEAR){
-            //Si elpunto es nuevo calculo los incrementos
-            index_pasos=0;//Reinicio el contador de pasos
-            delta_v=(curve->point[curve->currentIndex].value - curve->point[curve->currentIndex - 1].value);
-            delta_t=(curve->point[curve->currentIndex].tiempo - curve->point[curve->currentIndex - 1].tiempo);
-            numero_pasos=delta_t*NUMERO_PASOS_XSEG;
-            if(delta_t!=0){
-                pendiente=delta_v/delta_t;
-            }else{
-                pendiente=0;
-            }
-            incremento=pendiente*PERIODO_INTERRUPCION; //Valor a incrementar en cada ciclo
-        }else{
-            //Si es STEP no hay incrementos
-            incremento=0;
-        }
+    calcular_incrementos(punto_nuevo,curve);
 
-        writeSerialComln(String("Curva ") + String(curveId) + String(" avanzó al punto index: ") + String(curve->currentIndex) +
-                         String(" [Tiempo: ") + String(curve->point[curve->currentIndex].tiempo) +
-                         String(", Valor: ") + String(curve->point[curve->currentIndex].value) +
-                         String(", Tipo: ") + (curve->point[curve->currentIndex].type == LINEAR ? "LINEAR" : "STEP") + String("]")+
-                         String(" incremento:")+String(incremento)+String(" numero_pasos:")+String(numero_pasos)+
-                         String(" delta_t:")+String(delta_t)+String(" delta_v:")+String(delta_v)+
-                         String(" pendiente:")+String(pendiente)
-                         );
-        punto_nuevo=false;
-    }
 
 
     if(curve->point[curve->currentIndex].type==LINEAR){
@@ -221,6 +198,42 @@ int getCurveValue(int curveId) {
     // Devolver el valor actual (sin pasarse del último)
     return curve->point[curve->currentIndex].value;
 }
+
+void calcular_incrementos(bool punto_nuevo,curve_t *curve) {
+
+        if(punto_nuevo==true){
+        //Seleccion del tipo de punto (LINEAL o STEP)
+        if(curve->point[curve->currentIndex].type==LINEAR){
+            //Si elpunto es nuevo calculo los incrementos
+            index_pasos=0;//Reinicio el contador de pasos
+            delta_v=(curve->point[curve->currentIndex].value - curve->point[curve->currentIndex - 1].value);
+            delta_t=(curve->point[curve->currentIndex].tiempo - curve->point[curve->currentIndex - 1].tiempo);
+            numero_pasos=delta_t*NUMERO_PASOS_XSEG;
+            if(delta_t!=0){
+                pendiente=delta_v/delta_t;
+            }else{
+                pendiente=0;
+            }
+            incremento=pendiente*PERIODO_INTERRUPCION; //Valor a incrementar en cada ciclo
+        }else{
+            //Si es STEP no hay incrementos
+            incremento=0;
+        }
+
+        writeSerialComln(String("Curva ") + String(" avanzó al punto index: ") + String(curve->currentIndex) +
+                         String(" [Tiempo: ") + String(curve->point[curve->currentIndex].tiempo) +
+                         String(", Valor: ") + String(curve->point[curve->currentIndex].value) +
+                         String(", Tipo: ") + (curve->point[curve->currentIndex].type == LINEAR ? "LINEAR" : "STEP") + String("]")+
+                         String(" incremento:")+String(incremento)+String(" numero_pasos:")+String(numero_pasos)+
+                         String(" delta_t:")+String(delta_t)+String(" delta_v:")+String(delta_v)+
+                         String(" pendiente:")+String(pendiente)
+                         );
+        punto_nuevo=false;
+    }
+
+}
+
+
 
 
 
@@ -286,53 +299,18 @@ int addPointToCurve(int curveId, int tiempo, float value,aproximation_point_type
 //Imprime por consola una curva en particular
 //La app no toma como valida una curva enviada por esta funcion
 void printCurves() { 
-    if(curveArray == NULL) {
-        writeSerialComln(String("Error: Array de curvas es NULL"));
+    if (curveArray == NULL) {
+        writeSerialComln("Error: Array de curvas es NULL");
         return;
     }
+
     writeSerialComln(String("curveArraySize: ") + String(curveArraySize));
-
-    for(int i = 0; i < curveArraySize; i++) {
-        writeSerialComln(String("==================================="));
-        if(curveArray[i] != NULL) {
-            writeSerialComln(String("Curva ") + String(i));
-            writeSerialComln(String("Pin asociado: ") + String(curveArray[i]->pin));
-            writeSerialComln(String("Estado :") + String(curveArray[i]->enabled ? "Habilitada" : "Deshabilitada"));
-            writeSerialComln(String("Timestamp: ") + String(curveArray[i]->timestamp));
-            writeSerialComln(String("Cantidad de puntos: ") + String(curveArray[i]->contador));
-            writeSerialComln(String("Puntos:[Tiempo, Valor, Tipo]"));
-
-            int lastIndex = curveArray[i]->contador - 1; 
-            bool first = true; // 🚀 para controlar la coma
-
-            for(int j = 0; j <= lastIndex; j++) {
-                int t = curveArray[i]->point[j].tiempo;
-                float v = curveArray[i]->point[j].value;
-                aproximation_point_type_t type = curveArray[i]->point[j].type;
-
-                char typeChar = '?';
-                switch(type) {
-                    case LINEAR: typeChar = 'L'; break;
-                    case STEP:   typeChar = 'S'; break;
-                    case S_CURVE: typeChar = 'C'; break;
-                }
-
-                if(j == 0 || j == lastIndex || (t != 0 || v != 0)) {
-                    char buffer[60];
-                    sprintf(buffer, "[%d,%.2f,%c]", t, v, typeChar);
-
-                    if (!first) {
-                        writeSerialCom(","); // solo agregar coma después del primero
-                    }
-                    writeSerialCom(String(buffer));
-                    first = false;
-                }
-            }
-            writeSerialComln(""); 
+    for (int i = 0; i < curveArraySize; i++) {
+        if (curveArray[i] != NULL) {
+            printCurve(curveArray[i], i);
         }
     }
 }
-
 
 
 
@@ -454,36 +432,51 @@ int getCurveCount() {
     return count;
 }
 
-//Habilita una curva para que comience a ejecutarse
-bool enableCurve(int curveId) {
-    if(curveArray == NULL) {
-        writeSerialComln(String("Error: Array de curvas no inicializado"));
+// Habilita o deshabilita una curva
+bool enableCurve(int curveId, int pin) {
+    if (curveArray == NULL) {writeSerialComln("Error: Array de curvas no inicializado");return false;}
+    if (curveId < 0 || curveId >= curveArraySize) {writeSerialComln("Error: Curva no válida");return false;}
+    if (pin < 0 || pin >= MAX_PINES) {writeSerialComln("Error: Pin no válido");return false;}
+    if (curveArray[curveId] == NULL) {writeSerialComln("Error: Curva no existe");return false;}
+
+    curve_t *curve = curveArray[curveId];
+
+    // Toggle de estado
+    if (curve->enabled) {
+        // Si estaba habilitada → deshabilitar
+        curve->enabled = false;
+        curve->timestamp = 0;
+        curve->currentIndex = 0;
+        pinToCurve[pin]=NULL; // Desaociar curva al pin
+        writeSerialComln(String("Curva ") + String(curveId) + " deshabilitada.");
         return false;
+    } else {
+        // Si estaba deshabilitada → habilitar
+        unsigned long t0 = getCurrentEpoch();
+        curve->enabled = true;
+        curve->timestamp = t0;
+        curve->currentIndex = 0;
+
+        // Verificar si la curva ya está asociada a otro pin
+        for (int i = 0; i < MAX_PINES; i++) {
+            if (pinToCurve[i] == curveArray[curveId]) {
+                writeSerialComln(String("Error: La curva ") + String(curveId) +
+                                " ya está asociada al pin " + String(i));
+                curve->enabled = false; // revertir habilitación
+                return false;
+            }
+        }
+
+        curve->pin = pin; // asignar pin cada vez que se habilita
+        pinToCurve[pin]=curveArray[curveId]; // Asociar curva al pin
+        writeSerialComln(String("Curva ") + String(curveId) + " habilitada en pin " + String(pin));
+        return true;
     }
-    if (curveId < 0 || curveId >= curveArraySize) {
-        writeSerialComln(String("Error: Curva no valida"));
-        return false;
-    }
-    if(curveArray[curveId] == NULL) {
-        writeSerialComln(String("Error: Curva no existe"));
-        return false;
-    }
-
-    //Si esta habilitada desahbilita y viceversa
-
-    unsigned long t0 = getCurrentEpoch();
-
-
-    curveArray[curveId]->enabled = !curveArray[curveId]->enabled;
-    if(curveArray[curveId]->enabled==true)
-        curveArray[curveId]->timestamp = t0;
-    curveArray[curveId]->currentIndex = 0;
-
-    return curveArray[curveId]->enabled;
 }
 
 
 
+//Nombre de la curva (key)<curveX> y el ID de la curva en el array
 void saveCurveNVS(const char* key, int curveId) {
     nvs_handle_t handle;
     if(curveArray == NULL) {
@@ -599,4 +592,130 @@ bool loadCurveNVS(const char* key) {
     nvs_close(handle);
     return true;
 }
+
+
+
+
+
+void printCurve(curve_t* c, int index) {
+    if (c == NULL) {
+        writeSerialComln("Curva NULL");
+        return;
+    }
+
+    writeSerialComln("===================================");
+    if (index >= 0) {
+        writeSerialComln(String("Curva ") + String(index));
+    }
+    writeSerialComln(String("Pin asociado: ") + String(c->pin));
+    writeSerialComln(String("Estado: ") + String(c->enabled ? "Habilitada" : "Deshabilitada"));
+    writeSerialComln(String("Timestamp: ") + String(c->timestamp));
+    writeSerialComln(String("Cantidad de puntos: ") + String(c->contador));
+    writeSerialComln("Puntos: [Tiempo, Valor, Tipo]");
+
+    int lastIndex = c->contador - 1;
+    bool first = true;
+
+    for (int j = 0; j <= lastIndex; j++) {
+        int t = c->point[j].tiempo;
+        float v = c->point[j].value;
+        aproximation_point_type_t type = c->point[j].type;
+
+        char typeChar = '?';
+        switch (type) {
+            case LINEAR:  typeChar = 'L'; break;
+            case STEP:    typeChar = 'S'; break;
+            case S_CURVE: typeChar = 'C'; break;
+        }
+
+        if (j == 0 || j == lastIndex || (t != 0 || v != 0)) {
+            char buffer[60];
+            sprintf(buffer, "[%d,%.2f,%c]", t, v, typeChar);
+
+            if (!first) {
+                writeSerialCom(",");
+            }
+            writeSerialCom(String(buffer));
+            first = false;
+        }
+    }
+    writeSerialComln("");
+}
+
+
+bool printCurveFromNvs(const char* key) {
+    curve_t tempCurve;
+    memset(&tempCurve, 0, sizeof(curve_t));
+
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        writeSerialComln("Error al abrir NVS para lectura");
+        return false;
+    }
+
+    // Verificar si existe la clave "_size" → si no existe, la curva no está guardada
+    int size = 0;
+    err = nvs_get_i32(handle, (String(key) + "_size").c_str(), &size);
+    if (err != ESP_OK || size <= 0) {
+        nvs_close(handle);
+        return false;
+    }
+
+    // Leer metadatos principales
+    nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &tempCurve.Imax);
+    nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &tempCurve.Imin);
+    nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &tempCurve.Vmax);
+    nvs_get_i32(handle, (String(key) + "_Vmin").c_str(), &tempCurve.Vmin);
+    nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &tempCurve.Pmax);
+    nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &tempCurve.Pmin);
+    nvs_get_i32(handle, (String(key) + "_contador").c_str(), &tempCurve.contador);
+    nvs_get_i32(handle, (String(key) + "_size").c_str(), &tempCurve.size);
+    nvs_get_i32(handle, (String(key) + "_pin").c_str(), &tempCurve.pin);
+    nvs_get_u32(handle, (String(key) + "_timestamp").c_str(), &tempCurve.timestamp);
+
+    uint8_t enabled = 0;
+    nvs_get_u8(handle, (String(key) + "_enabled").c_str(), &enabled);
+    tempCurve.enabled = (enabled != 0);
+
+    // Leer puntos si existen
+    if (tempCurve.size > 0) {
+        size_t blob_size = sizeof(point_t) * tempCurve.size;
+        tempCurve.point = (point_t*) malloc(blob_size);
+        if (tempCurve.point != NULL) {
+            err = nvs_get_blob(handle, (String(key) + "_points").c_str(),
+                               tempCurve.point, &blob_size);
+            if (err != ESP_OK) {
+                free(tempCurve.point);
+                tempCurve.point = NULL;
+            }
+        }
+    } else {
+        tempCurve.point = NULL;
+    }
+
+    nvs_close(handle);
+
+    // Imprimir curva
+    writeSerialComln("===================================");
+    writeSerialComln(String("Curva ") + key);
+    writeSerialComln(String("Pin asociado: ") + String(tempCurve.pin));
+    writeSerialComln(String("Estado: ") + (tempCurve.enabled ? "Habilitada" : "Deshabilitada"));
+    writeSerialComln(String("Timestamp: ") + String(tempCurve.timestamp));
+    writeSerialComln(String("Cantidad de puntos: ") + String(tempCurve.size));
+    writeSerialComln("Puntos: [Tiempo, Valor, Tipo]");
+
+    if (tempCurve.point != NULL) {
+        for (int i = 0; i < tempCurve.size; i++) {
+            writeSerialComln("[" + String(tempCurve.point[i].tiempo) + "," +
+                             String(tempCurve.point[i].value, 2) + "," +
+                             String(tempCurve.point[i].type) + "]");
+        }
+        free(tempCurve.point);
+    }
+
+    return true;
+}
+
+
 

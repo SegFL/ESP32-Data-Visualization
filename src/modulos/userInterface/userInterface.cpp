@@ -1,4 +1,3 @@
-#include <nvs.h>
 #include <string>
 #include <ctype.h>
 
@@ -17,7 +16,6 @@
 #define SEND_DATA true
 #define NOT_SEND_DATA false
 
-
 static MenuNode *menu = nullptr;
 String data_buffer = ""; //Variable para almacenar los datos recibidos
 bool aceptandoDatos=false;
@@ -32,8 +30,7 @@ void procesarDatos(String data);
 void printSensorData();
 
 bool loadConfiguration();
-void saveValueNVS(const char* key, bool value);
-bool readValueNVS(const char* key);
+
 void printSensor(ADCData data);
 
 bool parseStringToPoint(String str, int* curve, int* tiempo, float* value, aproximation_point_type_t *type);
@@ -43,8 +40,8 @@ static void onUpdateNode(MenuNode* n);
 static bool nodeRequiresInput(int id);
 
 bool parseStringToInts(String str, int *num1, int *num2);
-
-
+void printSavedCurves();
+void printAllCurves();
 void userInterfaceInit(){
     serialComInit();
     clearScreen();//Borra mensajes del ESP32 al iniciar el programa
@@ -148,39 +145,9 @@ bool loadConfiguration(){
 }
 
 
-void saveValueNVS(const char* key, bool value) {
-    nvs_handle_t my_handle;
-    esp_err_t err = nvs_open("storage", NVS_READWRITE, &my_handle);
-    if (err == ESP_OK) {
-        err = nvs_set_u8(my_handle, key, value ? 1 : 0); // Guardar el valor como uint8_t
-        if (err == ESP_OK) {
-            err = nvs_commit(my_handle); // Confirmar los cambios
-        }
-        nvs_close(my_handle); // Cerrar el handle
-    } else {
-        writeSerialComln(String("Error al abrir NVS"));
-    }
-}
 
-bool readValueNVS(const char* key) {
-    nvs_handle_t my_handle;
-    uint8_t value = 0; // Valor por defecto
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
-    if (err == ESP_OK) {
-        err = nvs_get_u8(my_handle, key, &value);
-        nvs_close(my_handle);
-        if (err == ESP_OK) {
-            return value; // Retornar el valor leído
-        } else if (err == ESP_ERR_NVS_NOT_FOUND) {
-            writeSerialComln(String("Clave no encontrada en NVS"));
-        } else {
-            writeSerialComln(String("Error al leer NVS"));
-        }
-    } else {
-        writeSerialComln(String("Error al abrir NVS"));
-    }
-    return false; // Retornar false en caso de error
-}
+
+
 
 
 
@@ -253,12 +220,31 @@ void procesarDatos(String data) {
 
     if (menu->id == 12){
     }
+
     
     if(menu->id ==17){
 
 
 
     }
+
+    if(menu->id==18){
+
+        int num1;
+        if(sscanf(data.c_str(), "%d", &num1) == 1){
+            int id =createCurve(num1);
+            if(id>=0){
+                writeSerialComln(String("Curva creada en pin: ") + String(num1) +String(" con id:")+String(id) );
+            }else{
+                writeSerialComln(String("Error al crear la curva en el pin: ") + String(num1) );
+
+            }
+        }else{
+            writeSerialComln(String("Error: Formato inválido. Introduze numero de pin"));
+        }
+
+    }
+
     if(menu->id ==19){
 
         printCargaElectronica();
@@ -289,20 +275,29 @@ void procesarDatos(String data) {
     }
 
     if(menu->id ==16){
-        int curveId = data.toInt();
-        if(enableCurve(curveId)==true){
-            writeSerialComln(String("Curva ") + String(curveId) + String(" habilitada"));
-        }else{
-            writeSerialComln(String("Curva ") + String(curveId) + String(" deshabilitada"));
+
+        int curveId = -1;
+        int pin = -1;
+
+        if (sscanf(data.c_str(), "%d,%d", &curveId, &pin) == 2){
+            if(enableCurve(curveId,pin)==true){
+                writeSerialComln(String("Curva ") + String(curveId) + String(" habilitada"));
+            }else{
+                writeSerialComln(String("Curva ") + String(curveId) + String(" deshabilitada"));
+            }
         }
+        
+
     }
     if(menu->id ==21){
         if(data.equalsIgnoreCase("y")){
             PWMSetCurveMode(ON_t);
             writeSerialComln(String("Modo curva activado"));
+            saveValueNVS(MODO_CURVA, true) ;
         }else if(data.equalsIgnoreCase("n")){
             PWMSetCurveMode(OFF_t);
             writeSerialComln(String("Modo curva desactivado"));
+            saveValueNVS(MODO_CURVA, false) ;
         }else{
             writeSerialComln(String("Error: Valor invalido"));
         }
@@ -316,7 +311,9 @@ void procesarDatos(String data) {
 
     }
     if(menu->id ==23){
-        loadCurveNVS(("curve" + String(data.toInt())).c_str());
+        int curveId = data.toInt();
+
+        loadCurveNVS(("curve" + String(curveId)).c_str());
         printCargaElectronica();
 
     }
@@ -417,6 +414,7 @@ static bool nodeRequiresInput(int id) {
         case 9:  // Frecuencia
         case 11: // Max DC
         case 16: // Activar curva -> requiere ID
+        case 18: // Crear curva -> requiere pin
         case 20: // Agregar punto [curva,tiempo,valor]
         case 21: // Activar modo curva (Y/N)
         case 22: // Guardar curva -> requiere ID
@@ -442,6 +440,10 @@ static void onEnterNode(MenuNode* n) {
         case 19: // Seleccionar curva (al menos mostrar algo útil)
             printCargaElectronica();
             break;
+        case 23: 
+            printAllCurves();
+            
+            break;
         default:
             break;
     }
@@ -457,11 +459,12 @@ static void onEnterNode(MenuNode* n) {
             case 8:  writeSerialComln("Ingrese DutyCycle (0-100) y presione '-'"); break;
             case 9:  writeSerialComln("Ingrese frecuencia (>0) y presione '-'"); break;
             case 11: writeSerialComln("Ingrese Max DC (0-100) y presione '-'"); break;
-            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y presione '-'"); break;
+            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <estado,pin> presione '-'"); break;
+            case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione '-'"); break;
             case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione '-'"); break;
             case 21: writeSerialComln("Activar modo curva (Y/N) y presione '-'"); break;
             case 22: writeSerialComln("ID de curva a GUARDAR y presione '-'"); break;
-            case 23: writeSerialComln("ID de curva a CARGAR y presione '-'"); break;
+            case 23: writeSerialComln("Ingrese el ID de la curva a CARGAR y presione '-'");break;
             case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione '-'"); break;
             default: break;
         }
@@ -488,5 +491,26 @@ static void onUpdateNode(MenuNode* n) {
     }
 }
 
+void printSavedCurves(){
 
+    /*
+    bool aux= true;
+    char i=0;
+    while(aux){
+        aux=loadCurveNVS(("curve" + String(i++)).c_str());
+    }
+    */
 
+}
+
+void printAllCurves() {
+    int id = 0;
+    while (true) {
+        String key = String("curve") + String(id);
+        writeSerialComln(String(key));
+        if (printCurveFromNvs(key.c_str())==false) {
+            break; // cuando ya no existe más, corta
+        }
+        id++;
+    }
+}

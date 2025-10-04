@@ -66,6 +66,13 @@ void CargaElectronicaInit(){
         sendCurves();
         printCurves();
  
+
+        //Cargo la configuracion guardada en NVS
+        if(readValueNVS(MODO_CURVA)){
+            curveMode=ON_t;
+        }else{
+            curveMode=OFF_t;
+        }
         
 
 }

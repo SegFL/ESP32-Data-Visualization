@@ -19,6 +19,7 @@
         "type_traits": "cpp",
         "utility": "cpp",
         "new": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "sstream": "cpp"
     }
 }

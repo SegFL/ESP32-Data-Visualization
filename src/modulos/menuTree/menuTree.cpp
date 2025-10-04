@@ -110,13 +110,11 @@ MenuNode* menuInit() {
         MenuNode* child14 = create_node("Crear curva de carga", '1',14);
         add_child(child13, child14);
 
-            MenuNode* child18 = create_node("Agregar puntos", '2',18);
+            MenuNode* child18 = create_node("Crear curva", '1',18);
             add_child(child14, child18);
-                MenuNode* child19 = create_node("Seleccionar curva", '1',19);
-                add_child(child18, child19);
 
-                MenuNode* child20 = create_node("Agregar punto a la curva: [Curva,tiempo,valor]", '2',20);
-                add_child(child18, child20);
+            MenuNode* child20 = create_node("Agregar punto a la curva: [Curva,tiempo,valor]", '2',20);
+            add_child(child14, child20);
 
 
         MenuNode* child15 = create_node("Ver curvas", '2',15);

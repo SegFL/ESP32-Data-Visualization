@@ -53,8 +53,10 @@ void sendCurves();
 void simuladorCurvasInit(int size);
 bool deleteCurve(int curveId); // NUEVA: Función para eliminar curva
 int getCurveCount(); // NUEVA: Función para obtener cantidad de curvas
-bool enableCurve(int curveId);
+bool enableCurve(int curveId, int pin);
 void saveCurveNVS(const char* key, int curveId);
 bool loadCurveNVS(const char* key);
+void printCurve(curve_t* c, int index = -1) ;
+bool printCurveFromNvs(const char* key);
 
 #endif // SIMULADORCURVAS_H
