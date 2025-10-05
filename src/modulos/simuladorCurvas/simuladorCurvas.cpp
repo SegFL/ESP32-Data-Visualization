@@ -13,7 +13,7 @@ static int index_pasos,numero_pasos=0; //Contador de pasos dentro del segmento
 static float delta_v,delta_t,pendiente,incremento=0.0f;
 curve_t* pinToCurve[MAX_PINES];
 void calcular_incrementos(bool puntro_nuevo,curve_t* curve);
-
+int getAvailableId();
 curve_t** newCurveArray(int size){
     curve_t** newArray=(curve_t**)malloc(sizeof(curve_t*)*size);
     if (newArray == NULL) {
@@ -43,6 +43,7 @@ int createCurve(int pin) {
             break;
         }
     }
+    
     
     // Si no hay posición disponible
     if(nextPosition == -1) {
@@ -83,6 +84,7 @@ int createCurve(int pin) {
     curve->point[0].type = STEP; // o LINEAR, pero definido
     curve->contador = 1;
     curve->currentIndex=0;  
+    curve->id=getAvailableId(); // Asignar un ID único
 
     
     // CORRECCIÓN: Inicializar todos los puntos restantes para evitar valores basura
@@ -95,7 +97,7 @@ int createCurve(int pin) {
     // Asignar la curva a la posición disponible en el array
     curveArray[nextPosition] = curve;
     
-    writeSerialComln(String("Curva creada correctamente en posición ") + String(nextPosition) + 
+    writeSerialComln(String("Curva creada correctamente con id ") + String(curve->id) + 
                      String(" - Size: ") + String(curve->size) + String(", Contador: ") + String(curve->contador));
     return nextPosition; // Devolver el ID de la curva (posición en el array)
 }
@@ -134,7 +136,6 @@ bool initCurve(curve_t *curve) {
 
 //Devuelve el valor del punto actual de la curva
 //Si no hay puntos, devuelve -1
-//No implemente los limites seteados en el createCurve(): Antes del return deveria validas los valores maximos y minimos
 //Recive comoparametro elnumero de IDde la curva en el array
 int getCurveValue(int pin) {
     bool punto_nuevo=false;
@@ -718,4 +719,46 @@ bool printCurveFromNvs(const char* key) {
 }
 
 
+
+void printPinToCurve(){
+    writeSerialComln("Pines y curvas asociadas:");
+    for(int i=0;i<MAX_PINES;i++){
+        if(pinToCurve[i]!=NULL){
+            writeSerialComln(String("Pin ") + String(i) + String(" -> Curva en array con pin: ") + String(pinToCurve[i]->pin));
+        }else{
+            writeSerialComln(String("Pin ") + String(i) + String(" -> No tiene curva asociada"));
+        }
+    }
+}
+
+
+
+int getAvailableId() {
+    if (curveArray == NULL || curveArraySize <= 0)
+        return -1;
+
+    int id = 0;
+    bool idOcupado;
+
+    while (true) {
+        idOcupado = false;
+
+        // Verificar si alguna curva tiene este ID
+        for (int i = 0; i < curveArraySize; i++) {
+            if (curveArray[i] != NULL && curveArray[i]->id == id) {
+                idOcupado = true;
+                break;
+            }
+        }
+
+        // Si no está ocupado, lo devolvemos
+        if (!idOcupado)
+            return id;
+
+        id++; // probar el siguiente ID
+    }
+
+    // En teoría nunca llega acá
+    return -1;
+}
 

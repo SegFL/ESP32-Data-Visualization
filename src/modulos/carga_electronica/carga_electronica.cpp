@@ -87,9 +87,9 @@ void CargaElectronicaUpdate(){
     // Usar siempre valor manual
     case OFF_t:referencia = DC; break;
     case ON_t:        
-      aux = getCurveValue(1);
+      aux = getCurveValue(0);
       // ⚠️ Ojo: este log puede consumir stack, comentar si hay problemas
-      writeSerialComln(String("Valor de la curva: ") + String(aux));
+      //writeSerialComln(String("Valor de la curva: ") + String(aux));
       if(aux != -1){
         referencia = aux; // Usar valor de la curva si es válido
       } else {return;// Si no hay valor válido, salir sin cambiar nada 

@@ -133,6 +133,9 @@ MenuNode* menuInit() {
         MenuNode* child23 = create_node("Cargar curva", '6',23);
         add_child(child13, child23);
 
+        MenuNode* child26 = create_node("Ver curvas asociadas a pines", '7',26);
+        add_child(child13, child26);
+
     return root;
 }
 

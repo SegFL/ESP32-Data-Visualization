@@ -246,11 +246,7 @@ void procesarDatos(String data) {
     }
 
     if(menu->id ==19){
-
         printCargaElectronica();
-
-
-
     }
 
     if(menu->id ==20){
@@ -330,6 +326,10 @@ void procesarDatos(String data) {
         } else {
             writeSerialComln(String("Error: Formato inválido. Use DD/MM/AAAA HH:MM"));
         }
+    }
+
+    if(menu->id ==26){
+        
     }
 
 
@@ -444,6 +444,9 @@ static void onEnterNode(MenuNode* n) {
             printAllCurves();
             
             break;
+       case 26:
+            printPinToCurve();
+            break;
         default:
             break;
     }
@@ -459,7 +462,7 @@ static void onEnterNode(MenuNode* n) {
             case 8:  writeSerialComln("Ingrese DutyCycle (0-100) y presione '-'"); break;
             case 9:  writeSerialComln("Ingrese frecuencia (>0) y presione '-'"); break;
             case 11: writeSerialComln("Ingrese Max DC (0-100) y presione '-'"); break;
-            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <estado,pin> presione '-'"); break;
+            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> presione '-'"); break;
             case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione '-'"); break;
             case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione '-'"); break;
             case 21: writeSerialComln("Activar modo curva (Y/N) y presione '-'"); break;
