@@ -85,26 +85,42 @@ void CargaElectronicaUpdate(){
   // Selección de referencia
   switch(curveMode){
     // Usar siempre valor manual
-    case OFF_t:referencia = DC; break;
+    case OFF_t:
+      referencia = DC; 
+      //writeSerialComln(String("Modo OFF - Referencia manual: ") + String(referencia));
+      break;
     case ON_t:        
       aux = getCurveValue(0);
-      // ⚠️ Ojo: este log puede consumir stack, comentar si hay problemas
-      //writeSerialComln(String("Valor de la curva: ") + String(aux));
+      writeSerialComln(String("Valor de la curva: ") + String(aux));
       if(aux != -1){
         referencia = aux; // Usar valor de la curva si es válido
-      } else {return;// Si no hay valor válido, salir sin cambiar nada 
+        writeSerialComln(String("Usando referencia de curva: ") + String(referencia));
+      } else {
+        //writeSerialComln(String("Error: No hay valor válido de curva"));
+        return;// Si no hay valor válido, salir sin cambiar nada 
       } break;
 
     default:
       referencia = 0;
+      writeSerialComln(String("Modo desconocido - Referencia: 0"));
       break;
   }
 
   // Selección de modo de funcionamiento
   switch(modoFuncionamiento){
-    case PID:  dutyCycleAux = getDCPID(referencia);break;
-    case NONE: dutyCycleAux = referencia;break;
-    default:   dutyCycleAux = 0; break;
+    case PID:  
+      dutyCycleAux = getDCPID(referencia);
+      writeSerialComln(String("Modo PID - Referencia: ") + String(referencia) + 
+                       String(" -> Duty Cycle: ") + String(dutyCycleAux));
+      break;
+    case NONE: 
+      dutyCycleAux = referencia;
+      writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
+      break;
+    default:   
+      dutyCycleAux = 0; 
+      writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
+      break;
   }
   
   // Aplicar el duty cycle actual (invertido)
@@ -115,13 +131,13 @@ void CargaElectronicaUpdate(){
 
 //Cambia elvalor del duty cycle
 // Se espera un valor entre 0 y 100, si el valor es mayor al máximo permitido se limita al máximo permitido
-float PWMSetDC(float dc) {
-  if (dc >= 0.0 && dc <= 100.0) {
-    if (dc <= max_dc_value) {
-      DC = dc; 
+float PWMSetDC(float currentReference) {
+  if (currentReference >= 0.0 && currentReference <= 1000.0) {
+    if (currentReference <= max_dc_value) {
+      DC = currentReference; 
     } else {
       
-      DC = max_dc_value; 
+      DC = currentReference; 
     }
     return DC;
   }
@@ -155,7 +171,9 @@ bool PWMSetMaxDC(float dc){
   return false;
 }
 
-
+void changeControlMode(modoFuncionamiento_t mode){
+  modoFuncionamiento = mode;
+}
 
 
 

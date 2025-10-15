@@ -84,8 +84,7 @@ MenuNode* menuInit() {
         MenuNode* child10 = create_node("Modificar valor maximo del PWM", '3',10);
         add_child(child5, child10);
 
-        MenuNode* child11 = create_node("Presione enter + el valor maximo de DutyCycle permitido", '1',11);
-        add_child(child10, child11);
+
 
     MenuNode* child6 = create_node("Modo de funcionamiento", '4',6);
     add_child(root, child6);
@@ -135,6 +134,10 @@ MenuNode* menuInit() {
 
         MenuNode* child26 = create_node("Ver curvas asociadas a pines", '7',26);
         add_child(child13, child26);
+
+
+        MenuNode* child27 = create_node("Cambiar modo de control(PID/NONE)", '7',27);
+        add_child(root, child27);
 
     return root;
 }

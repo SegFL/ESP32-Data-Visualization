@@ -137,7 +137,7 @@ bool initCurve(curve_t *curve) {
 //Devuelve el valor del punto actual de la curva
 //Si no hay puntos, devuelve -1
 //Recive comoparametro elnumero de IDde la curva en el array
-int getCurveValue(int pin) {
+float getCurveValue(int pin) {
     bool punto_nuevo=false;
     if (curveArray == NULL) {
         writeSerialComln("Error: Array de curvas no inicializado");

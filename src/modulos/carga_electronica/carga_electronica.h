@@ -41,5 +41,5 @@ bool PWMSetMaxDC(float dc);
 void PWMSetCurveMode(curve_mode_t mode);
 
 void printCargaElectronica(); 
-
+void changeControlMode(modoFuncionamiento_t mode);
 #endif

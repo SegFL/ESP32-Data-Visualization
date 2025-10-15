@@ -190,15 +190,15 @@ void procesarDatos(String data) {
 
 
     if(menu->id==8){
-        float dutyCycle = data.toFloat(); // Convertir el String a entero
+        float currentReference = data.toFloat(); // Convertir el String a entero
         //ToDo//int dc=PWMSetDC(dutyCycle);
-        float dc=dutyCycle;
-        if (dc>=0.0 && dc<=100.0) {
+        float dc=currentReference;
+        if (dc>=0.0 && dc<=1000.0) {
             PWMSetDC(dc); // Cambiar el Duty Cycle
-            writeSerialComln(String("Duty Cycle cambiado a: ") + String(dc) + "%");
+            writeSerialComln(String("Corriente de referencia cambiada a: ") + String(dc) + "mA");
             
         } else {
-            writeSerialComln(String("Valor de Duty Cycle inválido. Debe estar entre 0 y 100."));
+            writeSerialComln(String("Valor de corriente de referencia inválido. Debe estar entre 0 y 1000mA."));
         }
     }
     if(menu->id ==9){
@@ -209,12 +209,12 @@ void procesarDatos(String data) {
             writeSerialComln(String("Valor de frecuencia inválido. Debe ser mayor que 0."));
         }
     }
-    if(menu->id ==11){
-        int maxDC = data.toInt(); // Convertir el String a entero
-        if (PWMSetMaxDC(maxDC)==true) {
-            writeSerialComln(String("Valor máximo de Duty Cycle cambiado a: ") + String(maxDC) + "%");
+    if(menu->id ==10){
+        int currentReference = data.toInt(); // Convertir el String a entero
+        if (PWMSetMaxDC(currentReference)==true) {
+            writeSerialComln(String("Valor máximo de corriente cambiado a: ") + String(currentReference) + "mA");
         } else {
-            writeSerialComln(String("Valor máximo de Duty Cycle inválido. Debe estar entre 0 y 100."));
+            writeSerialComln(String("Valor máximo de corriente de referencia inválido. Debe estar entre 0 y 1000mA."));
         }
     }
 
@@ -327,10 +327,17 @@ void procesarDatos(String data) {
             writeSerialComln(String("Error: Formato inválido. Use DD/MM/AAAA HH:MM"));
         }
     }
-
-    if(menu->id ==26){
-        
+    if(menu->id ==27){
+        if(data.equalsIgnoreCase("PID")){
+            changeControlMode(PID);
+            writeSerialComln(String("Modo de control cambiado a PID"));
+        }else if(data.equalsIgnoreCase("NONE")){
+            changeControlMode(NONE);
+            writeSerialComln(String("Modo de control cambiado a NONE"));
+        }
     }
+
+
 
 
 
@@ -412,7 +419,7 @@ static bool nodeRequiresInput(int id) {
         case 7:  // Activar/desactivar SEND DATA (y/n)
         case 8:  // Duty cycle
         case 9:  // Frecuencia
-        case 11: // Max DC
+        case 10: // Max current reference
         case 16: // Activar curva -> requiere ID
         case 18: // Crear curva -> requiere pin
         case 20: // Agregar punto [curva,tiempo,valor]
@@ -420,6 +427,7 @@ static bool nodeRequiresInput(int id) {
         case 22: // Guardar curva -> requiere ID
         case 23: // Cargar curva -> requiere ID
         case 25: // Modificar fecha
+        case 27: // Cambiar modo de control (PID/NONE)
             return true;
         default:
             return false;
@@ -459,9 +467,8 @@ static void onEnterNode(MenuNode* n) {
             case 3:  writeSerialComln("Ingrese SSID y presione '-' para confirmar"); break;
             case 4:  writeSerialComln("Ingrese PASSWORD y presione '-'"); break;
             case 7:  writeSerialComln("Ingrese 'y' o 'n' y presione '-'"); break;
-            case 8:  writeSerialComln("Ingrese DutyCycle (0-100) y presione '-'"); break;
+            case 8:  writeSerialComln("Ingrese la corriente de referencia (0-1000mA) y presione '-'"); break;
             case 9:  writeSerialComln("Ingrese frecuencia (>0) y presione '-'"); break;
-            case 11: writeSerialComln("Ingrese Max DC (0-100) y presione '-'"); break;
             case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> presione '-'"); break;
             case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione '-'"); break;
             case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione '-'"); break;
@@ -469,6 +476,7 @@ static void onEnterNode(MenuNode* n) {
             case 22: writeSerialComln("ID de curva a GUARDAR y presione '-'"); break;
             case 23: writeSerialComln("Ingrese el ID de la curva a CARGAR y presione '-'");break;
             case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione '-'"); break;
+            case 27: writeSerialComln("Ingrese 'PID' o 'NONE' y presione '-'"); break;
             default: break;
         }
     }
