@@ -42,6 +42,7 @@ static bool nodeRequiresInput(int id);
 bool parseStringToInts(String str, int *num1, int *num2);
 void printSavedCurves();
 void printAllCurves();
+void printSensorInfo();
 void userInterfaceInit(){
     serialComInit();
     clearScreen();//Borra mensajes del ESP32 al iniciar el programa
@@ -68,12 +69,14 @@ void userInterfaceInit(){
 void userInterfaceUpdate() {
     char charReceived = readSerialChar();
 
+    /*
     // Caso especial: refrescar sensores en pantalla
     if (updateScreen == true) {
         clearScreen();
         printNode(menu);
         printSensorData();
     }
+    */
 
     // Si no hay caracter recibido o menú no inicializado, no hacemos nada
     if (charReceived == '\0' || menu == nullptr) {
@@ -375,7 +378,16 @@ bool parseStringToInts(String str, int *num1, int *num2) {
 
 
 
+void printSensorInfo(){
 
+    moveCursor(2,1);
+    writeSerialComln(String("Pin: ") );
+    writeSerialComln(String("\tBus Voltage: ") + String("    ") + String(" V"));
+    writeSerialComln(String("\tShunt Voltage: ") + String("      ") + String(" mV"));
+    writeSerialComln(String("\tCurrent: ") + String("      ") + String(" mA"));
+    writeSerialComln(String("\tPower: ") + String("      ") + String(" mW"));
+
+}
 void printSensorData() {
     ADCData data;
     //ADCData data = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
@@ -384,11 +396,11 @@ void printSensorData() {
         return;
     }
  
-    writeSerialComln(String("Pin: ") + String(data.pin));
-    writeSerialComln(String("\tBus Voltage: ") + String(data.busVoltage_V) + String(" V"));
-    writeSerialComln(String("\tShunt Voltage: ") + String(data.shuntVoltage_mV) + String(" mV"));
-    writeSerialComln(String("\tCurrent: ") + String(data.current_mA) + String(" mA"));
-    writeSerialComln(String("\tPower: ") + String(data.power_mW) + String(" mW"));
+    moveCursor(2, 1); writeSerialCom(String(data.pin));
+    moveCursor(3, 22); writeSerialCom(String(data.busVoltage_V));
+    moveCursor(4, 25); writeSerialCom(String(data.shuntVoltage_mV));
+    moveCursor(5, 18); writeSerialCom(String(data.current_mA));
+    moveCursor(6, 16); writeSerialCom(String(data.power_mW));                                                  
 
 }
 
@@ -445,8 +457,8 @@ static void onEnterNode(MenuNode* n) {
     // Acciones inmediatas (sin pedir datos) y automaticas en elupdate
     switch (n->id) {
         case 1:  // Entradas analógicas
-            printSensorData();
-            updateScreen = true; // ya lo usabas para refrescar periódicamente
+            printSensorInfo();
+            //updateScreen = true; // ya lo usabas para refrescar periódicamente
             break;
         case 10:
             writeSerialComln(String("Valor maximo actual del PWM: ") + String(PWMGetMaxDC()) + String(" %"));
@@ -504,6 +516,9 @@ static void onUpdateNode(MenuNode* n) {
 
     switch (n->id) {
         case 1: // Menú de sensores
+            //clearScreen();
+            //printNode(n);
+            //printSensorInfo();
             printSensorData(); // refrescar siempre
             break;
         case 24: // Ver fecha

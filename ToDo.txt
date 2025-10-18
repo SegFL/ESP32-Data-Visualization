@@ -1,0 +1,31 @@
+
+
+Al tener elmodo curva ON al principio generaba un corto a la salida, hay alguna variable que al
+iniciar el sistema hace que el DC sea 1
+El error se fue al activar/desactivar elmodo curva
+
+Corregir elhecho de que se pone en corto la salida al reiniciarse elmicro
+
+No funciona el limite maximo de corriente en modo manual:
+    Seguir por aca,guardar el ultimo duty valido, cuando imeas supere elmaximo se pone ese duty, cada vez
+    que no supere elmaximodeberia guardar el valor de duty en safedutycycle
+      float imeas = getLastCurrentData(); // Ultima corriente medida por el sensor en mA
+        if(imeas>maxCurrent){
+            dutyCycleAux=lastSageDutyCycle; //Si la corriente medida supera el maximo permitido se mantiene el ultimo duty cycle seguro
+            writeSerialComln(String("Corriente medida supera el máximo permitido. Duty Cycle ajustado al ultimo valor seguro."));
+        }
+
+Chequear bien que menu acepta datos de una y despues tengo que poner el - y cual tendria 
+que ser-dato-. Agregar correcciones como en ellaburo
+
+Agregar pesta;a para crear curvas y enviarlas al esp32
+
+Agregar menu para ver curva asociada a principio
+
+Agregary corregir el hecho de que cuando se termina una curva queda habilitada
+
+Agregar curva de calibracion para cuando la carga electronica no tenga elpid activo. Modificar convertirCorrienteADc()
+
+Agregar la opcion para deshabilitar la autoconexion de wifi
+
+Corregir el hecho de que no se meustra bien el pin en el menu 1 sensores analogicos
