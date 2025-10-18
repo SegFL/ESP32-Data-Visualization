@@ -91,10 +91,10 @@ void CargaElectronicaUpdate(){
       break;
     case ON_t:        
       aux = getCurveValue(0);
-      writeSerialComln(String("Valor de la curva: ") + String(aux));
+      //writeSerialComln(String("Valor de la curva: ") + String(aux));
       if(aux != -1){
         referencia = aux; // Usar valor de la curva si es válido
-        writeSerialComln(String("Usando referencia de curva: ") + String(referencia));
+        //writeSerialComln(String("Usando referencia de curva: ") + String(referencia));
       } else {
         //writeSerialComln(String("Error: No hay valor válido de curva"));
         return;// Si no hay valor válido, salir sin cambiar nada 
@@ -110,12 +110,12 @@ void CargaElectronicaUpdate(){
   switch(modoFuncionamiento){
     case PID:  
       dutyCycleAux = getDCPID(referencia);
-      writeSerialComln(String("Modo PID - Referencia: ") + String(referencia) + 
-                       String(" -> Duty Cycle: ") + String(dutyCycleAux));
+      //writeSerialComln(String("Modo PID - Referencia: ") + String(referencia) + 
+                       //String(" -> Duty Cycle: ") + String(dutyCycleAux));
       break;
     case NONE: 
       dutyCycleAux = referencia;
-      writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
+      //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
       break;
     default:   
       dutyCycleAux = 0; 
