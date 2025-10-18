@@ -72,25 +72,27 @@ MenuNode* menuInit() {
         MenuNode* child3 = create_node("Entre constraseña", '2',4);
         add_child(child2, child3);
 
-    MenuNode* child5 = create_node("Configuracion PWM", '3',5);
+    MenuNode* child5 = create_node("Configuracion manual", '3',5);
     add_child(root, child5);
 
-        MenuNode* child8 = create_node("Modificar Duty Cycle del PWM", '1',8);
+        MenuNode* child8 = create_node("Modificar corriente", '1',8);
         add_child(child5, child8);
 
         MenuNode* child9 = create_node("Modificar frecuencia del PWM", '2',9);
         add_child(child5, child9);
 
-        MenuNode* child10 = create_node("Modificar valor maximo del PWM", '3',10);
+        MenuNode* child10 = create_node("Modificar el valor maximo de duty cycle", '3',10);
         add_child(child5, child10);
 
+        MenuNode* child11 = create_node("Modificar el valor maximo de corriente", '4',11);
+        add_child(child5, child11);
 
 
     MenuNode* child6 = create_node("Modo de funcionamiento", '4',6);
     add_child(root, child6);
 
-        MenuNode* child7 = create_node("Presiona enter + y para pasar a modo SEND DATA o enter + n para desactivar", '1',7);
-        add_child(child6, child7);
+//        MenuNode* child7 = create_node("Cambiar modo de funcionamiento", '1',7);
+//        add_child(child6, child7);
 
 
     MenuNode* child12 = create_node("Fecha y hora", '5',12);

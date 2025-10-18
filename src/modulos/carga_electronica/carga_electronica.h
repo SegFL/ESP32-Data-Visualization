@@ -42,4 +42,7 @@ void PWMSetCurveMode(curve_mode_t mode);
 
 void printCargaElectronica(); 
 void changeControlMode(modoFuncionamiento_t mode);
+float PWMGetMaxDC();
+bool setMaxCurrent(float current);
+modoFuncionamiento_t getModoFuncionamiento();
 #endif

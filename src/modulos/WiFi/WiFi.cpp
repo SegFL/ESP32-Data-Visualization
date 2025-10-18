@@ -1,8 +1,12 @@
 #include <WiFi.h>
 #include <modulos/serialCom/serialCom.h>
 
-String ssid = "Claro";
+String ssid = "IPLAN-729033-2.4Ghz";
 String password = "17727630";
+
+
+
+
 
 bool connectWiFi() {
     WiFi.begin(ssid.c_str(), password.c_str());

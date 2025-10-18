@@ -164,7 +164,7 @@ void procesarDatos(String data) {
         setPassWord(data); // Cambiar el PASSWORD
         writeSerialComln(String("SSID cambiado a *** "));
     }
-    if (menu->id == 7) {
+    if (menu->id == 6) {
         if (data.equalsIgnoreCase("y")) { // Comparación más eficiente
             changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
             writeSerialComln(String("Modo SEND DATA activado"));
@@ -191,12 +191,11 @@ void procesarDatos(String data) {
 
     if(menu->id==8){
         float currentReference = data.toFloat(); // Convertir el String a entero
-        //ToDo//int dc=PWMSetDC(dutyCycle);
-        float dc=currentReference;
-        if (dc>=0.0 && dc<=1000.0) {
-            PWMSetDC(dc); // Cambiar el Duty Cycle
-            writeSerialComln(String("Corriente de referencia cambiada a: ") + String(dc) + "mA");
-            
+        //ToDo//int current=PWMSetDC(dutyCycle);
+        float current=currentReference;
+        if (current>=0.0 && current<=1000.0) {
+            PWMSetDC(current); // Cambiar el Duty Cycle
+            writeSerialComln(String("Corriente de referencia cambiada a: ") + String(current) + "mA");
         } else {
             writeSerialComln(String("Valor de corriente de referencia inválido. Debe estar entre 0 y 1000mA."));
         }
@@ -210,15 +209,21 @@ void procesarDatos(String data) {
         }
     }
     if(menu->id ==10){
-        int currentReference = data.toInt(); // Convertir el String a entero
-        if (PWMSetMaxDC(currentReference)==true) {
-            writeSerialComln(String("Valor máximo de corriente cambiado a: ") + String(currentReference) + "mA");
+        float duty = data.toFloat(); // Convertir el String a entero
+        if (PWMSetMaxDC(duty)==true) {
+            writeSerialComln(String("Valor maximo de duty cycle: ") + String(duty) + "%");
         } else {
-            writeSerialComln(String("Valor máximo de corriente de referencia inválido. Debe estar entre 0 y 1000mA."));
+            writeSerialComln(String("Valor máximo de duty cycle inválido. Debe estar entre 0 y 100%."));
         }
     }
 
-    if (menu->id == 12){
+    if (menu->id == 11){
+        float current = data.toFloat(); 
+        if (setMaxCurrent(current)==true) {
+            writeSerialComln(String("Valor maximo de corriente: ") + String(current) + "mA");
+        } else {
+            writeSerialComln(String("Valor máximo de corriente inválido. Debe estar entre 0 y 1000mA."));
+        }
     }
 
     
@@ -416,7 +421,7 @@ static bool nodeRequiresInput(int id) {
     switch (id) {
         case 3:  // Entre SSID
         case 4:  // Entre contraseña
-        case 7:  // Activar/desactivar SEND DATA (y/n)
+        case 6:  // Activar/desactivar SEND DATA (y/n)
         case 8:  // Duty cycle
         case 9:  // Frecuencia
         case 10: // Max current reference
@@ -443,8 +448,16 @@ static void onEnterNode(MenuNode* n) {
             printSensorData();
             updateScreen = true; // ya lo usabas para refrescar periódicamente
             break;
+        case 10:
+            writeSerialComln(String("Valor maximo actual del PWM: ") + String(PWMGetMaxDC()) + String(" %"));
+            writeSerialComln("Ingrese nuevo valor (0..100) y presione '-'");
+            break;
         case 15: // Ver curvas
-
+            printCurves();
+            break;
+        case 16:
+            printCurves();
+            break;
         case 19: // Seleccionar curva (al menos mostrar algo útil)
             printCargaElectronica();
             break;
@@ -454,6 +467,9 @@ static void onEnterNode(MenuNode* n) {
             break;
        case 26:
             printPinToCurve();
+            break;
+        case 27:
+            writeSerialComln(String("Modo de control actual: ") + (getModoFuncionamiento() == PID ? "PID" : "NONE"));
             break;
         default:
             break;
@@ -466,10 +482,10 @@ static void onEnterNode(MenuNode* n) {
         switch (n->id) {
             case 3:  writeSerialComln("Ingrese SSID y presione '-' para confirmar"); break;
             case 4:  writeSerialComln("Ingrese PASSWORD y presione '-'"); break;
-            case 7:  writeSerialComln("Ingrese 'y' o 'n' y presione '-'"); break;
+            case 6:  writeSerialComln("Para activar/desactivar el modo SEND DATA ingrese y/n y presione '-'"); break;
             case 8:  writeSerialComln("Ingrese la corriente de referencia (0-1000mA) y presione '-'"); break;
-            case 9:  writeSerialComln("Ingrese frecuencia (>0) y presione '-'"); break;
-            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> presione '-'"); break;
+            case 9:  writeSerialComln("Ingrese frecuencia <0-78125> y presione '-'"); break;
+            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione '-'"); break;
             case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione '-'"); break;
             case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione '-'"); break;
             case 21: writeSerialComln("Activar modo curva (Y/N) y presione '-'"); break;
@@ -513,7 +529,7 @@ void printSavedCurves(){
     */
 
 }
-
+//Imprime todas las curvas guardadas en NVS
 void printAllCurves() {
     int id = 0;
     while (true) {

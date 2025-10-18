@@ -5,6 +5,7 @@
 #include "../../modulos/serialCom/serialCom.h"
 
 
-void saveValueNVS(const char* key, bool value);
+int saveValueNVS(const char* key, bool value);
 bool readValueNVS(const char* key);
+int readValueNVSint32_t(const char* key);
 

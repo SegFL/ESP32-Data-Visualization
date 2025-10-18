@@ -5,6 +5,13 @@
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
 // CORRECCIÓN: Eliminada variable global curve innecesaria que causaba confusión 
 
+float convertirCorrienteADc(float reference_current);
+void cargarConfiguracionNvs();
+
+const char* MAX_DC_NVS_KEY = "max_dc_value";
+const char* MODO_FUNCIONAMIENTO_NVS_KEY = "MODO_FUNCIONAMIENTO";
+
+
 const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
 const int PWM_FREQ = 78125;     // Frecuencia PWM deseada: 312 kHz
 const int PWM_RESOLUTION = 10;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
@@ -20,7 +27,7 @@ const int LED_OUTPUT_PIN = 18;   // Pin GPIO donde se genera la señal PWM
 float DC = 0;  // Duty cycle actual (0-100%)
 
 float max_dc_value = 0; // Valor máximo del duty cycle (0-100%)
-
+float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
 modoFuncionamiento_t modoFuncionamiento = NONE; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
@@ -67,15 +74,44 @@ void CargaElectronicaInit(){
         printCurves();
  
 
-        //Cargo la configuracion guardada en NVS
-        if(readValueNVS(MODO_CURVA)){
-            curveMode=ON_t;
-        }else{
-            curveMode=OFF_t;
-        }
-        
 
+        cargarConfiguracionNvs();
+
+
+
+
+
+    
 }
+
+
+void cargarConfiguracionNvs(){
+
+    bool mode = readValueNVS(MODO_FUNCIONAMIENTO_NVS_KEY);
+    if (mode) {
+        modoFuncionamiento = PID;
+    } else {
+        modoFuncionamiento = NONE;
+    }
+
+    int value = readValueNVSint32_t(MAX_DC_NVS_KEY);
+    if(value != -1){
+        max_dc_value = (float)value;
+    } else {
+        max_dc_value = 0.0f; // Valor por defecto si no se encuentra en NVS
+    }
+
+    //Cargo la configuracion guardada en NVS
+    if(readValueNVS(MODO_CURVA)){
+        curveMode=ON_t;
+    }else{
+        curveMode=OFF_t;
+    }
+
+
+
+
+  }
 void CargaElectronicaUpdate(){
 
   float dutyCycleAux = 0;
@@ -87,22 +123,16 @@ void CargaElectronicaUpdate(){
     // Usar siempre valor manual
     case OFF_t:
       referencia = DC; 
-      //writeSerialComln(String("Modo OFF - Referencia manual: ") + String(referencia));
       break;
     case ON_t:        
       aux = getCurveValue(0);
-      //writeSerialComln(String("Valor de la curva: ") + String(aux));
       if(aux != -1){
         referencia = aux; // Usar valor de la curva si es válido
-        //writeSerialComln(String("Usando referencia de curva: ") + String(referencia));
       } else {
-        //writeSerialComln(String("Error: No hay valor válido de curva"));
-        return;// Si no hay valor válido, salir sin cambiar nada 
+        referencia = 0;
       } break;
-
     default:
       referencia = 0;
-      writeSerialComln(String("Modo desconocido - Referencia: 0"));
       break;
   }
 
@@ -114,7 +144,8 @@ void CargaElectronicaUpdate(){
                        //String(" -> Duty Cycle: ") + String(dutyCycleAux));
       break;
     case NONE: 
-      dutyCycleAux = referencia;
+
+      dutyCycleAux = convertirCorrienteADc(referencia);
       //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
       break;
     default:   
@@ -122,6 +153,8 @@ void CargaElectronicaUpdate(){
       writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
       break;
   }
+
+
   
   // Aplicar el duty cycle actual (invertido)
   int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
@@ -131,17 +164,19 @@ void CargaElectronicaUpdate(){
 
 //Cambia elvalor del duty cycle
 // Se espera un valor entre 0 y 100, si el valor es mayor al máximo permitido se limita al máximo permitido
+// Se espera un valor entre 0 y 100 (corrige comportamiento previo)
+// Ahora recorta (clamp) usando max_dc_value
 float PWMSetDC(float currentReference) {
-  if (currentReference >= 0.0 && currentReference <= 1000.0) {
-    if (currentReference <= max_dc_value) {
-      DC = currentReference; 
-    } else {
-      
-      DC = currentReference; 
+    if (currentReference < 0.0f) return -1.0f;
+    // aplicar límite máximo configurado
+    float limited = currentReference;
+    if (max_dc_value >= 0.0f && max_dc_value <= 100.0f) {
+        if (limited > max_dc_value) limited = max_dc_value;
     }
+    // límite físico 0..100
+    if (limited > 100.0f) limited = 100.0f;
+    DC = limited;
     return DC;
-  }
-  return -1.0f; // Valor inválido
 }
 
 
@@ -164,17 +199,51 @@ bool PWMSetFrequency(int frecuencies){
 
 }
 bool PWMSetMaxDC(float dc){
-  if(dc>=0 && dc<=100){
+    if (dc < 0.0f || dc > 100.0f) return false;
     max_dc_value = dc;
+
+    // Guardar en NVS
+    nvs_handle_t handle;
+    if (nvs_open("storage", NVS_READWRITE, &handle) == ESP_OK) {
+        int to_store = (int)dc;
+        nvs_set_i32(handle, MAX_DC_NVS_KEY, to_store);
+        nvs_commit(handle);
+        nvs_close(handle);
+    }
+
     return true;
-  }
-  return false;
 }
 
 void changeControlMode(modoFuncionamiento_t mode){
+
+  if(saveValueNVS(MODO_FUNCIONAMIENTO_NVS_KEY, mode)!=0){
+      writeSerialComln(String("Error al guardar el modo de funcionamiento en NVS"));
+      return;
+  }
+
+
   modoFuncionamiento = mode;
+}
+
+float PWMGetMaxDC(){
+    return max_dc_value;
+}
+
+
+float convertirCorrienteADc(float reference_current){
+  return reference_current; //No hace nada por ahora
+}
+
+bool setMaxCurrent(float current){
+    if(current>=0.0 && current<=1000.0){
+        maxCurrent=current;
+        return true;
+    } 
+    return false;
 }
 
 
 
-
+modoFuncionamiento_t getModoFuncionamiento(){
+    return modoFuncionamiento;
+}

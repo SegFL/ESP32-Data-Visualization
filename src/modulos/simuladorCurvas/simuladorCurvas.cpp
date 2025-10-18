@@ -724,9 +724,9 @@ void printPinToCurve(){
     writeSerialComln("Pines y curvas asociadas:");
     for(int i=0;i<MAX_PINES;i++){
         if(pinToCurve[i]!=NULL){
-            writeSerialComln(String("Pin ") + String(i) + String(" -> Curva en array con pin: ") + String(pinToCurve[i]->pin));
+            writeSerialComln(String("Pin ") + String(i) + String(" -> Curva asociada ") + String(pinToCurve[i]->id));
         }else{
-            writeSerialComln(String("Pin ") + String(i) + String(" -> No tiene curva asociada"));
+            writeSerialComln(String("Pin ") + String(i) + String(" -> -"));
         }
     }
 }
