@@ -9,6 +9,7 @@
 #include <modulos/carga_electronica/carga_electronica.h>
 #include <modulos/time/time.h>
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
+#include <modulos/pid/pid.h>
 
 #define ARRAY_SIZE 3 // Tamaño del arreglo de curvas
 
@@ -40,6 +41,7 @@ static void onUpdateNode(MenuNode* n);
 static bool nodeRequiresInput(int id);
 
 bool parseStringToInts(String str, int *num1, int *num2);
+bool parseStringToFloats(String str, float *num1, float *num2, float *num3);
 void printSavedCurves();
 void printAllCurvesNvs();
 void printSensorInfo();
@@ -335,7 +337,7 @@ void procesarDatos(String data) {
             writeSerialComln(String("Error: Formato inválido. Use DD/MM/AAAA HH:MM"));
         }
     }
-    if(menu->id ==27){
+    if(menu->id ==30){
         if(data.equalsIgnoreCase("PID")){
             changeControlMode(PID);
             writeSerialComln(String("Modo de control cambiado a PID"));
@@ -358,6 +360,26 @@ void procesarDatos(String data) {
             writeSerialComln(String("Curva ") + String(curveId) + String(" eliminada correctamente de la flash"));
         }else{
             writeSerialComln(String("Error al eliminar la curva de la flash") + String(curveId));
+        }
+    }
+    if(menu->id == 31){
+        if (data.equalsIgnoreCase("y")) {
+            resetPID();
+            writeSerialComln("Parámetros PID reseteados correctamente");
+        } else {
+            writeSerialComln("Operación cancelada");
+        }
+    }
+    if(menu->id == 32){
+        float kp, ki, kd;
+        if (parseStringToFloats(data, &kp, &ki, &kd)) {
+            setPIDParams(kp, ki, kd);
+            writeSerialComln("Parámetros PID actualizados:");
+            writeSerialComln(String("Kp: ") + String(kp, 3));
+            writeSerialComln(String("Ki: ") + String(ki, 3));
+            writeSerialComln(String("Kd: ") + String(kd, 3));
+        } else {
+            writeSerialComln("Formato inválido. Use: Kp,Ki,Kd (ejemplo: 1.5,0.2,0.1)");
         }
     }
 
@@ -388,6 +410,16 @@ bool parseStringToInts(String str, int *num1, int *num2) {
     // Convertir el String de Arduino a un const char* para sscanf
     if (sscanf(str.c_str(), "%d,%d", num1, num2) == 2) {
         return true;  // Se leyeron correctamente ambos números
+    }
+    return false;     // No se leyeron correctamente
+}
+
+bool parseStringToFloats(String str, float *num1, float *num2, float *num3) {
+    writeSerialComln(String("Parseando: ") + str);
+
+    // Convertir el String de Arduino a un const char* para sscanf
+    if (sscanf(str.c_str(), "%f,%f,%f", num1, num2, num3) == 3) {
+        return true;  // Se leyeron correctamente los tres números
     }
     return false;     // No se leyeron correctamente
 }
@@ -461,7 +493,9 @@ static bool nodeRequiresInput(int id) {
         case 22: // Guardar curva -> requiere ID
         case 23: // Cargar curva -> requiere ID
         case 25: // Modificar fecha
-        case 27: // Cambiar modo de control (PID/NONE)
+        case 30: // Cambiar modo de control (PID/NONE)
+        case 31: // Resetear parámetros PID
+        case 32: // Modificar parámetros PID
             return true;
         default:
             return false;
@@ -497,7 +531,7 @@ static void onEnterNode(MenuNode* n) {
        case 26:
             printPinToCurve();
             break;
-        case 27:
+        case 30:
             writeSerialComln(String("Modo de control actual: ") + (getModoFuncionamiento() == PID ? "PID" : "NONE"));
             break;
         case 28:
@@ -505,6 +539,28 @@ static void onEnterNode(MenuNode* n) {
             break;
         case 29:
             printAllCurvesNvs();
+            break;
+        case 31: // Resetear parámetros PID
+            {
+                float kp, ki, kd;
+                getPIDParams(&kp, &ki, &kd);
+                float ts = getPIDTs();
+                writeSerialComln("Parámetros PID actuales:");
+                writeSerialComln(String("Kp: ") + String(kp, 3));
+                writeSerialComln(String("Ki: ") + String(ki, 3));
+                writeSerialComln(String("Kd: ") + String(kd, 3));
+                writeSerialComln(String("Ts: ") + String(ts, 3) + " (fijo)");
+            }
+            break;
+        case 32: // Modificar parámetros PID
+            {
+                float kp, ki, kd;
+                getPIDParams(&kp, &ki, &kd);
+                writeSerialComln("Parámetros PID actuales:");
+                writeSerialComln(String("Kp: ") + String(kp, 3));
+                writeSerialComln(String("Ki: ") + String(ki, 3));
+                writeSerialComln(String("Kd: ") + String(kd, 3));
+            }
             break;
         default:
             break;
@@ -527,8 +583,10 @@ static void onEnterNode(MenuNode* n) {
             case 22: writeSerialComln("ID de curva a GUARDAR y presione '-'"); break;
             case 23: writeSerialComln("Ingrese el ID de la curva a CARGAR y presione '-'");break;
             case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione '-'"); break;
-            case 27: writeSerialComln("Ingrese 'PID' o 'NONE' y presione '-'"); break;
+            case 30: writeSerialComln("Ingrese 'PID' o 'NONE' y presione '-'"); break;
             case 28: writeSerialComln("Ingrese el ID de la curva a eliminar y presione '-'"); break;
+            case 31: writeSerialComln("Para resetear los parametros del PID presione y-"); break;
+            case 32: writeSerialComln("Ingrese parámetros PID en formato Kp,Ki,Kd y presione '-'"); break;
             default: break;
         }
     }

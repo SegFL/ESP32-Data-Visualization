@@ -143,8 +143,19 @@ MenuNode* menuInit() {
         MenuNode* child29 = create_node("Eliminar curva de la flash", '9',29);
         add_child(child13, child29);
 
-        MenuNode* child27 = create_node("Cambiar modo de control(PID/NONE)", '7',27);
+
+        MenuNode* child27 = create_node("Configuracion del PID", '7',27);
         add_child(root, child27);
+
+        MenuNode* child30 = create_node("Cambiar modo de control(PID/NONE)", '1',30);
+        add_child(child27, child30);
+
+        MenuNode* child31 = create_node("Resetear parametros del PID", '2',31);
+        add_child(child27, child31);
+
+        MenuNode* child32 = create_node("Modificar parametros del PID", '3',32);
+        add_child(child27, child32);
+
 
     return root;
 }
