@@ -114,7 +114,7 @@ MenuNode* menuInit() {
             MenuNode* child18 = create_node("Crear curva", '1',18);
             add_child(child14, child18);
 
-            MenuNode* child20 = create_node("Agregar punto a la curva: [Curva,tiempo,valor]", '2',20);
+            MenuNode* child20 = create_node("Agregar punto a la curva: [Curva,tiempo,valor,tipo] <-[1,10,9.0,0]->", '2',20);
             add_child(child14, child20);
 
 
@@ -137,6 +137,11 @@ MenuNode* menuInit() {
         MenuNode* child26 = create_node("Ver curvas asociadas a pines", '7',26);
         add_child(child13, child26);
 
+        MenuNode* child28 = create_node("Eliminar curva", '8',28);
+        add_child(child13, child28);
+
+        MenuNode* child29 = create_node("Eliminar curva de la flash", '9',29);
+        add_child(child13, child29);
 
         MenuNode* child27 = create_node("Cambiar modo de control(PID/NONE)", '7',27);
         add_child(root, child27);

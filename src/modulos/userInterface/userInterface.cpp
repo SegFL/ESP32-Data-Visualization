@@ -41,7 +41,7 @@ static bool nodeRequiresInput(int id);
 
 bool parseStringToInts(String str, int *num1, int *num2);
 void printSavedCurves();
-void printAllCurves();
+void printAllCurvesNvs();
 void printSensorInfo();
 void userInterfaceInit(){
     serialComInit();
@@ -344,6 +344,23 @@ void procesarDatos(String data) {
             writeSerialComln(String("Modo de control cambiado a NONE"));
         }
     }
+    if(menu->id ==28){
+        int curveId = data.toInt();
+        if(deleteCurve(curveId)){
+            writeSerialComln(String("Curva ") + String(curveId) + String(" eliminada correctamente"));
+        }else{
+            writeSerialComln(String("Error al eliminar la curva ") + String(curveId));
+        }
+    }
+    if(menu->id ==29){
+        int curveId = data.toInt();
+        if(( deleteCurveNVS(("curve" + String(curveId)).c_str()))){
+            writeSerialComln(String("Curva ") + String(curveId) + String(" eliminada correctamente de la flash"));
+        }else{
+            writeSerialComln(String("Error al eliminar la curva de la flash") + String(curveId));
+        }
+    }
+
 
 
 
@@ -474,7 +491,7 @@ static void onEnterNode(MenuNode* n) {
             printCargaElectronica();
             break;
         case 23: 
-            printAllCurves();
+            printAllCurvesNvs();
             
             break;
        case 26:
@@ -482,6 +499,12 @@ static void onEnterNode(MenuNode* n) {
             break;
         case 27:
             writeSerialComln(String("Modo de control actual: ") + (getModoFuncionamiento() == PID ? "PID" : "NONE"));
+            break;
+        case 28:
+            printCurves();
+            break;
+        case 29:
+            printAllCurvesNvs();
             break;
         default:
             break;
@@ -505,6 +528,7 @@ static void onEnterNode(MenuNode* n) {
             case 23: writeSerialComln("Ingrese el ID de la curva a CARGAR y presione '-'");break;
             case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione '-'"); break;
             case 27: writeSerialComln("Ingrese 'PID' o 'NONE' y presione '-'"); break;
+            case 28: writeSerialComln("Ingrese el ID de la curva a eliminar y presione '-'"); break;
             default: break;
         }
     }
@@ -545,7 +569,7 @@ void printSavedCurves(){
 
 }
 //Imprime todas las curvas guardadas en NVS
-void printAllCurves() {
+void printAllCurvesNvs() {
     int id = 0;
     while (true) {
         String key = String("curve") + String(id);

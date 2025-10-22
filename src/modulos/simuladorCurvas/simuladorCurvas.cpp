@@ -14,6 +14,7 @@ static float delta_v,delta_t,pendiente,incremento=0.0f;
 curve_t* pinToCurve[MAX_PINES];
 void calcular_incrementos(bool puntro_nuevo,curve_t* curve);
 int getAvailableId();
+
 curve_t** newCurveArray(int size){
     curve_t** newArray=(curve_t**)malloc(sizeof(curve_t*)*size);
     if (newArray == NULL) {
@@ -297,7 +298,7 @@ int addPointToCurve(int curveId, int tiempo, float value,aproximation_point_type
     return 0; // Éxito
 }
 
-//Imprime por consola una curva en particular
+//Imprime por consola todas las curvas guardadas en RAM(curveArray)
 //La app no toma como valida una curva enviada por esta funcion
 void printCurves() { 
     if (curveArray == NULL) {
@@ -595,6 +596,65 @@ bool loadCurveNVS(const char* key) {
 }
 
 
+
+// Elimina de NVS una curva previamente guardada (key = "curveX")
+
+bool deleteCurveNVS(const char* key) {
+    if (key == nullptr) {
+        writeSerialComln("deleteCurveNVS: clave NULL");
+        return false;
+    }
+
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        writeSerialComln("Error al abrir NVS para borrado");
+        return false;
+    }
+
+    // Leer el tamaño para comprobar existencia (NO pasar nullptr)
+    int tmpSize = 0;
+    esp_err_t res = nvs_get_i32(handle, (String(key) + "_size").c_str(), &tmpSize);
+    if (res == ESP_ERR_NVS_NOT_FOUND) {
+        writeSerialComln(String("Clave no encontrada en NVS: ") + String(key));
+        nvs_close(handle);
+        return false;
+    } else if (res != ESP_OK) {
+        writeSerialComln(String("Error al leer clave ") + String(key) + String(" : ") + String(res));
+        nvs_close(handle);
+        return false;
+    }
+
+    // Lista de sufijos a borrar
+    const char* suffixes[] = {
+        "_Imax","_Imin","_Vmax","_Vmin","_Pmax","_Pmin",
+        "_contador","_size","_pin","_timestamp","_enabled","_points"
+    };
+
+    for (size_t i = 0; i < sizeof(suffixes)/sizeof(suffixes[0]); ++i) {
+        String fullKey = String(key) + String(suffixes[i]);
+        esp_err_t e = nvs_erase_key(handle, fullKey.c_str());
+        if (e == ESP_ERR_NVS_NOT_FOUND) {
+            // ignorar
+        } else if (e != ESP_OK) {
+            writeSerialComln(String("Error al borrar clave ") + fullKey + String(" : ") + String(e));
+            // continuar con los demás intentos
+        } else {
+            writeSerialComln(String("Borrada clave NVS: ") + fullKey);
+        }
+    }
+
+    err = nvs_commit(handle);
+    if (err != ESP_OK) {
+        writeSerialComln(String("Error al confirmar borrado en NVS: ") + String(err));
+        nvs_close(handle);
+        return false;
+    }
+
+    nvs_close(handle);
+    writeSerialComln(String("Curva borrada de NVS: ") + String(key));
+    return true;
+}
 
 
 

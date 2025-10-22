@@ -1,7 +1,7 @@
 #include <WiFi.h>
 #include <modulos/serialCom/serialCom.h>
 
-String ssid = "IPLAN-729033-2.4Ghz";
+String ssid = "Claro";
 String password = "17727630";
 
 

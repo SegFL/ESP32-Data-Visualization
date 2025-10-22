@@ -57,6 +57,7 @@ int getCurveCount(); // NUEVA: Función para obtener cantidad de curvas
 bool enableCurve(int curveId, int pin);
 void saveCurveNVS(const char* key, int curveId);
 bool loadCurveNVS(const char* key);
+bool deleteCurveNVS(const char* key);
 void printCurve(curve_t* c, int index = -1) ;
 bool printCurveFromNvs(const char* key);
 void printPinToCurve();
