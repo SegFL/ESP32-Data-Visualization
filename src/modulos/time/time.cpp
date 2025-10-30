@@ -76,9 +76,10 @@ void TimeUpdate() {
     }
 
     // Actualizar NTP
-    if (timeClient.update()) {
-        epochTime = timeClient.getEpochTime();
-
+    if (WiFiConected) {
+        if (timeClient.update()) {
+            epochTime = timeClient.getEpochTime();
+        }
     }
 
     // Si pasó más de 1 hora desde el último CREATE_FILE
