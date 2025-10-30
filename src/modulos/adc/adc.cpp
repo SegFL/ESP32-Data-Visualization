@@ -22,6 +22,9 @@ void adcInit() {
 
 void  leerADC(){
 
+  //ADCData temp = {0,0.0f,0.0f,0.0f,0.0f,0,0};
+
+
   ADCData temp = {0}; // Inicializar todos los campos a 0
   int i = 0;
 

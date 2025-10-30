@@ -63,7 +63,7 @@ el tiempo en milisegundos desde la utlimaacutalizacion de epoch time.
 
 void TimeUpdate() {
     // Si no hay WiFi intentar reconectar
-    if (!WiFiConected) {
+    if (!WiFiConected && customMillis() > 5*60000) { // cada 5 minutos
         if (connectWiFi()) {
             WiFiConected = true;
             if (!isFileCreated) {
