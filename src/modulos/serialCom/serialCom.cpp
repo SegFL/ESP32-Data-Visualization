@@ -7,8 +7,8 @@
 #define COMMAND 1 //Define el tipo de mensaje como comando
 
 bool MODE_SEND_DATA=false;
-
-
+void writeSerialComWithChecksum(const String &payload);
+uint8_t calculateChecksum(const String &data) ;
 void serialComInit() {
     Serial.begin(115200);
 }
@@ -58,11 +58,11 @@ bool sendDataStatus(){
 }
 
 void writeSerialComlnDATA(String data) {
-    writeSerialCom(String(DATA)+String(',')+data + "\n\r");
+    writeSerialComWithChecksum(String(DATA) + "," + data);
 }
 
 void writeSerialComlnCOMMAND(String data) {
-    writeSerialCom(String(COMMAND)+String(',')+data + "\n\r");
+    writeSerialComWithChecksum(String(COMMAND) + "," + data);
 }
 
 
@@ -89,4 +89,25 @@ void writeSerialCom(double data) {
 
 void writeSerialCom(unsigned long data){
     Serial.print(data);
+}
+
+
+
+
+// ===================== CHECKSUM SIMPLE XOR =====================
+uint8_t calculateChecksum(const String &data) {
+    uint8_t sum = 0;
+    for (size_t i = 0; i < data.length(); i++) {
+        sum ^= (uint8_t)data[i];
+    }
+    return sum;
+}
+
+void writeSerialComWithChecksum(const String &payload) {
+    uint8_t checksum = calculateChecksum(payload);
+    char buffer[8];
+    sprintf(buffer, "*%02X", checksum);  // 2 dígitos hexadecimales
+    Serial.print(payload);
+    Serial.print(buffer);
+    Serial.print("\n\r");
 }

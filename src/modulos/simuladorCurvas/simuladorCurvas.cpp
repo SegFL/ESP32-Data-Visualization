@@ -436,45 +436,49 @@ int getCurveCount() {
 
 // Habilita o deshabilita una curva
 bool enableCurve(int curveId, int pin) {
-    if (curveArray == NULL) {writeSerialComln("Error: Array de curvas no inicializado");return false;}
-    if (curveId < 0 || curveId >= curveArraySize) {writeSerialComln("Error: Curva no válida");return false;}
-    if (pin < 0 || pin >= MAX_PINES) {writeSerialComln("Error: Pin no válido");return false;}
-    if (curveArray[curveId] == NULL) {writeSerialComln("Error: Curva no existe");return false;}
+    if (curveArray == NULL) { writeSerialComln("Error: Array de curvas no inicializado"); return false; }
+    if (curveId < 0 || curveId >= curveArraySize) { writeSerialComln("Error: Curva no válida"); return false; }
+    if (pin < 0 || pin >= MAX_PINES) { writeSerialComln("Error: Pin no válido"); return false; }
+    if (curveArray[curveId] == NULL) { writeSerialComln("Error: Curva no existe"); return false; }
 
     curve_t *curve = curveArray[curveId];
 
     // Toggle de estado
     if (curve->enabled) {
-        // Si estaba habilitada → deshabilitar
+        // 🔻 Estaba habilitada → deshabilitar
         curve->enabled = false;
         curve->timestamp = 0;
         curve->currentIndex = 0;
-        pinToCurve[pin]=NULL; // Desaociar curva al pin
+        pinToCurve[pin] = NULL;
         writeSerialComln(String("Curva ") + String(curveId) + " deshabilitada.");
+        
+        // 🟢 NUEVO: Notificar fin de curva
+        writeSerialComlnCOMMAND("END_CURVE," + String(curveId) + "," + String(pin));
         return false;
     } else {
-        // Si estaba deshabilitada → habilitar
+        // 🔺 Estaba deshabilitada → habilitar
         unsigned long t0 = getCurrentEpoch();
         curve->enabled = true;
         curve->timestamp = t0;
         curve->currentIndex = 0;
 
-        // Verificar si la curva ya está asociada a otro pin
         for (int i = 0; i < MAX_PINES; i++) {
             if (pinToCurve[i] == curveArray[curveId]) {
-                writeSerialComln(String("Error: La curva ") + String(curveId) +
-                                " ya está asociada al pin " + String(i));
-                curve->enabled = false; // revertir habilitación
+                writeSerialComln(String("Error: La curva ") + String(curveId) + " ya está asociada al pin " + String(i));
+                curve->enabled = false;
                 return false;
             }
         }
 
-        curve->pin = pin; // asignar pin cada vez que se habilita
-        pinToCurve[pin]=curveArray[curveId]; // Asociar curva al pin
+        curve->pin = pin;
+        pinToCurve[pin] = curveArray[curveId];
         writeSerialComln(String("Curva ") + String(curveId) + " habilitada en pin " + String(pin));
+        
+        writeSerialComlnCOMMAND("START_CURVE," + String(curveId) + "," + String(pin));
         return true;
     }
 }
+
 
 
 
