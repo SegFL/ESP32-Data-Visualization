@@ -162,6 +162,7 @@ void CargaElectronicaUpdate(){
   }
 
 
+<<<<<<< HEAD
     // Aplicar límite máximo configurado (max_dc_value) y saturar 0..100
     if (max_dc_value >= 0.0f && max_dc_value <= 100.0f) {
         if (dutyCycleAux > max_dc_value) dutyCycleAux = max_dc_value;
@@ -172,6 +173,15 @@ void CargaElectronicaUpdate(){
     // Aplicar el duty cycle actual (inversión según diseño)
     int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
     ledcWrite(PWM_CHANNEL, pwmValue);
+=======
+  
+  // Aplicar el duty cycle actual (invertido)
+  int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
+
+  writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + 
+                   String("% -> PWM Value: ") + String(pwmValue));
+  ledcWrite(PWM_CHANNEL, pwmValue);
+>>>>>>> 7ce9568472daccc1b68e276e9e93ce199bcbb12f
 }
 
 
@@ -179,6 +189,7 @@ void CargaElectronicaUpdate(){
 // Se espera un valor entre 0 y 100, si el valor es mayor al máximo permitido se limita al máximo permitido
 // Se espera un valor entre 0 y 100 (corrige comportamiento previo)
 // Ahora recorta (clamp) usando max_dc_value
+<<<<<<< HEAD
 float PWMSetDC(float dutyPercent) {
     if (dutyPercent < 0.0f) return -1.0f;
     float limited = dutyPercent;
@@ -187,6 +198,18 @@ float PWMSetDC(float dutyPercent) {
     }
     if (limited > 100.0f) limited = 100.0f;
     DC = limited; // DC sigue representando duty percent
+=======
+float PWMSetDC(float currentReference) {
+    if (currentReference < 0.0f) return -1.0f;
+    // aplicar límite máximo configurado
+    float limited = currentReference;
+    if (max_dc_value >= 0.0f && max_dc_value <= 1000.0f) {
+        if (limited > max_dc_value) limited = max_dc_value;
+    }
+    // límite físico 0..100
+    if (limited > 1000.0f) limited = 1000.0f;
+    DC = limited;
+>>>>>>> 7ce9568472daccc1b68e276e9e93ce199bcbb12f
     return DC;
 }
 
