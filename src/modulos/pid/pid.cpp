@@ -1,12 +1,12 @@
 
 
 #include "pid.h"
-#define MAX_SAFE_CURRENT 400.0f
+#define MAX_SAFE_CURRENT 800.0f
 
 
 // ====== Parámetros PID ======
-float Kp = 0.05f;
-float Ki = 0.01f;
+float Kp = 0.1f;
+float Ki = 0.1f;
 float Kd = 0.0f;
 //período de muestreo real (200ms) Tiene que coincidir con el periodo del task2 
 //que se encarga de leer el ADC y actualizar la carga electronica

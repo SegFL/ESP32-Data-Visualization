@@ -199,7 +199,7 @@ void procesarDatos(String data) {
         //ToDo//int current=PWMSetDC(dutyCycle);
         float current=currentReference;
         if (current>=0.0 && current<=1000.0) {
-            PWMSetDC(current); // Cambiar el Duty Cycle
+            setCurrentReference_mA(current); // 
             writeSerialComln(String("Corriente de referencia cambiada a: ") + String(current) + "mA");
         } else {
             writeSerialComln(String("Valor de corriente de referencia inválido. Debe estar entre 0 y 1000mA."));

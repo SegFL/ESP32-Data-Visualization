@@ -45,4 +45,5 @@ void changeControlMode(modoFuncionamiento_t mode);
 float PWMGetMaxDC();
 bool setMaxCurrent(float current);
 modoFuncionamiento_t getModoFuncionamiento();
+bool setCurrentReference_mA(float current_mA);
 #endif

@@ -26,9 +26,11 @@ const int LED_OUTPUT_PIN = 18;   // Pin GPIO donde se genera la señal PWM
 // Variables globales
 float DC = 0;  // Duty cycle actual (0-100%)
 
-float max_dc_value = 0; // Valor máximo del duty cycle (0-100%)
+float max_dc_value = 800.0; // Valor máximo del duty cycle (0-100%)
 float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
+float currentReference_mA = 0.0f;   // Referencia manual en mA usada por PID/curvas
+
 modoFuncionamiento_t modoFuncionamiento = NONE; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
@@ -47,8 +49,9 @@ void CargaElectronicaInit(){
 
   // Asociar el canal PWM al pin de salida
   ledcAttachPin(LED_OUTPUT_PIN, PWM_CHANNEL);
-  DC=0; // Inicializar el duty cycle a 0
-  max_dc_value=0; // Inicializar el valor máximo del duty cycle a 0
+  DC = 0.0f; // Inicializar el duty cycle a 0 (%)
+  max_dc_value = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
+  currentReference_mA = 0.0f; // referencia manual en mA
   ledcWrite(PWM_CHANNEL, 0); // Inicializar el PWM a 0 (apagado)
 
   simuladorCurvasInit(3);
@@ -61,12 +64,12 @@ void CargaElectronicaInit(){
         }
         
         //Agregar puntos a la curva usando la nueva función encapsulada
-        addPointToCurve(curveId, 10, 30.0f,LINEAR);
-        addPointToCurve(curveId, 25, 40.0f,LINEAR);
-        addPointToCurve(curveId, 50, 50.0f,LINEAR);
-        addPointToCurve(curveId, 60, 30.0f,LINEAR);
-        addPointToCurve(curveId, 70, 50.0f,LINEAR);
-        addPointToCurve(curveId, 80, 0.0f,LINEAR);
+        addPointToCurve(curveId, 10, 30.0f,STEP);
+        addPointToCurve(curveId, 25, 40.0f,STEP);
+        addPointToCurve(curveId, 50, 200.0f,STEP);
+        addPointToCurve(curveId, 60, 30.0f,STEP);
+        addPointToCurve(curveId, 70, 50.0f,STEP);
+        addPointToCurve(curveId, 80, 0.0f,STEP);
         
         writeSerialComln(String("Curva creada con ID: ") + String(curveId));
         // Las funciones sendCurves y printCurves ahora usan el array interno
@@ -96,9 +99,12 @@ void cargarConfiguracionNvs(){
 
     int value = readValueNVSint32_t(MAX_DC_NVS_KEY);
     if(value != -1){
+        // valor en % esperado 0..100
+        if(value < 0) value = 0;
+        if(value > 100) value = 100;
         max_dc_value = (float)value;
     } else {
-        max_dc_value = 0.0f; // Valor por defecto si no se encuentra en NVS
+        max_dc_value = 100.0f; // Valor por defecto si no se encuentra en NVS -> sin recorte
     }
 
     //Cargo la configuracion guardada en NVS
@@ -114,51 +120,58 @@ void cargarConfiguracionNvs(){
   }
 void CargaElectronicaUpdate(){
 
-  float dutyCycleAux = 0;
-  float referencia = 0;
-  float aux = 0;
+  float dutyCycleAux = 0.0f;
+  float referenceCurrent = 0.0f; // mA
+  float aux = 0.0f;
 
   // Selección de referencia
   switch(curveMode){
     // Usar siempre valor manual
     case OFF_t:
-      referencia = DC; 
+      // En modo OFF la referencia de corriente viene de la referencia manual (mA)
+      referenceCurrent = currentReference_mA;
       break;
     case ON_t:        
       aux = getCurveValue(0);
       if(aux != -1){
-        referencia = aux; // Usar valor de la curva si es válido
+        referenceCurrent = aux; // Usar valor de la curva si es válido
       } else {
-        referencia = 0;
+        referenceCurrent = 0.0f;
       } break;
     default:
-      referencia = 0;
+      referenceCurrent = 0;
       break;
   }
 
   // Selección de modo de funcionamiento
   switch(modoFuncionamiento){
     case PID:  
-      dutyCycleAux = getDCPID(referencia);
+      dutyCycleAux = getDCPID(referenceCurrent);
       //writeSerialComln(String("Modo PID - Referencia: ") + String(referencia) + 
                        //String(" -> Duty Cycle: ") + String(dutyCycleAux));
       break;
     case NONE: 
 
-      dutyCycleAux = convertirCorrienteADc(referencia);
+      dutyCycleAux = DC; // Duty cycle directo
       //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
       break;
     default:   
-      dutyCycleAux = 0; 
+      dutyCycleAux = 0.0f; 
       writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
       break;
   }
 
 
-  
-  // Aplicar el duty cycle actual (invertido)
-  int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
-  ledcWrite(PWM_CHANNEL, pwmValue);
+    // Aplicar límite máximo configurado (max_dc_value) y saturar 0..100
+    if (max_dc_value >= 0.0f && max_dc_value <= 100.0f) {
+        if (dutyCycleAux > max_dc_value) dutyCycleAux = max_dc_value;
+    }
+    if (dutyCycleAux > 100.0f) dutyCycleAux = 100.0f;
+    if (dutyCycleAux < 0.0f) dutyCycleAux = 0.0f;
+
+    // Aplicar el duty cycle actual (inversión según diseño)
+    int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
+    ledcWrite(PWM_CHANNEL, pwmValue);
 }
 
 
@@ -166,16 +179,14 @@ void CargaElectronicaUpdate(){
 // Se espera un valor entre 0 y 100, si el valor es mayor al máximo permitido se limita al máximo permitido
 // Se espera un valor entre 0 y 100 (corrige comportamiento previo)
 // Ahora recorta (clamp) usando max_dc_value
-float PWMSetDC(float currentReference) {
-    if (currentReference < 0.0f) return -1.0f;
-    // aplicar límite máximo configurado
-    float limited = currentReference;
+float PWMSetDC(float dutyPercent) {
+    if (dutyPercent < 0.0f) return -1.0f;
+    float limited = dutyPercent;
     if (max_dc_value >= 0.0f && max_dc_value <= 100.0f) {
         if (limited > max_dc_value) limited = max_dc_value;
     }
-    // límite físico 0..100
     if (limited > 100.0f) limited = 100.0f;
-    DC = limited;
+    DC = limited; // DC sigue representando duty percent
     return DC;
 }
 
@@ -230,15 +241,37 @@ float PWMGetMaxDC(){
 }
 
 
+// Convertir referencia de corriente (mA) a duty %
+// - reference_current: mA
+// - usa maxCurrent para normalizar (mA -> 0..100%)
+// - respeta max_dc_value (tope %) y clampa 0..100
 float convertirCorrienteADc(float reference_current){
-  return reference_current; //No hace nada por ahora
+  // Si referencia viene en % por error, proteger
+  // but expected unit is mA
+  if (reference_current < 0.0f) reference_current = 0.0f;
+
+  // Evitar división por cero
+  float denom = (maxCurrent > 0.0f) ? maxCurrent : 1.0f;
+  float percent = (reference_current * 100.0f) / denom;
+
+  // Clamp 0..100
+  if (percent < 0.0f) percent = 0.0f;
+  if (percent > 100.0f) percent = 100.0f;
+
+  // Aplicar máximo configurado en porcentaje
+  if (max_dc_value >= 0.0f && max_dc_value <= 100.0f && percent > max_dc_value) {
+      percent = max_dc_value;
+  }
+
+  return percent;
 }
 
 bool setMaxCurrent(float current){
-    if(current>=0.0 && current<=1000.0){
-        maxCurrent=current;
+    // maxCurrent está en mA. Aceptar rango razonable (0..2000 mA)
+    if(current >= 0.0f && current <=2000.0f){
+        maxCurrent = current;
         return true;
-    } 
+    }
     return false;
 }
 
@@ -247,3 +280,14 @@ bool setMaxCurrent(float current){
 modoFuncionamiento_t getModoFuncionamiento(){
     return modoFuncionamiento;
 }
+
+
+// Nuevo: setter para referencia manual de corriente (mA) usada por PID/curva en modo OFF
+bool setCurrentReference_mA(float current_mA){
+    if (current_mA < 0.0f) return false;
+    currentReference_mA = current_mA;
+    return true;
+}
+
+
+
