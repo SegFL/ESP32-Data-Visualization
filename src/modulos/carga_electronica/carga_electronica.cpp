@@ -158,6 +158,9 @@ void CargaElectronicaUpdate(){
   
   // Aplicar el duty cycle actual (invertido)
   int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
+
+  writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + 
+                   String("% -> PWM Value: ") + String(pwmValue));
   ledcWrite(PWM_CHANNEL, pwmValue);
 }
 
@@ -170,11 +173,11 @@ float PWMSetDC(float currentReference) {
     if (currentReference < 0.0f) return -1.0f;
     // aplicar límite máximo configurado
     float limited = currentReference;
-    if (max_dc_value >= 0.0f && max_dc_value <= 100.0f) {
+    if (max_dc_value >= 0.0f && max_dc_value <= 1000.0f) {
         if (limited > max_dc_value) limited = max_dc_value;
     }
     // límite físico 0..100
-    if (limited > 100.0f) limited = 100.0f;
+    if (limited > 1000.0f) limited = 1000.0f;
     DC = limited;
     return DC;
 }
