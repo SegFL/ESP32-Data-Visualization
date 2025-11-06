@@ -14,6 +14,8 @@ static float delta_v,delta_t,pendiente,incremento=0.0f;
 curve_t* pinToCurve[MAX_PINES];
 void calcular_incrementos(bool puntro_nuevo,curve_t* curve);
 int getAvailableId();
+void startCurve(curve_t* curve,int pin);
+void endCurve(curve_t* curve,int pin);
 
 curve_t** newCurveArray(int size){
     curve_t** newArray=(curve_t**)malloc(sizeof(curve_t*)*size);
@@ -174,6 +176,7 @@ float getCurveValue(int pin) {
 
         // Si llegamos al último punto, deshabilitar la curva
         curve->enabled = false;
+        curve->contador=0;
         writeSerialComln(String("Curva del pin") + String(pin) + String(" finalizada y deshabilitada."));
         return 0.0;
     }
@@ -434,51 +437,56 @@ int getCurveCount() {
     return count;
 }
 
-// Habilita o deshabilita una curva
-bool enableCurve(int curveId, int pin) {
-    if (curveArray == NULL) { writeSerialComln("Error: Array de curvas no inicializado"); return false; }
-    if (curveId < 0 || curveId >= curveArraySize) { writeSerialComln("Error: Curva no válida"); return false; }
-    if (pin < 0 || pin >= MAX_PINES) { writeSerialComln("Error: Pin no válido"); return false; }
-    if (curveArray[curveId] == NULL) { writeSerialComln("Error: Curva no existe"); return false; }
 
-    curve_t *curve = curveArray[curveId];
+bool asociarCurvaAPin(int curveId, int pin){
 
-    // Toggle de estado
-    if (curve->enabled) {
-        // 🔻 Estaba habilitada → deshabilitar
-        curve->enabled = false;
-        curve->timestamp = 0;
-        curve->currentIndex = 0;
-        pinToCurve[pin] = NULL;
-        writeSerialComln(String("Curva ") + String(curveId) + " deshabilitada.");
-        
-        // 🟢 NUEVO: Notificar fin de curva
-        writeSerialComlnCOMMAND("END_CURVE," + String(curveId) + "," + String(pin));
+
+    if(curveId<0 || curveId>=curveArraySize){
+        writeSerialComln(String("ID de curva no válido"));
         return false;
-    } else {
-        // 🔺 Estaba deshabilitada → habilitar
-        unsigned long t0 = getCurrentEpoch();
-        curve->enabled = true;
-        curve->timestamp = t0;
-        curve->currentIndex = 0;
-
-        for (int i = 0; i < MAX_PINES; i++) {
-            if (pinToCurve[i] == curveArray[curveId]) {
-                writeSerialComln(String("Error: La curva ") + String(curveId) + " ya está asociada al pin " + String(i));
-                curve->enabled = false;
-                return false;
-            }
-        }
-
-        curve->pin = pin;
-        pinToCurve[pin] = curveArray[curveId];
-        writeSerialComln(String("Curva ") + String(curveId) + " habilitada en pin " + String(pin));
-        
-        writeSerialComlnCOMMAND("START_CURVE," + String(curveId) + "," + String(pin));
-        return true;
     }
+    if(pin<0 || pin>=MAX_PINES){
+        writeSerialComln(String("Pin no válido"));
+        return false;
+    }
+    curve_t* curve=curveArray[curveId];
+    if(curve==NULL){
+        writeSerialComln(String("Curva no existente"));
+        return false;
+    }
+
+    //Elimino la curva anterior si es que existiay la doy por finalizada
+    if(pinToCurve[pin]!=NULL){
+        writeSerialComln(String("Deshabilitando curva:"+String(pinToCurve[pin]->id)+" asociada al pin: ")+String(pin));
+        endCurve(pinToCurve[pin],pin);
+    }
+    //Si no tenia una curva asocida a ese pint la asocio
+    pinToCurve[pin]=curve;
+    startCurve(pinToCurve[pin],pin);
+
+    return true;
+
+
 }
 
+void startCurve(curve_t* curve,int pin){
+    if(curve==NULL) return;
+    if(pin<0 || pin>=MAX_PINES) return;
+    //Habilitar curva/reiniciar
+    unsigned long t0 = getCurrentEpoch();
+    curve->enabled = true;
+    curve->timestamp = t0;
+    curve->currentIndex = 0;
+    writeSerialComlnCOMMAND("START_CURVE," + String(curve->id) + "," + String(pin));
+
+}
+
+void endCurve(curve_t* curve,int pin){
+    curve->enabled = false;
+    curve->timestamp = 0;
+    curve->currentIndex = 0;
+    writeSerialComlnCOMMAND("END_CURVE," + String(curve->id) + "," + String(pin));
+}
 
 
 
@@ -788,7 +796,7 @@ void printPinToCurve(){
     writeSerialComln("Pines y curvas asociadas:");
     for(int i=0;i<MAX_PINES;i++){
         if(pinToCurve[i]!=NULL){
-            writeSerialComln(String("Pin ") + String(i) + String(" -> Curva asociada ") + String(pinToCurve[i]->id));
+            writeSerialComln(String("Pin ") + String(i) + String(" -> Curva asociada ") + String(pinToCurve[i]->id)+String(pinToCurve[i]->enabled?" (Habilitada)":" (Deshabilitada) "));
         }else{
             writeSerialComln(String("Pin ") + String(i) + String(" -> -"));
         }

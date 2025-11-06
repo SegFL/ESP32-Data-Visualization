@@ -286,10 +286,10 @@ void procesarDatos(String data) {
         int pin = -1;
 
         if (sscanf(data.c_str(), "%d,%d", &curveId, &pin) == 2){
-            if(enableCurve(curveId,pin)==true){
-                writeSerialComln(String("Curva ") + String(curveId) + String(" habilitada"));
+            if(asociarCurvaAPin(curveId,pin)==true){
+                writeSerialComln(String("Curva ") + String(curveId) + String(" asociada al pin: ") + String(pin));
             }else{
-                writeSerialComln(String("Curva ") + String(curveId) + String(" deshabilitada"));
+                writeSerialComln(String("No se pudo ascociar la curva ") + String(curveId) + String(" al pin: ") + String(pin));
             }
         }
         
