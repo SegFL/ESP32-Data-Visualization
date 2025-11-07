@@ -68,8 +68,7 @@ void CargaElectronicaInit(){
         addPointToCurve(curveId, 25, 40.0f,STEP);
         addPointToCurve(curveId, 50, 200.0f,STEP);
         addPointToCurve(curveId, 60, 30.0f,STEP);
-        addPointToCurve(curveId, 70, 50.0f,STEP);
-        addPointToCurve(curveId, 80, 0.0f,STEP);
+
         
         writeSerialComln(String("Curva creada con ID: ") + String(curveId));
         // Las funciones sendCurves y printCurves ahora usan el array interno

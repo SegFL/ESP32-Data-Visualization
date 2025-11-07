@@ -154,9 +154,11 @@ float getCurveValue(int pin) {
     //Curva asociada al pin
     curve_t *curve = pinToCurve[pin];
     if (!curve || !curve->point || curve->contador <= 0) {
+        writeSerialComln("Error: Curva o puntos no válidos");
         return -1; // no hay puntos válidos
     }
     if (!curve->enabled) {
+        writeSerialComln("Curva deshabilitada");
         return -1; // curva deshabilitada
     }
 
@@ -176,7 +178,7 @@ float getCurveValue(int pin) {
 
         // Si llegamos al último punto, deshabilitar la curva
         curve->enabled = false;
-        curve->contador=0;
+        curve->currentIndex = 0;
         writeSerialComln(String("Curva del pin") + String(pin) + String(" finalizada y deshabilitada."));
         return 0.0;
     }
