@@ -1,7 +1,7 @@
 #include <WiFi.h>
 #include <modulos/serialCom/serialCom.h>
 
-String ssid = "Clar";
+String ssid = "Claro";
 String password = "17727630";
 
 

@@ -30,4 +30,3 @@ Agregar la opcion para deshabilitar la autoconexion de wifi
 
 Corregir el hecho de que no se meustra bien el pin en el menu 1 sensores analogicos
 
-Corregir error de loop infinito cuando no se tiene conexion a wifi

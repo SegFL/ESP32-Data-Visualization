@@ -445,11 +445,11 @@ void printSensorData() {
         return;
     }
  
-    moveCursor(2, 1); writeSerialCom(String(data.pin));
+    moveCursor(2, 1); writeSerialCom(String(data.pin)+String("                  "));
     moveCursor(3, 22); writeSerialCom(String(data.busVoltage_V));
     moveCursor(4, 25); writeSerialCom(String(data.shuntVoltage_mV));
     moveCursor(5, 18); writeSerialCom(String(data.current_mA));
-    moveCursor(6, 16); writeSerialCom(String(data.power_mW));                                                  
+    moveCursor(6, 16); writeSerialComln(String(data.power_mW));                                                  
 
 }
 
