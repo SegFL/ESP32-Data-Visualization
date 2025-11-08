@@ -11,6 +11,9 @@ unsigned long epochTime = 0; // Variable para almacenar el tiempo desde epoch
 unsigned long offsetMillis = 0; // Variable para almacenar el tiempo desde epoch
 bool WiFiConected=false;
 bool isFileCreated=false; 
+
+unsigned long lastWifiAttempt = 0;     // guarda la última vez que intentó
+
 // Configuración de NTP
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Argentina)
@@ -63,13 +66,19 @@ el tiempo en milisegundos desde la utlimaacutalizacion de epoch time.
 
 void TimeUpdate() {
     // Si no hay WiFi intentar reconectar
-    if (!WiFiConected && customMillis() > 5*60000) { // cada 5 minutos
+    // cada 2 minutos
+    if (!WiFiConected && (customMillis() - lastWifiAttempt >= 2 * 60000)) {
+
+        lastWifiAttempt = customMillis();  // actualizo el contador
+
         if (connectWiFi()) {
             WiFiConected = true;
+
             if (!isFileCreated) {
                 enviarComandoCrearArchivo();
                 isFileCreated = true;
             }
+
         } else {
             return;
         }
