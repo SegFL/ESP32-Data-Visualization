@@ -18,7 +18,8 @@
 #define NOT_SEND_DATA false
 
 static MenuNode *menu = nullptr;
-String data_buffer = ""; //Variable para almacenar los datos recibidos
+char data_buffer[MAX_DATA_BUFFER] ; //Variable para almacenar los datos recibidos
+unsigned char buffer_index = 0; //Índice para el buffer de datos
 bool aceptandoDatos=false;
 bool updateScreen=false;
 
@@ -45,6 +46,9 @@ bool parseStringToFloats(String str, float *num1, float *num2, float *num3);
 void printSavedCurves();
 void printAllCurvesNvs();
 void printSensorInfo();
+
+
+
 void userInterfaceInit(){
     serialComInit();
     clearScreen();//Borra mensajes del ESP32 al iniciar el programa
@@ -69,66 +73,67 @@ void userInterfaceInit(){
 
 
 void userInterfaceUpdate() {
+    if (menu == nullptr) return;
+
     char charReceived = readSerialChar();
-
-    /*
-    // Caso especial: refrescar sensores en pantalla
-    if (updateScreen == true) {
-        clearScreen();
-        printNode(menu);
-        printSensorData();
-    }
-    */
-
-    // Si no hay caracter recibido o menú no inicializado, no hacemos nada
-    if (charReceived == '\0' || menu == nullptr) {
-        // 🔹 Ejecutar actualizaciones periódicas igual
-        onUpdateNode(menu);
-        return;
-    }
-
-    // Cambiar estado de aceptar datos
-    if (charReceived == '-') {
-        if (aceptandoDatos == true) {
-            aceptandoDatos = false;
-            procesarDatos(data_buffer);
-            data_buffer = "";
-        } else {
-            aceptandoDatos = true;
-            data_buffer = "";
+    if(charReceived== GO_BACK){ // ESCAPE
+        menuUpdate(charReceived, &menu);
+        if (lastMenuId != menu->id) {
+            clearScreen();
+            printNode(menu);
+            onEnterNode(menu);
+            lastMenuId = menu->id;
         }
+        //Si el nodo es nuevo y requiere datos, preparo el buffer para recibirlos
+        //Si no es nuevo pero aun asi requiere datos(porque ya se enviaron datos previamente
+        //y se quiere seguir enviando datos) tambien preparo el buffer
+        aceptandoDatos = nodeRequiresInput(menu->id);
+
+        
+        return ;
+    }
+  
+
+    if (charReceived == '\n') {
+        if (aceptandoDatos) {
+            // Terminamos de recibir datos
+            data_buffer[buffer_index] = '\0';  // Terminador nulo
+            procesarDatos(data_buffer);
+            memset(data_buffer, 0, sizeof(data_buffer));
+            buffer_index = 0;
+            aceptandoDatos = false;
+        } 
         return;
     }
 
-    // 🔹 Si NO estamos aceptando datos, procesamos navegación de menú
-    if (aceptandoDatos == false) {
+   if (!aceptandoDatos) {
+
+        
         menuUpdate(charReceived, &menu);
 
-        if (menu->id != 1) {
-            updateScreen = false;
-        }
-
-        clearScreen();
-        printNode(menu);
-
-        // Solo disparar acciones si realmente cambió el nodo
         if (lastMenuId != menu->id) {
+            clearScreen();
+            printNode(menu);
+            onEnterNode(menu);
             lastMenuId = menu->id;
-            onEnterNode(menu);   // Ejecutar solo una vez al entrar
         }
-
-        // Manejo especial del menú 1 (sensores) → primer refresh
-        if (updateScreen == false) {
-            if (menu->id == 1) {
-                printSensorData();
-                updateScreen = true;
-            }
-        }
+        //Si el nodo es nuevo y requiere datos, preparo el buffer para recibirlos
+        //Si no es nuevo pero aun asi requiere datos(porque ya se enviaron datos previamente
+        //y se quiere seguir enviando datos) tambien preparo el buffer
+        aceptandoDatos = nodeRequiresInput(menu->id);
 
     } else {
-        // Estamos recibiendo datos → agregarlos al buffer
-        data_buffer += charReceived;
+        // Captura de caracteres
+        if(buffer_index < MAX_DATA_BUFFER - 1) {
+            // Aceptamos solo números,caracteres , coma y espacios
+            if (isdigit(charReceived) || isalpha(charReceived) || charReceived == ',' || isspace(charReceived)) {
+                data_buffer[buffer_index++] = charReceived;
+            } 
+        }
     }
+
+
+
 
     // 🔹 Ejecutar siempre la lógica de actualización periódica
     onUpdateNode(menu);
@@ -505,6 +510,15 @@ static bool nodeRequiresInput(int id) {
 static void onEnterNode(MenuNode* n) {
     if (!n) return;
 
+    if (nodeRequiresInput(n->id)) {
+        aceptandoDatos = false;
+        memset(data_buffer, 0, sizeof(data_buffer));
+        buffer_index = 0;
+        //sendUartDataln("Nodo requiere entrada. Presiona 'ENTER' para comenzar.");
+
+
+    } 
+
     // Acciones inmediatas (sin pedir datos) y automaticas en elupdate
     switch (n->id) {
         case 1:  // Entradas analógicas
@@ -513,7 +527,7 @@ static void onEnterNode(MenuNode* n) {
             break;
         case 10:
             writeSerialComln(String("Valor maximo actual del PWM: ") + String(PWMGetMaxDC()) + String(" %"));
-            writeSerialComln("Ingrese nuevo valor (0..100) y presione '-'");
+            writeSerialComln("Ingrese nuevo valor (0..100) y presione 'ENTER'");
             break;
         case 15: // Ver curvas
             printCurves();
@@ -569,30 +583,32 @@ static void onEnterNode(MenuNode* n) {
     // Nodos que requieren datos: activar captura y mostrar prompt
     if (nodeRequiresInput(n->id)) {
         aceptandoDatos = true;
-        data_buffer = "";
+        memset(data_buffer, 0, sizeof(data_buffer));
+        buffer_index = 0;
+
         switch (n->id) {
-            case 3:  writeSerialComln("Ingrese SSID y presione '-' para confirmar"); break;
-            case 4:  writeSerialComln("Ingrese PASSWORD y presione '-'"); break;
-            case 6:  writeSerialComln("Para activar/desactivar el modo SEND DATA ingrese y/n y presione '-'"); break;
-            case 8:  writeSerialComln("Ingrese la corriente de referencia (0-1000mA) y presione '-'"); break;
-            case 9:  writeSerialComln("Ingrese frecuencia <0-78125> y presione '-'"); break;
-            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione '-'"); break;
-            case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione '-'"); break;
-            case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione '-'"); break;
-            case 21: writeSerialComln("Activar modo curva (Y/N) y presione '-'"); break;
-            case 22: writeSerialComln("ID de curva a GUARDAR y presione '-'"); break;
-            case 23: writeSerialComln("Ingrese el ID de la curva a CARGAR y presione '-'");break;
-            case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione '-'"); break;
-            case 30: writeSerialComln("Ingrese 'PID' o 'NONE' y presione '-'"); break;
-            case 28: writeSerialComln("Ingrese el ID de la curva a eliminar y presione '-'"); break;
+            case 3:  writeSerialComln("Ingrese SSID y presione 'ENTER' para confirmar"); break;
+            case 4:  writeSerialComln("Ingrese PASSWORD y presione 'ENTER'"); break;
+            case 6:  writeSerialComln("Para activar/desactivar el modo SEND DATA ingrese y/n y presione 'ENTER'"); break;
+            case 8:  writeSerialComln("Ingrese la corriente de referencia (0-1000mA) y presione 'ENTER'"); break;
+            case 9:  writeSerialComln("Ingrese frecuencia <0-78125> y presione 'ENTER'"); break;
+            case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione 'ENTER'"); break;
+            case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione 'ENTER'"); break;
+            case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione 'ENTER'"); break;
+            case 21: writeSerialComln("Activar modo curva (Y/N) y presione 'ENTER'"); break;
+            case 22: writeSerialComln("ID de curva a GUARDAR y presione 'ENTER'"); break;
+            case 23: writeSerialComln("Ingrese el ID de la curva a CARGAR y presione 'ENTER'");break;
+            case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione 'ENTER'"); break;
+            case 30: writeSerialComln("Ingrese 'PID' o 'NONE' y presione 'ENTER'"); break;
+            case 28: writeSerialComln("Ingrese el ID de la curva a eliminar y presione 'ENTER'"); break;
             case 31: writeSerialComln("Para resetear los parametros del PID presione y-"); break;
-            case 32: writeSerialComln("Ingrese parámetros PID en formato Kp,Ki,Kd y presione '-'"); break;
+            case 32: writeSerialComln("Ingrese parámetros PID en formato Kp,Ki,Kd y presione 'ENTER'"); break;
             default: break;
         }
     }
 }
 
-
+//Ejecuto acciones periódicas al estar en ciertos nodos
 static void onUpdateNode(MenuNode* n) {
     if (!n) return;
 
