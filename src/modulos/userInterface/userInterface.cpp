@@ -387,6 +387,9 @@ void procesarDatos(String data) {
             writeSerialComln("Formato inválido. Use: Kp,Ki,Kd (ejemplo: 1.5,0.2,0.1)");
         }
     }
+    if(menu->id ==33){
+        connectWiFi();
+    }
 
 
 

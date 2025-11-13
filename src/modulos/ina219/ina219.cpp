@@ -4,7 +4,7 @@
 
 
 
-#define NUM_SENSORS 1 // Número de sensores INA219. Si se cambia tambien se deberia cambiar el valor en adc.cpp
+#define NUM_SENSORS 2 // Número de sensores INA219. Si se cambia tambien se deberia cambiar el valor en adc.cpp
 
 
 // Crear un vector de punteros para manejar múltiples sensores

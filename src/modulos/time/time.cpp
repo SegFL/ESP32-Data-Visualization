@@ -25,21 +25,7 @@ void enviarComandoCrearArchivo();
 void TimeInit() {
     // 1. Intentar conectar WiFi y usar NTP
     if (connectWiFi() == true) {
-        timeClient.begin();
-        epochTime = timeClient.getEpochTime();
-        millisInit = 0; // Guardar el tiempo inicial
-        millisTranscurridos = 0; 
-        WiFiConected = true;
-        enviarComandoCrearArchivo();
-        isFileCreated = true;
-
-        // Si hay WiFi/NTP, borrar la fecha manual para que no se use más
-        nvs_handle_t handle;
-        if (nvs_open("storage", NVS_READWRITE, &handle) == ESP_OK) {
-            nvs_erase_key(handle, "manual_epoch");
-            nvs_commit(handle);
-            nvs_close(handle);
-        }
+        updateDateTimeNTP();
     }
     // 2. Si NO hay WiFi → usar fecha guardada manualmente
     else {
@@ -55,6 +41,25 @@ void TimeInit() {
     }
 }
 
+void updateDateTimeNTP(){
+
+        timeClient.begin();
+        epochTime = timeClient.getEpochTime();
+        millisInit = 0; // Guardar el tiempo inicial
+        millisTranscurridos = 0; 
+        WiFiConected = true;
+        enviarComandoCrearArchivo();
+        isFileCreated = true;
+
+        // Si hay WiFi/NTP, borrar la fecha manual para que no se use más
+        nvs_handle_t handle;
+        if (nvs_open("storage", NVS_READWRITE, &handle) == ESP_OK) {
+            nvs_erase_key(handle, "manual_epoch");
+            nvs_commit(handle);
+            nvs_close(handle);
+        }
+
+}
 /*
 Actualiza el tiempo cada vez que se llama a la función. Usa el tiempo desde epoch
 y una diferencia de tiempo para tener los milisegundos transcurridos.
@@ -73,6 +78,7 @@ void TimeUpdate() {
 
         if (connectWiFi()) {
             WiFiConected = true;
+            updateDateTimeNTP();
 
             if (!isFileCreated) {
                 enviarComandoCrearArchivo();

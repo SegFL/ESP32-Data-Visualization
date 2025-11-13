@@ -13,7 +13,7 @@ bool connectWiFi() {
     writeSerialComln(String("Conectando a Wi-Fi..."));
 
     // Esperar hasta 5 segundos para conectar
-    int maxRetries = 3;
+    int maxRetries = 20;
     while (WiFi.status() != WL_CONNECTED && maxRetries-- > 0) {
         delay(500);
         writeSerialCom(String("."));
