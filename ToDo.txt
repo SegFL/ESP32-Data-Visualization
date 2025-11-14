@@ -30,4 +30,8 @@ Agregar la opcion para deshabilitar la autoconexion de wifi
 
 Corregir el hecho de que no se meustra bien el pin en el menu 1 sensores analogicos
 
-Corregir error de loop infinito cuando no se tiene conexion a wifi
+Cambiar para que el WiFi se conecte de forma asincionica y no quede un loop trabado cada x tiempo.
+Bajar cantidad de intentos
+
+Corregir el hecho de que la carga entre en corto al iniciar el uC, ahora que el WiFi es mas lento
+el corto dura mas, puede ser por alguna salida en 0, usar primero el Init de las salidas, ejecutarlo primero.

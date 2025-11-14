@@ -9,7 +9,7 @@
 #include <modulos/carga_electronica/carga_electronica.h>
 
 float lastCurrent_mA = 0.0f; // Variable para almacenar la última corriente medida
-#define NUMBER_OF_SENSORS 1 // Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
+#define NUMBER_OF_SENSORS 2 // Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 void adcInit() {
     // Inicializar el buffer
 
