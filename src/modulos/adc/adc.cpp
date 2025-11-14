@@ -9,7 +9,7 @@
 #include <modulos/carga_electronica/carga_electronica.h>
 
 float lastCurrent_mA = 0.0f; // Variable para almacenar la última corriente medida
-#define NUMBER_OF_SENSORS 2 // Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
+#define NUMBER_OF_SENSORS 2// Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 void adcInit() {
     // Inicializar el buffer
 
@@ -29,12 +29,16 @@ void  leerADC(){
   int i = 0;
 
   while(i < NUMBER_OF_SENSORS){
+        //writeSerialComln(String("0"));
+
       if(getData(temp, i) == true){
         // Solo enviar la corriente al actuador
         //sendToActuator(temp.current_mA); 
-        
         sendSensorDataToUserInterface(temp);
+
         if(sendDataStatus()==true){
+          //writeSerialComln(String("1"));
+
           writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.current_mA)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.power_mW)+","+String(temp.pin));
         }
       }

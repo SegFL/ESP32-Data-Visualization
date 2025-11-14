@@ -6,7 +6,7 @@
 #define DATA 0 //Define el tipo de mensaje como dato
 #define COMMAND 1 //Define el tipo de mensaje como comando
 
-bool MODE_SEND_DATA=false;
+bool MODE_SEND_DATA=true;
 void writeSerialComWithChecksum(const String &payload);
 uint8_t calculateChecksum(const String &data) ;
 void serialComInit() {

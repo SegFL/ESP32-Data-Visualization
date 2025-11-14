@@ -189,7 +189,7 @@ void procesarDatos(String data) {
 
     }
     if(menu->id==1){
-        writeSerialComln(String("Datos de sensor"));
+        writeSerialComln(String("Datos de sensores"));
         printSensorData();
     }
     
@@ -445,20 +445,49 @@ void printSensorInfo(){
     writeSerialComln(String("\tPower: ") + String("      ") + String(" mW"));
 
 }
-void printSensorData() {
-    ADCData data;
-    //ADCData data = {A0, 5.0, 10.0, 2.5, 12.5, millis()};
+#define MAX_SENSORS 2   // O el número de sensores que manejes
 
-    if(receiveSensorDataToUserInterface(&data)==false){
+void printSensorData() {
+
+    // 1) Crear array para recibir TODOS los sensores
+    //Se queda con el ultimo valor de cada uno
+    ADCData data[MAX_SENSORS];
+
+    // 2) Llenarlo con receiveSensorDataToUserInterface()
+    if (!receiveSensorDataToUserInterface(data)) {
         return;
     }
- 
-    moveCursor(2, 1); writeSerialCom(String(data.pin)+String("                  "));
-    moveCursor(3, 22); writeSerialCom(String(data.busVoltage_V));
-    moveCursor(4, 25); writeSerialCom(String(data.shuntVoltage_mV));
-    moveCursor(5, 18); writeSerialCom(String(data.current_mA));
-    moveCursor(6, 16); writeSerialComln(String(data.power_mW));                                                  
 
+    // 3) Tamaño en líneas de cada bloque de sensor
+    const int LINES_PER_SENSOR = 6;
+
+    // 4) Recorrer todos los sensores por pin
+    for (int pin = 0; pin < MAX_SENSORS; pin++) {
+
+        // Si no hay datos válidos para este sensor, saltearlo
+        // Podés agregar un flag de validez si querés
+        // Por ahora asumimos que siempre llegará algún dato
+        ADCData sensor = data[pin];
+
+        int baseRow = 2 + pin * LINES_PER_SENSOR;
+
+        // ---- Imprimir bloque ----
+
+        moveCursor(baseRow + 0, 1);
+        writeSerialCom(String("Pin ") + String(sensor.pin) + "              ");
+
+        moveCursor(baseRow + 1, 8);
+        writeSerialCom("Bus Voltage: " + String(sensor.busVoltage_V) + " V     ");
+
+        moveCursor(baseRow + 2, 8);
+        writeSerialCom("Shunt Voltage: " + String(sensor.shuntVoltage_mV) + " mV   ");
+
+        moveCursor(baseRow + 3, 8);
+        writeSerialCom("Current: " + String(sensor.current_mA) + " mA     ");
+
+        moveCursor(baseRow + 4, 8);
+        writeSerialCom("Power: " + String(sensor.power_mW) + " mW     ");
+    }
 }
 
 

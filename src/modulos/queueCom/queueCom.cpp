@@ -44,13 +44,13 @@ bool receiveSensorDataToUserInterface(ADCData data[]) {//Leo todos los datos de 
         case 0:
             data[0] = tempData;
             break;
-            case 1:
+        case 1:
             data[1] = tempData;
             break;
-            case 2:
+        case 2:
             data[2] = tempData;
             break;
-            case 3:
+        case 3:
             data[3] = tempData;
             break;                               
         default:

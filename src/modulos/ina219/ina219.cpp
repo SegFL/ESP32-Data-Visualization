@@ -4,7 +4,7 @@
 
 
 
-#define NUM_SENSORS 1 // Número de sensores INA219. Si se cambia tambien se deberia cambiar el valor en adc.cpp
+#define NUM_SENSORS 2 // Número de sensores INA219. Si se cambia tambien se deberia cambiar el valor en adc.cpp
 
 
 // Crear un vector de punteros para manejar múltiples sensores
@@ -39,7 +39,10 @@ void ina219Init(){
 
 bool getData(ADCData& data, int sensor){ //Numero del sensor a leer
 
+    //writeSerialComln(String("Leyendo sensor: ") + String(sensor));
     if(sensor<NUM_SENSORS && sensorAvailable[sensor]==true){
+        
+
         // Leer todos los valores del sensor primero
         data.busVoltage_V = ina219[sensor]->getBusVoltage_V();
         data.current_mA = ina219[sensor]->getCurrent_mA();
@@ -47,7 +50,6 @@ bool getData(ADCData& data, int sensor){ //Numero del sensor a leer
         data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV();
         data.pin = sensor;
         data.timestampMillis = customMillis();
-        
         return true;
     }else{
         return false;
