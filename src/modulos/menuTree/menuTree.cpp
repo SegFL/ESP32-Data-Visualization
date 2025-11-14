@@ -72,6 +72,8 @@ MenuNode* menuInit() {
         MenuNode* child3 = create_node("Entre constraseña", '2',4);
         add_child(child2, child3);
 
+        MenuNode* child33 = create_node("Conectar a WiFi", '3',33);
+        add_child(child2, child33);
     MenuNode* child5 = create_node("Configuracion manual", '3',5);
     add_child(root, child5);
 

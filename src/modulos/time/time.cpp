@@ -11,6 +11,9 @@ unsigned long epochTime = 0; // Variable para almacenar el tiempo desde epoch
 unsigned long offsetMillis = 0; // Variable para almacenar el tiempo desde epoch
 bool WiFiConected=false;
 bool isFileCreated=false; 
+
+unsigned long lastWifiAttempt = 0;     // guarda la última vez que intentó
+
 // Configuración de NTP
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Argentina)
@@ -22,21 +25,7 @@ void enviarComandoCrearArchivo();
 void TimeInit() {
     // 1. Intentar conectar WiFi y usar NTP
     if (connectWiFi() == true) {
-        timeClient.begin();
-        epochTime = timeClient.getEpochTime();
-        millisInit = 0; // Guardar el tiempo inicial
-        millisTranscurridos = 0; 
-        WiFiConected = true;
-        enviarComandoCrearArchivo();
-        isFileCreated = true;
-
-        // Si hay WiFi/NTP, borrar la fecha manual para que no se use más
-        nvs_handle_t handle;
-        if (nvs_open("storage", NVS_READWRITE, &handle) == ESP_OK) {
-            nvs_erase_key(handle, "manual_epoch");
-            nvs_commit(handle);
-            nvs_close(handle);
-        }
+        updateDateTimeNTP();
     }
     // 2. Si NO hay WiFi → usar fecha guardada manualmente
     else {
@@ -52,6 +41,25 @@ void TimeInit() {
     }
 }
 
+void updateDateTimeNTP(){
+
+        timeClient.begin();
+        epochTime = timeClient.getEpochTime();
+        millisInit = 0; // Guardar el tiempo inicial
+        millisTranscurridos = 0; 
+        WiFiConected = true;
+        enviarComandoCrearArchivo();
+        isFileCreated = true;
+
+        // Si hay WiFi/NTP, borrar la fecha manual para que no se use más
+        nvs_handle_t handle;
+        if (nvs_open("storage", NVS_READWRITE, &handle) == ESP_OK) {
+            nvs_erase_key(handle, "manual_epoch");
+            nvs_commit(handle);
+            nvs_close(handle);
+        }
+
+}
 /*
 Actualiza el tiempo cada vez que se llama a la función. Usa el tiempo desde epoch
 y una diferencia de tiempo para tener los milisegundos transcurridos.
@@ -63,13 +71,20 @@ el tiempo en milisegundos desde la utlimaacutalizacion de epoch time.
 
 void TimeUpdate() {
     // Si no hay WiFi intentar reconectar
-    if (!WiFiConected && customMillis() > 5*60000) { // cada 5 minutos
+    // cada 2 minutos
+    if (!WiFiConected && (customMillis() - lastWifiAttempt >= 2 * 60000)) {
+
+        lastWifiAttempt = customMillis();  // actualizo el contador
+
         if (connectWiFi()) {
             WiFiConected = true;
+            updateDateTimeNTP();
+
             if (!isFileCreated) {
                 enviarComandoCrearArchivo();
                 isFileCreated = true;
             }
+
         } else {
             return;
         }

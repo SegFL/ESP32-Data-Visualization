@@ -166,8 +166,7 @@ void CargaElectronicaUpdate(){
   // Aplicar el duty cycle actual (invertido)
   int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
 
-  writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + 
-                   String("% -> PWM Value: ") + String(pwmValue));
+  //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
   ledcWrite(PWM_CHANNEL, pwmValue);
 }
 

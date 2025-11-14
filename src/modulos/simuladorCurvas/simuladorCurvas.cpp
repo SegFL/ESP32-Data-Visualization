@@ -154,7 +154,6 @@ float getCurveValue(int pin) {
     //Curva asociada al pin
     curve_t *curve = pinToCurve[pin];
     if (!curve || !curve->point || curve->contador <= 0) {
-        writeSerialComln("Error: Curva o puntos no válidos");
         return -1; // no hay puntos válidos
     }
     if (!curve->enabled) {
