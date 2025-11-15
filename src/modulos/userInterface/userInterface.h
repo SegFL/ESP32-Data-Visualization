@@ -6,7 +6,7 @@
 #include "../WiFi/WiFi.h"
 #include "../carga_electronica/carga_electronica.h"
 #include "../nvs/nvs.h"
-
+#include "../time/time.h"
 
 void userInterfaceInit();
 void userInterfaceUpdate();

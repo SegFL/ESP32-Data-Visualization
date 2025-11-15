@@ -4,6 +4,8 @@
 
 #include "nvs.h"
 
+//Logitud maxima de caracteres a leer por NVS
+ size_t max_len =64;
 
 void nvsInit(){
 
@@ -66,4 +68,41 @@ int readValueNVSint32_t(const char* key){
             nvs_close(handle);
         }
         return -1;
+}
+
+
+int saveStringNVS(const char* key, const char* value) {
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        return ESP_FAIL;  // Error al abrir NVS
+    }
+
+    err = nvs_set_str(handle, key, value);
+    if (err != ESP_OK) {
+        nvs_close(handle);
+        return err;       // Error en escritura
+    }
+
+    err = nvs_commit(handle);
+    nvs_close(handle);
+
+    return err; // ESP_OK si todo salió bien
+}
+
+
+int readStringNVS(const char* key, char* out_buffer) {
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return err;  // No se pudo abrir
+    }
+
+    size_t required_len = max_len;
+
+    err = nvs_get_str(handle, key, out_buffer, &required_len);
+
+    nvs_close(handle);
+
+    return err;       // ESP_OK, ESP_ERR_NVS_NOT_FOUND, ESP_ERR_NVS_INVALID_LENGTH, etc.
 }

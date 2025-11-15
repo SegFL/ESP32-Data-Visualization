@@ -17,9 +17,10 @@ void getTime(unsigned long &epoch, unsigned long &millisTrans);
 String getFormattedDateTime();
 bool loadManualDateTime();
 bool setDateTime(int day, int month, int year, int hour, int minute);
-
+bool getWiFiStatus();
 //Envia el tiempo en milisegundos desde el la ultima vez que se envio elcomando de crear archivo
 unsigned long customMillis();
 unsigned long getCurrentEpoch();
 void updateDateTimeNTP();
+void intentarConexionManual();
 #endif // TIME_H

@@ -11,7 +11,7 @@ unsigned long epochTime = 0; // Variable para almacenar el tiempo desde epoch
 unsigned long offsetMillis = 0; // Variable para almacenar el tiempo desde epoch
 bool WiFiConected=false;
 bool isFileCreated=false; 
-
+bool intentoManual=false; //Flag de para intentar coenctarse a WiFi manualmente
 unsigned long lastWifiAttempt = 0;     // guarda la última vez que intentó
 
 // Configuración de NTP
@@ -72,10 +72,11 @@ el tiempo en milisegundos desde la utlimaacutalizacion de epoch time.
 void TimeUpdate() {
     // Si no hay WiFi intentar reconectar
     // cada 2 minutos
-    if (!WiFiConected && (customMillis() - lastWifiAttempt >= 2 * 60000)) {
-
+    if (!WiFiConected &&( (customMillis() - lastWifiAttempt >= 2 * 60000)|| intentoManual==true)) {
+        intentoManual=false;
         lastWifiAttempt = customMillis();  // actualizo el contador
 
+        
         if (connectWiFi()) {
             WiFiConected = true;
             updateDateTimeNTP();
@@ -268,3 +269,10 @@ unsigned long getCurrentEpoch() {
 }
 
 
+bool getWiFiStatus(){
+    return WiFiConected;
+}
+
+void intentarConexionManual(){
+    intentoManual=true;
+}

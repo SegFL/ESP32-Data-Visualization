@@ -16,6 +16,7 @@
 #define MAX_DATA_BUFFER 30
 #define SEND_DATA true
 #define NOT_SEND_DATA false
+#define MAX_SENSORS 2   //Cantidad de sensores a imprimir en el menu se sensores analogicos
 
 static MenuNode *menu = nullptr;
 char data_buffer[MAX_DATA_BUFFER] ; //Variable para almacenar los datos recibidos
@@ -78,12 +79,12 @@ void userInterfaceUpdate() {
     char charReceived = readSerialChar();
     if(charReceived== GO_BACK){ // ESCAPE
         menuUpdate(charReceived, &menu);
-        if (lastMenuId != menu->id) {
+        
             clearScreen();
             printNode(menu);
             onEnterNode(menu);
             lastMenuId = menu->id;
-        }
+        
         //Si el nodo es nuevo y requiere datos, preparo el buffer para recibirlos
         //Si no es nuevo pero aun asi requiere datos(porque ya se enviaron datos previamente
         //y se quiere seguir enviando datos) tambien preparo el buffer
@@ -388,7 +389,12 @@ void procesarDatos(String data) {
         }
     }
     if(menu->id ==33){
-        connectWiFi();
+            if(getWiFiStatus()==true){
+                writeSerialComln(String("Estado de WiFi: Conectado"));
+            }else{
+                writeSerialComln(String("Estado de WiFi: Desconectado"));
+            }
+        
     }
 
 
@@ -445,7 +451,6 @@ void printSensorInfo(){
     writeSerialComln(String("\tPower: ") + String("      ") + String(" mW"));
 
 }
-#define MAX_SENSORS 2   // O el número de sensores que manejes
 
 void printSensorData() {
 
@@ -608,6 +613,11 @@ static void onEnterNode(MenuNode* n) {
                 writeSerialComln(String("Kd: ") + String(kd, 3));
             }
             break;
+        case 33:
+        {
+            //Intenta realizar una conexion a wifi sin esperar el tiempo de espera
+            intentarConexionManual();
+        }
         default:
             break;
     }
