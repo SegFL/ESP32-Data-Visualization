@@ -7,7 +7,7 @@
 
 float convertirCorrienteADc(float reference_current);
 void cargarConfiguracionNvs();
-
+float getDCDirecto(float ref);
 const char* MAX_DC_NVS_KEY = "max_dc_value";
 const char* MODO_FUNCIONAMIENTO_NVS_KEY = "MODO_FUNCIONAMIENTO";
 
@@ -146,13 +146,13 @@ void CargaElectronicaUpdate(){
   // Selección de modo de funcionamiento
   switch(modoFuncionamiento){
     case PID:  
-      dutyCycleAux = getDCPID(referenceCurrent);
-      //writeSerialComln(String("Modo PID - Referencia: ") + String(referencia) + 
-                       //String(" -> Duty Cycle: ") + String(dutyCycleAux));
+      dutyCycleAux = getDCPID(referenceCurrent,0);
+      //writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
+       //                String(" -> Duty Cycle: ") + String(dutyCycleAux));
       break;
     case NONE: 
 
-      dutyCycleAux = DC; // Duty cycle directo
+      dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
       //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
       break;
     default:   
@@ -160,9 +160,19 @@ void CargaElectronicaUpdate(){
       writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
       break;
   }
-
-
-  
+/*
+  if(modoFuncionamiento==PID){
+    writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
+                     String(" -> Duty Cycle PID: ") + String(dutyCycleAux));
+  }else{
+    writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
+  }
+  if(curveMode==ON_t){
+    writeSerialComln(String("Modo CURVA - Referencia de corriente usada: ") + String(referenceCurrent) + String(" mA"));
+  }else{
+    writeSerialComln(String("Modo MANUAL - Referencia de corriente usada: ") + String(referenceCurrent) + String(" mA"));
+  }
+  */
   // Aplicar el duty cycle actual (invertido)
   int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
 
@@ -280,7 +290,7 @@ modoFuncionamiento_t getModoFuncionamiento(){
 }
 
 
-// Nuevo: setter para referencia manual de corriente (mA) usada por PID/curva en modo OFF
+// Nuevo: setter para referencia manual de corriente (mA) usada por PID y curva en modo OFF
 bool setCurrentReference_mA(float current_mA){
     if (current_mA < 0.0f) return false;
     currentReference_mA = current_mA;
@@ -288,4 +298,9 @@ bool setCurrentReference_mA(float current_mA){
 }
 
 
-
+//Mapea la referencia de corriente directa al duty cycle
+float getDCDirecto(float ref){
+  if(ref<0.0f) return 0.0f;
+  if(ref>maxCurrent) return maxCurrent;
+    return 100*ref/maxCurrent; // Convertir mA a %
+}

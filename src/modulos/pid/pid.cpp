@@ -5,9 +5,15 @@
 
 
 // ====== Parámetros PID ======
-float Kp = 0.1f;
-float Ki = 0.1f;
+//float Kp = 0.1f;
+//float Ki = 0.1f;
+//float Kd = 0.0f;
+
+
+float Kp = 0.6f;
+float Ki = 0.05f;
 float Kd = 0.0f;
+
 //período de muestreo real (200ms) Tiene que coincidir con el periodo del task2 
 //que se encarga de leer el ADC y actualizar la carga electronica
 float Ts = 0.2f;
@@ -18,38 +24,50 @@ float error_anterior = 0.0f;
 float duty_percent = 0.0f;
 
 // ====== Función de control ======
-float getDCPID(float referencia_mA) {
-    // 1. Leer corriente medida
-    float I_meas = getLastCurrentData();  // en mA
+// Reemplazar la implementación actual de getDCPID por esta
+float getDCPID(float referencia_mA,int index) {
+    // convertir referencia y medicion a porcentaje 0..100
+    float denom = (MAX_SAFE_CURRENT > 0.0f) ? MAX_SAFE_CURRENT : 1.0f;
+    float ref_percent = (referencia_mA * 100.0f) / denom;
 
-    // 2. Calcular error
-    float error = referencia_mA - I_meas;
+    float I_meas_mA = getLastCurrentData(index); // en mA
+    float I_meas_percent = (I_meas_mA * 100.0f) / denom;
 
-    // 3. Integración
+    // error en %
+    float error = ref_percent - I_meas_percent;
+
+    // integración con anti-windup en integral en unidades de %
     integral += error * Ts;
 
-    // 4. Derivación (derivada del error)
+    // derivada
     float derivada_error = (error - error_anterior) / Ts;
-    
-    // 5. Acción de control PID (incremental en duty)
+
+    // acción de control (PID) en %
     float u = Kp * error + Ki * integral + Kd * derivada_error;
 
     duty_percent += u;
 
-    // 6. Saturar duty (0..100%) y anti-windup
+    // saturación y anti-windup más robusto: limitar integral también
     if (duty_percent > 100.0f) {
         duty_percent = 100.0f;
-        integral -= error * Ts; // anti-windup
-    }
-    if (duty_percent < 0.0f) {
+        // reducir integral para evitar windup
+        if (Ki != 0.0f) integral = (100.0f - (Kp*error + Kd*derivada_error)) / Ki;
+    } else if (duty_percent < 0.0f) {
         duty_percent = 0.0f;
-        integral -= error * Ts;
+        if (Ki != 0.0f) integral = (0.0f - (Kp*error + Kd*derivada_error)) / Ki;
     }
 
-    // 7. Guardar error para próxima iteración
     error_anterior = error;
 
-    // 8. Devolver duty en rango [0..100%]
+    // dentro de getDCPID (después de calcular duty_percent)
+writeSerialComln(String("PID debug - ref%:") + String(ref_percent,2) +
+                String(" meas%:") + String(I_meas_percent,2) +
+                String(" err:") + String(error,2) +
+                String(" u:") + String(u,3) +
+                String(" int:") + String(integral,3) +
+                String(" duty:") + String(duty_percent,3));
+
+
     return duty_percent;
 }
 
