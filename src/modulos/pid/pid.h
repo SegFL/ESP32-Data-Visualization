@@ -1,7 +1,7 @@
 
 #include "../../modulos/adc/adc.h"
 void pid_control_step(void) ;
-float getDCPID(float mA);
+float getDCPID(float referencia_mA,int index);
 void setPIDParams(float kp, float ki, float kd);
 void setPIDTs(float ts);
 void resetPID();
