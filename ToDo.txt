@@ -35,3 +35,4 @@ Bajar cantidad de intentos
 
 Corregir el hecho de que la carga entre en corto al iniciar el uC, ahora que el WiFi es mas lento
 el corto dura mas, puede ser por alguna salida en 0, usar primero el Init de las salidas, ejecutarlo primero.
+  en carga electronica.cpp linea 54 se iniciliza el pwm en 0, capas hay que inicializarlo en elmaximo
