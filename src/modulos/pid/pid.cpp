@@ -58,8 +58,7 @@ float getDCPID(float referencia_mA,int index) {
     }
 
     error_anterior = error;
-
-    // dentro de getDCPID (después de calcular duty_percent)
+/*
 writeSerialComln(String("PID debug - ref%:") + String(ref_percent,2) +
                 String(" meas%:") + String(I_meas_percent,2) +
                 String(" err:") + String(error,2) +
@@ -67,7 +66,7 @@ writeSerialComln(String("PID debug - ref%:") + String(ref_percent,2) +
                 String(" int:") + String(integral,3) +
                 String(" duty:") + String(duty_percent,3));
 
-
+*/
     return duty_percent;
 }
 

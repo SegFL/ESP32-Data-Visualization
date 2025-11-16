@@ -157,7 +157,7 @@ float getCurveValue(int pin) {
         return -1; // no hay puntos válidos
     }
     if (!curve->enabled) {
-        writeSerialComln("Curva deshabilitada");
+        //writeSerialComln("Curva deshabilitada");
         return -1; // curva deshabilitada
     }
 
@@ -176,8 +176,8 @@ float getCurveValue(int pin) {
     }else{
 
         // Si llegamos al último punto, deshabilitar la curva
-        curve->enabled = false;
-        curve->currentIndex = 0;
+
+        endCurve(curve,pin);
         writeSerialComln(String("Curva del pin") + String(pin) + String(" finalizada y deshabilitada."));
         return 0.0;
     }
@@ -478,7 +478,7 @@ void startCurve(curve_t* curve,int pin){
     curve->enabled = true;
     curve->timestamp = t0;
     curve->currentIndex = 0;
-    writeSerialComlnCOMMAND("START_CURVE," + String(curve->id) + "," + String(pin));
+    writeSerialComlnCOMMAND("START_CURVE," + String((int)(curve->id)) + "," + String(pin));
 
 }
 
@@ -486,7 +486,7 @@ void endCurve(curve_t* curve,int pin){
     curve->enabled = false;
     curve->timestamp = 0;
     curve->currentIndex = 0;
-    writeSerialComlnCOMMAND("END_CURVE," + String(curve->id) + "," + String(pin));
+    writeSerialComlnCOMMAND("END_CURVE," + String((int)(curve->id)) + "," + String(pin));
 }
 
 
