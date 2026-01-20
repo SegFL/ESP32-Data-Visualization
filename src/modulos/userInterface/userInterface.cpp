@@ -10,6 +10,8 @@
 #include <modulos/time/time.h>
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
 #include <modulos/pid/pid.h>
+#include <modulos/estructura_datos/estructura_datos.h>
+#include <modulos/dac/dac.h>
 
 #define ARRAY_SIZE 3 // Tamaño del arreglo de curvas
 
@@ -397,6 +399,17 @@ void procesarDatos(String data) {
         
     }
 
+    if(menu->id ==35){
+        int value = data.toInt();   // String → int
+
+        if (value < 0)   value = 0;
+        if (value > 255) value = 255;
+
+        setDacValue((uint8_t)value);
+
+        writeSerialComln("Valor DAC actual: " + String(getDACValue()));
+    }
+
 
 
 
@@ -538,6 +551,7 @@ static bool nodeRequiresInput(int id) {
         case 30: // Cambiar modo de control (PID/NONE)
         case 31: // Resetear parámetros PID
         case 32: // Modificar parámetros PID
+        case 35: // Modificar valor DAC
             return true;
         default:
             return false;
@@ -618,6 +632,16 @@ static void onEnterNode(MenuNode* n) {
             //Intenta realizar una conexion a wifi sin esperar el tiempo de espera
             intentarConexionManual();
         }
+        case 34:
+        {
+            printStructInfo();
+            printStructData();
+        }
+        case 35:
+        {
+            writeSerialComln("DAC (0-255): " + String(getDACValue()));
+            
+        }
         default:
             break;
     }
@@ -645,6 +669,8 @@ static void onEnterNode(MenuNode* n) {
             case 28: writeSerialComln("Ingrese el ID de la curva a eliminar y presione 'ENTER'"); break;
             case 31: writeSerialComln("Para resetear los parametros del PID presione y-"); break;
             case 32: writeSerialComln("Ingrese parámetros PID en formato Kp,Ki,Kd y presione 'ENTER'"); break;
+            case 35: writeSerialComln("DAC (0-255): " + String(getDACValue())); break;
+
             default: break;
         }
     }

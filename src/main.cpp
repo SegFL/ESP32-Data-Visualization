@@ -6,7 +6,7 @@
 #include "modulos/queueCom/queueCom.h"
 #include "modulos/ina219/ina219.h"
 #include "modulos/time/time.h"
-
+#include "modulos/dac/dac.h"
 
 #define QUEUE_LENGTH 100
 #define ITEM_SIZE sizeof(char)
@@ -36,6 +36,7 @@ void Task2(void *pvParameters) {
   for (;;) {
     leerADC();
     CargaElectronicaUpdate();
+    dacUpdate();
 
     int request = 1;
     xQueueSend(timeRequestQueue, &request, pdMS_TO_TICKS(20));
@@ -56,7 +57,7 @@ void setup() {
   adcInit();
   TimeInit();
   CargaElectronicaInit();
-
+  dacInit();
 
 
   xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
@@ -71,3 +72,5 @@ void setup() {
 void loop() {
   vTaskDelay(pdMS_TO_TICKS(1000));
 }
+
+
