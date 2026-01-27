@@ -52,7 +52,7 @@ void CargaElectronicaInit(){
   DC = 0.0f; // Inicializar el duty cycle a 0 (%)
   max_dc_value = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
   currentReference_mA = 0.0f; // referencia manual en mA
-  ledcWrite(PWM_CHANNEL, 0); // Inicializar el PWM a 0 (apagado)
+  ledcWrite(PWM_CHANNEL,0); // Inicializar el PWM a 0 (apagado)
 
   simuladorCurvasInit(3);
 
@@ -80,6 +80,8 @@ void CargaElectronicaInit(){
         cargarConfiguracionNvs();
 
 
+        //Inicilizo los pid
+        PID_Init(0,0.6,0.05,0.0,0.2);
 
 
 
@@ -175,7 +177,7 @@ void CargaElectronicaUpdate(){
   */
   // Aplicar el duty cycle actual (invertido)
   int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
-
+  writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
   //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
   ledcWrite(PWM_CHANNEL, pwmValue);
 }

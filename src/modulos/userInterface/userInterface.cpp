@@ -381,7 +381,7 @@ void procesarDatos(String data) {
     if(menu->id == 32){
         float kp, ki, kd;
         if (parseStringToFloats(data, &kp, &ki, &kd)) {
-            setPIDParams(kp, ki, kd);
+            setPIDParams(0,kp, ki, kd);
             writeSerialComln("Parámetros PID actualizados:");
             writeSerialComln(String("Kp: ") + String(kp, 3));
             writeSerialComln(String("Ki: ") + String(ki, 3));

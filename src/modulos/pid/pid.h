@@ -7,3 +7,7 @@ void setPIDTs(float ts);
 void resetPID();
 void getPIDParams(float* kp, float* ki, float* kd);
 float getPIDTs();
+void PID_Init(int index, float kp, float ki, float kd, float ts);
+void setPIDParams(int index, float kp, float ki, float kd);
+
+void resetPID(int index);
