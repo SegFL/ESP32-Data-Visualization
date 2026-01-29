@@ -9,6 +9,8 @@
 enum EstadoRegistros {
     WiFiConnected = 0,
     ssid_wifi,
+    PWM1,
+    PWM2,
     DIM_DATOS
 };
 

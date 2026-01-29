@@ -45,7 +45,7 @@ static void onUpdateNode(MenuNode* n);
 static bool nodeRequiresInput(int id);
 
 bool parseStringToInts(String str, int *num1, int *num2);
-bool parseStringToFloats(String str, float *num1, float *num2, float *num3);
+bool parseStringToFloats(String str, int *index, float *num1, float *num2, float *num3);
 void printSavedCurves();
 void printAllCurvesNvs();
 void printSensorInfo();
@@ -169,6 +169,11 @@ void procesarDatos(String data) {
         return;
     }
 
+    if(menu->id==1){
+        writeSerialComln(String("Datos de sensores"));
+        printSensorData();
+    }
+
     if (menu->id == 3) {
         setSSID(data); // Cambiar el SSID
         writeSerialComln(String("SSID cambiado a: ") + data);
@@ -191,26 +196,44 @@ void procesarDatos(String data) {
         }
 
     }
-    if(menu->id==1){
-        writeSerialComln(String("Datos de sensores"));
-        printSensorData();
-    }
-    
+
+    if (menu->id == 8) {
+
+        int index = -1;
+        float current = -1.0f;
+
+        // Parsear "index,corriente"
+        if (sscanf(data.c_str(), "%d,%f", &index, &current) == 2) {
+
+            // Validaciones
+            if (index < 0 ) {
+                writeSerialComln("Indice de curva invalido");
+                return;
+            }
+
+            if (current < 0.0f || current > 1000.0f) {
+                writeSerialComln("Corriente invalida (0..1000 mA)");
+                return;
+            }
+
+            // OK
+            if(setCurrentReference_mA(current, index)){
+                writeSerialComln(
+                    String("Corriente de referencia cambiada: Curva ")
+                    + String(index)
+                    + String(" -> ")
+                    + String(current)
+                    + String(" mA")
+                );
+            } else {
+                writeSerialComln("Error al cambiar la corriente de referencia");
+            }
 
 
-
-
-
-
-    if(menu->id==8){
-        float currentReference = data.toFloat(); // Convertir el String a entero
-        //ToDo//int current=PWMSetDC(dutyCycle);
-        float current=currentReference;
-        if (current>=0.0 && current<=1000.0) {
-            setCurrentReference_mA(current); // 
-            writeSerialComln(String("Corriente de referencia cambiada a: ") + String(current) + "mA");
         } else {
-            writeSerialComln(String("Valor de corriente de referencia inválido. Debe estar entre 0 y 1000mA."));
+            writeSerialComln(
+                "Formato invalido. Use: <indice>,<corriente_mA>  (ej: 0,500)"
+            );
         }
     }
     if(menu->id ==9){
@@ -370,19 +393,45 @@ void procesarDatos(String data) {
             writeSerialComln(String("Error al eliminar la curva de la flash") + String(curveId));
         }
     }
-    if(menu->id == 31){
-        if (data.equalsIgnoreCase("y")) {
-            resetPID();
-            writeSerialComln("Parámetros PID reseteados correctamente");
+    if (menu->id == 31) {
+
+        int index = -1;
+
+        // Verificar que data sea un número entero > 0
+        if (sscanf(data.c_str(), "%d", &index) == 1 && index > 0) {
+
+            if(resetPID(index)!=true){
+                writeSerialComln(
+                    String("Error al resetear el PID. Index invalido: ") + String(index)
+                );
+                return;
+            }
+            writeSerialComln(
+                String("PID reseteado correctamente. Index: ") + String(index)
+            );
+
         } else {
-            writeSerialComln("Operación cancelada");
+            writeSerialComln(
+                "Valor invalido. Ingrese un numero mayor a 0"
+            );
         }
     }
+
     if(menu->id == 32){
+        int index = -1;
         float kp, ki, kd;
-        if (parseStringToFloats(data, &kp, &ki, &kd)) {
-            setPIDParams(0,kp, ki, kd);
+        if (parseStringToFloats(data,&index, &kp, &ki, &kd)) {
+            if(index < 0){
+                writeSerialComln("Index inválido. Debe ser mayor o igual a 0.");
+                return;
+            }
+            if(kp < 0 || ki < 0 || kd < 0){
+                writeSerialComln("Parámetros PID inválidos. Kp, Ki y Kd deben ser mayores o iguales a 0.");
+                return;
+            }
+            setPIDParams(index,kp, ki, kd);
             writeSerialComln("Parámetros PID actualizados:");
+            writeSerialComln(String("Index: ") + String(index));
             writeSerialComln(String("Kp: ") + String(kp, 3));
             writeSerialComln(String("Ki: ") + String(ki, 3));
             writeSerialComln(String("Kd: ") + String(kd, 3));
@@ -441,11 +490,11 @@ bool parseStringToInts(String str, int *num1, int *num2) {
     return false;     // No se leyeron correctamente
 }
 
-bool parseStringToFloats(String str, float *num1, float *num2, float *num3) {
+bool parseStringToFloats(String str, int *index, float *num1, float *num2, float *num3) {
     writeSerialComln(String("Parseando: ") + str);
 
     // Convertir el String de Arduino a un const char* para sscanf
-    if (sscanf(str.c_str(), "%f,%f,%f", num1, num2, num3) == 3) {
+    if (sscanf(str.c_str(), "%d,%f,%f,%f", index, num1, num2, num3) == 4) {
         return true;  // Se leyeron correctamente los tres números
     }
     return false;     // No se leyeron correctamente
@@ -576,6 +625,19 @@ static void onEnterNode(MenuNode* n) {
             printSensorInfo();
             //updateScreen = true; // ya lo usabas para refrescar periódicamente
             break;
+        case 9:  // Frecuencia PWM
+            for (char i = 0; i < 4; i++) {
+                int ch, f, res;
+                if (getPWMConfig(i, &ch, &f, &res)) {
+                    writeSerialComln(
+                        String("Canal: ") + ch +
+                        "  Frecuencia: " + f + " Hz" +
+                        "  Resolucion: " + res + " bits"
+                    );
+                }
+            }
+
+            break;
         case 10:
             writeSerialComln(String("Valor maximo actual del PWM: ") + String(PWMGetMaxDC()) + String(" %"));
             writeSerialComln("Ingrese nuevo valor (0..100) y presione 'ENTER'");
@@ -607,24 +669,26 @@ static void onEnterNode(MenuNode* n) {
             break;
         case 31: // Resetear parámetros PID
             {
-                float kp, ki, kd;
-                getPIDParams(&kp, &ki, &kd);
-                float ts = getPIDTs();
-                writeSerialComln("Parámetros PID actuales:");
-                writeSerialComln(String("Kp: ") + String(kp, 3));
-                writeSerialComln(String("Ki: ") + String(ki, 3));
-                writeSerialComln(String("Kd: ") + String(kd, 3));
-                writeSerialComln(String("Ts: ") + String(ts, 3) + " (fijo)");
+                for(int i=0;i<2;i++){
+                    float kp, ki, kd;
+                    getPIDParams(i, &kp, &ki, &kd);
+                    writeSerialComln(String("Parámetros PID actuales del index ") + String(i) + String(":"));
+                    writeSerialComln(String("Kp: ") + String(kp, 3));
+                    writeSerialComln(String("Ki: ") + String(ki, 3));
+                    writeSerialComln(String("Kd: ") + String(kd, 3));
+                }
             }
             break;
         case 32: // Modificar parámetros PID
             {
-                float kp, ki, kd;
-                getPIDParams(&kp, &ki, &kd);
-                writeSerialComln("Parámetros PID actuales:");
-                writeSerialComln(String("Kp: ") + String(kp, 3));
-                writeSerialComln(String("Ki: ") + String(ki, 3));
-                writeSerialComln(String("Kd: ") + String(kd, 3));
+                for(int i=0;i<2;i++){
+                    float kp, ki, kd;
+                    getPIDParams(i, &kp, &ki, &kd);
+                    writeSerialComln(String("Parámetros PID actuales del index ") + String(i) + String(":"));
+                    writeSerialComln(String("Kp: ") + String(kp, 3));
+                    writeSerialComln(String("Ki: ") + String(ki, 3));
+                    writeSerialComln(String("Kd: ") + String(kd, 3));
+                }
             }
             break;
         case 33:
@@ -656,7 +720,7 @@ static void onEnterNode(MenuNode* n) {
             case 3:  writeSerialComln("Ingrese SSID y presione 'ENTER' para confirmar"); break;
             case 4:  writeSerialComln("Ingrese PASSWORD y presione 'ENTER'"); break;
             case 6:  writeSerialComln("Para activar/desactivar el modo SEND DATA ingrese y/n y presione 'ENTER'"); break;
-            case 8:  writeSerialComln("Ingrese la corriente de referencia (0-1000mA) y presione 'ENTER'"); break;
+            case 8:  writeSerialComln("Ingrese la corriente de referencia <indice>,<corriente_mA>  (ej: 0,500) y presione 'ENTER'"); break;
             case 9:  writeSerialComln("Ingrese frecuencia <0-78125> y presione 'ENTER'"); break;
             case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione 'ENTER'"); break;
             case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione 'ENTER'"); break;
@@ -668,7 +732,7 @@ static void onEnterNode(MenuNode* n) {
             case 30: writeSerialComln("Ingrese 'PID' o 'NONE' y presione 'ENTER'"); break;
             case 28: writeSerialComln("Ingrese el ID de la curva a eliminar y presione 'ENTER'"); break;
             case 31: writeSerialComln("Para resetear los parametros del PID presione y-"); break;
-            case 32: writeSerialComln("Ingrese parámetros PID en formato Kp,Ki,Kd y presione 'ENTER'"); break;
+            case 32: writeSerialComln("Ingrese parámetros PID en formato index,Kp,Ki,Kd y presione 'ENTER'"); break;
             case 35: writeSerialComln("DAC (0-255): " + String(getDACValue())); break;
 
             default: break;

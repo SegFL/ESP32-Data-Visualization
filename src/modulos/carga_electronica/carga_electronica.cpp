@@ -11,6 +11,22 @@ float getDCDirecto(float ref);
 const char* MAX_DC_NVS_KEY = "max_dc_value";
 const char* MODO_FUNCIONAMIENTO_NVS_KEY = "MODO_FUNCIONAMIENTO";
 
+typedef struct {
+    int channel;
+    int freq;
+    int resolution;
+    int pin;
+} PWM_Config_t;
+
+#define NUM_PWM 2
+
+PWM_Config_t pwmConfig[NUM_PWM] = {
+    { .channel = 0, .freq = 78125, .resolution = 10 ,.pin = 18},
+    { .channel = 1, .freq = 78125, .resolution = 10 ,.pin = 19}
+    /*,
+    { .channel = 2, .freq = 78125, .resolution = 10 },
+    { .channel = 3, .freq = 78125, .resolution = 10 }*/
+};
 
 const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
 const int PWM_FREQ = 78125;     // Frecuencia PWM deseada: 312 kHz
@@ -29,7 +45,7 @@ float DC = 0;  // Duty cycle actual (0-100%)
 float max_dc_value = 800.0; // Valor máximo del duty cycle (0-100%)
 float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
-float currentReference_mA = 0.0f;   // Referencia manual en mA usada por PID/curvas
+float currentReference_mA[NUM_PWM] = {0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
 
 modoFuncionamiento_t modoFuncionamiento = NONE; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
@@ -45,15 +61,26 @@ int arraySelectedPos=-1;
 void CargaElectronicaInit(){
 
   // Configuración del canal PWM con frecuencia y resolución
-  ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+  //ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+
+  for(int i=0;i<NUM_PWM;i++){
+    ledcSetup(
+        pwmConfig[i].channel,
+        pwmConfig[i].freq,
+        pwmConfig[i].resolution
+    );
+  }
 
   // Asociar el canal PWM al pin de salida
-  ledcAttachPin(LED_OUTPUT_PIN, PWM_CHANNEL);
+  ledcAttachPin(pwmConfig[0].pin, pwmConfig[0].channel);
+  ledcAttachPin(pwmConfig[1].pin, pwmConfig[1].channel);
+
   DC = 0.0f; // Inicializar el duty cycle a 0 (%)
   max_dc_value = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
-  currentReference_mA = 0.0f; // referencia manual en mA
-  ledcWrite(PWM_CHANNEL,0); // Inicializar el PWM a 0 (apagado)
-
+  currentReference_mA[0] = 0.0f; // referencia manual en mA
+  currentReference_mA[1] = 0.0f; // referencia manual en mA
+  ledcWrite(pwmConfig[0].channel,0); // Inicializar el PWM a 0 (apagado)
+  ledcWrite(pwmConfig[1].channel,0); // Inicializar el PWM a 0 (apagado)
   simuladorCurvasInit(3);
 
         //Crear la curva usando la nueva función encapsulada
@@ -62,13 +89,22 @@ void CargaElectronicaInit(){
             writeSerialComln(String("Error al crear la curva"));
             return;
         }
-        
+        int curveId1 = createCurve(1);
+        if(curveId1 == -1){
+            writeSerialComln(String("Error al crear la curva1"));
+            return;
+        }
+
         //Agregar puntos a la curva usando la nueva función encapsulada
         addPointToCurve(curveId, 10, 30.0f,STEP);
         addPointToCurve(curveId, 25, 40.0f,STEP);
         addPointToCurve(curveId, 50, 200.0f,STEP);
         addPointToCurve(curveId, 60, 30.0f,STEP);
 
+        addPointToCurve(curveId1, 10, 30.0f,STEP);
+        addPointToCurve(curveId1, 25, 40.0f,STEP);
+        addPointToCurve(curveId1, 50, 200.0f,STEP);
+        addPointToCurve(curveId1, 60, 30.0f,STEP);
         
         writeSerialComln(String("Curva creada con ID: ") + String(curveId));
         // Las funciones sendCurves y printCurves ahora usan el array interno
@@ -82,6 +118,7 @@ void CargaElectronicaInit(){
 
         //Inicilizo los pid
         PID_Init(0,0.6,0.05,0.0,0.2);
+        PID_Init(1,0.6,0.05,0.0,0.2);
 
 
 
@@ -121,65 +158,73 @@ void cargarConfiguracionNvs(){
   }
 void CargaElectronicaUpdate(){
 
-  float dutyCycleAux = 0.0f;
-  float referenceCurrent = 0.0f; // mA
-  float aux = 0.0f;
 
-  // Selección de referencia
-  switch(curveMode){
-    // Usar siempre valor manual
-    case OFF_t:
-      // En modo OFF la referencia de corriente viene de la referencia manual (mA)
-      referenceCurrent = currentReference_mA;
-      break;
-    case ON_t:        
-      aux = getCurveValue(0);
-      if(aux != -1){
-        writeSerialComln("Get Curve Value: " + String(aux) + " mA");
-        referenceCurrent = aux; // Usar valor de la curva si es válido
-      } else {
-        referenceCurrent = 0.0f;
-      } break;
-    default:
-      referenceCurrent = 0;
-      break;
-  }
 
-  // Selección de modo de funcionamiento
-  switch(modoFuncionamiento){
-    case PID:  
-      dutyCycleAux = getDCPID(referenceCurrent,0);
-      //writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
-       //                String(" -> Duty Cycle: ") + String(dutyCycleAux));
-      break;
-    case NONE: 
+  for(int i=0;i<NUM_PWM;i++){
 
-      dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
-      //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
-      break;
-    default:   
-      dutyCycleAux = 0.0f; 
-      writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
-      break;
+    float dutyCycleAux = 0.0f;
+    float referenceCurrent = 0.0f; // mA
+    float aux = 0.0f;
+    // Selección de referencia
+    switch(curveMode){
+      // Usar siempre valor manual
+      case OFF_t:
+        // En modo OFF la referencia de corriente viene de la referencia manual (mA)
+        referenceCurrent = currentReference_mA[i];
+        break;
+      case ON_t:        
+        aux = getCurveValue(i);
+        if(aux != -1){
+          writeSerialComln("Get Curve Value: " + String(aux) + " mA");
+          referenceCurrent = aux; // Usar valor de la curva si es válido
+        } else {
+          referenceCurrent = 0.0f;
+        } break;
+      default:
+        referenceCurrent = 0;
+        break;
+    }
+
+    // Selección de modo de funcionamiento
+    switch(modoFuncionamiento){
+      case PID:  
+      //El segundo argumento es el indice del pid que se quiere usar
+        dutyCycleAux = getDCPID(referenceCurrent,i);
+        //writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
+        //                String(" -> Duty Cycle: ") + String(dutyCycleAux));
+        break;
+      case NONE: 
+
+        dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
+        //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
+        break;
+      default:   
+        dutyCycleAux = 0.0f; 
+        writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
+        break;
+    }
+  /*
+    if(modoFuncionamiento==PID){
+      writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
+                      String(" -> Duty Cycle PID: ") + String(dutyCycleAux));
+    }else{
+      writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
+    }
+    if(curveMode==ON_t){
+      writeSerialComln(String("Modo CURVA - Referencia de corriente usada: ") + String(referenceCurrent) + String(" mA"));
+    }else{
+      writeSerialComln(String("Modo MANUAL - Referencia de corriente usada: ") + String(referenceCurrent) + String(" mA"));
+    }
+    */
+    // Aplicar el duty cycle actual (invertido)
+    int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
+    writeSerialComln(String( "Duty[") + String(i) + String("]: ") + String(dutyCycleAux)+ String("% -> PWM Value: ") + String(pwmValue));
+
+    //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
+    //ledcWrite(PWM_CHANNEL, pwmValue);
+
+    ledcWrite(pwmConfig[i].channel,pwmValue); // Inicializar el PWM a 0 (apagado)  
   }
-/*
-  if(modoFuncionamiento==PID){
-    writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
-                     String(" -> Duty Cycle PID: ") + String(dutyCycleAux));
-  }else{
-    writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
-  }
-  if(curveMode==ON_t){
-    writeSerialComln(String("Modo CURVA - Referencia de corriente usada: ") + String(referenceCurrent) + String(" mA"));
-  }else{
-    writeSerialComln(String("Modo MANUAL - Referencia de corriente usada: ") + String(referenceCurrent) + String(" mA"));
-  }
-  */
-  // Aplicar el duty cycle actual (invertido)
-  int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
-  writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
-  //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
-  ledcWrite(PWM_CHANNEL, pwmValue);
 }
 
 
@@ -293,9 +338,10 @@ modoFuncionamiento_t getModoFuncionamiento(){
 
 
 // Nuevo: setter para referencia manual de corriente (mA) usada por PID y curva en modo OFF
-bool setCurrentReference_mA(float current_mA){
+bool setCurrentReference_mA(float current_mA,int index){
+  if(index<0 || index>=NUM_PWM) return false;
     if (current_mA < 0.0f) return false;
-    currentReference_mA = current_mA;
+    currentReference_mA[index] = current_mA;
     return true;
 }
 
@@ -305,4 +351,17 @@ float getDCDirecto(float ref){
   if(ref<0.0f) return 0.0f;
   if(ref>maxCurrent) return maxCurrent;
     return 100*ref/maxCurrent; // Convertir mA a %
+}
+
+
+bool getPWMConfig(char index, int *channel, int *freq, int *resolution) {
+    if (index < 0 || index >= NUM_PWM) {
+        return false;   // índice inválido
+    }
+
+    if (channel)    *channel    = pwmConfig[index].channel;
+    if (freq)       *freq       = pwmConfig[index].freq;
+    if (resolution) *resolution = pwmConfig[index].resolution;
+
+    return true;
 }

@@ -101,25 +101,11 @@ void setPIDParams(int index, float kp, float ki, float kd) {
     pid[index].Kd = kd;
 }
 
-void resetPID(int index) {
-    if (index < 0 || index >= MAX_CURVES) return;
 
-    PID_t *p = &pid[index];
-
-    p->Kp = 0.0f;
-    p->Ki = 0.0f;
-    p->Kd = 0.0f;
-
-    p->Ts = 0.2f;        // ← SIEMPRE válido
-
-    p->integral = 0.0f;
-    p->error_prev = 0.0f;
-    p->duty = 0.0f;
-}
 // Función para configurar el período de muestreo Ts
 void setPIDTs(float ts) {
     if(ts <= 0.1f) 
-        setPIDTs(0.1f);
+        Ts=0.2f; // Valor mínimo razonable
     else{   
         Ts = ts;
     }
@@ -127,28 +113,32 @@ void setPIDTs(float ts) {
 }
 
 // Función para resetear el controlador PID
-void resetPID() {
+bool resetPID(int index) {
+    if (index < 0 || index >= MAX_CURVES) return false;
     // Establecer parámetros PID transparentes (sin acción de control)
-    Kp = 0.0f;
-    Ki = 0.0f;
-    Kd = 0.0f;
-    Ts = 0.2f;  // Período real de muestreo (200ms)
+    pid[index].Kp = 0.0f;
+    pid[index].Ki = 0.0f;
+    pid[index].Kd = 0.0f;
+    pid[index].Ts = 0.2f;  // Período real de muestreo (200ms)
     
     // Resetear variables internas
-    integral = 0.0f;
-    error_anterior = 0.0f;
-    duty_percent = 0.0f;
+    pid[index].integral = 0.0f;
+    pid[index].error_prev = 0.0f;
+    pid[index].duty = 0.0f;
+    return true;
 }
 
 // Función para leer los parámetros PID actuales (Kp, Ki y Kd)
-void getPIDParams(float* kp, float* ki, float* kd) {
-    if (kp != NULL) *kp = Kp;
-    if (ki != NULL) *ki = Ki;
-    if (kd != NULL) *kd = Kd;
+void getPIDParams(int index, float* kp, float* ki, float* kd) {
+    if (index < 0 || index >= MAX_CURVES) return;
+    if (kp != NULL) *kp = pid[index].Kp;
+    if (ki != NULL) *ki = pid[index].Ki;
+    if (kd != NULL) *kd = pid[index].Kd;
 }
 
 // Función para leer el período de muestreo Ts
-float getPIDTs() {
-    return Ts;
+float getPIDTs(int index) {
+    if (index < 0 || index >= MAX_CURVES) return 0.0f;
+    return pid[index].Ts;
 }
 
