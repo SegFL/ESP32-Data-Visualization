@@ -236,22 +236,62 @@ void procesarDatos(String data) {
             );
         }
     }
-    if(menu->id ==9){
-        int frequency = data.toInt(); // Convertir el String a entero
-        if (PWMSetFrequency(frequency)==true) {
-            writeSerialComln(String("Frecuencia cambiada a: ") + String(frequency) + " Hz");
+    if (menu->id == 9) {
+
+        int index = -1;
+        int frequency = 0;
+
+        // Formato esperado: index,frecuencia
+        if (sscanf(data.c_str(), "%d,%d", &index, &frequency) != 2) {
+            writeSerialComln("Error: formato invalido. Use index,frecuencia");
+            return;
+        }
+        // Validar frecuencia
+        if (frequency <= 0) {
+            writeSerialComln("Error: la frecuencia debe ser mayor que 0");
+            return;
+        }
+
+        // Aplicar cambio
+        if (PWMSetFrequency(frequency,index)) {
+            writeSerialComln(
+                String("PWM ") + index +
+                String(" -> Frecuencia cambiada a: ") +
+                String(frequency) + " Hz"
+            );
         } else {
-            writeSerialComln(String("Valor de frecuencia inválido. Debe ser mayor que 0."));
+            writeSerialComln("Error al configurar la frecuencia PWM");
         }
     }
-    if(menu->id ==10){
-        float duty = data.toFloat(); // Convertir el String a entero
-        if (PWMSetMaxDC(duty)==true) {
-            writeSerialComln(String("Valor maximo de duty cycle: ") + String(duty) + "%");
+
+    if (menu->id == 10) {
+
+        int index = -1;
+        float duty = -1.0f;
+
+        // Espera formato: index,valor
+        if (sscanf(data.c_str(), "%d,%f", &index, &duty) != 2) {
+            writeSerialComln("Error: formato invalido. Use index,duty (ej: 0,75.5)");
+            return;
+        }
+
+        // Validar duty
+        if (duty < 0.0f || duty > 100.0f) {
+            writeSerialComln("Error: duty invalido (0..100%)");
+            return;
+        }
+
+        // Aplicar
+        if (PWMSetMaxDC(index, duty)) {
+            writeSerialComln(
+                String("Curva ") + String(index) +
+                String(" -> Max duty cycle: ") + String(duty) + "%"
+            );
         } else {
-            writeSerialComln(String("Valor máximo de duty cycle inválido. Debe estar entre 0 y 100%."));
+            writeSerialComln("Error al configurar max duty cycle");
         }
     }
+
 
     if (menu->id == 11){
         float current = data.toFloat(); 
@@ -299,7 +339,7 @@ void procesarDatos(String data) {
                 writeSerialComln(String("Punto agregado a la curva ") + String(curve) + String(": [Tiempo: ") + String(tiempo) + String(", Valor: ") + String(value) + String(", Tipo: ") + (type == LINEAR ? "LINEAR" : (type == STEP ? "STEP" : "S_CURVE")) + String("]"));
             }
         } else {
-            writeSerialComln(String("❌ Formato inválido. Use [curve,tiempo,value]"));
+            writeSerialComln(String("Formato inválido. Use [curve,tiempo,value]"));
         }
     }
     
@@ -326,20 +366,22 @@ void procesarDatos(String data) {
         
 
     }
-    if(menu->id ==21){
-        if(data.equalsIgnoreCase("y")){
-            PWMSetCurveMode(ON_t);
-            writeSerialComln(String("Modo curva activado"));
-            saveValueNVS(MODO_CURVA, true) ;
-        }else if(data.equalsIgnoreCase("n")){
-            PWMSetCurveMode(OFF_t);
-            writeSerialComln(String("Modo curva desactivado"));
-            saveValueNVS(MODO_CURVA, false) ;
-        }else{
-            writeSerialComln(String("Error: Valor invalido"));
-        }
+    if (menu->id == 21) {
 
+        int index = -1;
+        if (sscanf(data.c_str(), "%d", &index) != 1) {
+            writeSerialComln("Error: debe ingresar un numero de curva");
+            return;
+        }
+        // Toggle
+        if(getCurveMode(index)==ON_t){
+            PWMSetCurveMode(OFF_t, index);
+        }else{
+            PWMSetCurveMode(ON_t, index);
+        }
+        writeSerialComln(String("Modo de curva para indice ") + String(index) + String(" cambiado a ") + (getCurveMode(index) == ON_t ? "ON" : "OFF"));
     }
+
     if(menu->id ==22){
         writeSerialComln(String("Selecciona la curva a guardar (ID):"));
         printCargaElectronica();
@@ -368,15 +410,30 @@ void procesarDatos(String data) {
             writeSerialComln(String("Error: Formato inválido. Use DD/MM/AAAA HH:MM"));
         }
     }
-    if(menu->id ==30){
-        if(data.equalsIgnoreCase("PID")){
-            changeControlMode(PID);
-            writeSerialComln(String("Modo de control cambiado a PID"));
-        }else if(data.equalsIgnoreCase("NONE")){
-            changeControlMode(NONE);
-            writeSerialComln(String("Modo de control cambiado a NONE"));
+    if (menu->id == 30) {
+
+        int index = -1;
+        char modeStr[8];   // suficiente para "PID" o "NONE"
+
+        // Espera formato: index,PID  o  index,NONE
+        if (sscanf(data.c_str(), "%d,%7s", &index, modeStr) != 2) {
+            writeSerialComln("Error: formato invalido. Use index,PID o index,NONE");
+            return;
+        }
+        // Interpretar modo
+        if (strcasecmp(modeStr, "PID") == 0) {
+            changeControlMode(PID,index);
+            writeSerialComln(String("Curva ") + index + " -> Modo de control PID");
+        }
+        else if (strcasecmp(modeStr, "NONE") == 0) {
+            changeControlMode(NONE,index);
+            writeSerialComln(String("Curva ") + index + " -> Modo de control NONE");
+        }
+        else {
+            writeSerialComln("Error: modo invalido (use PID o NONE)");
         }
     }
+
     if(menu->id ==28){
         int curveId = data.toInt();
         if(deleteCurve(curveId)){
@@ -625,8 +682,14 @@ static void onEnterNode(MenuNode* n) {
             printSensorInfo();
             //updateScreen = true; // ya lo usabas para refrescar periódicamente
             break;
+        case 8:
+            for(int i=0;i<getCurveArraySize();i++){
+                float currentRef = getCurrentReference_mA(i);
+                writeSerialComln(String("Curva ") + String(i) + String(": Corriente de referencia actual: ") + String(currentRef) + String(" mA"));
+            }
+            break;
         case 9:  // Frecuencia PWM
-            for (char i = 0; i < 4; i++) {
+            for (char i = 0; i < 2; i++) {
                 int ch, f, res;
                 if (getPWMConfig(i, &ch, &f, &res)) {
                     writeSerialComln(
@@ -639,7 +702,9 @@ static void onEnterNode(MenuNode* n) {
 
             break;
         case 10:
-            writeSerialComln(String("Valor maximo actual del PWM: ") + String(PWMGetMaxDC()) + String(" %"));
+            for(int i=0;i<getCurveArraySize();i++){
+                writeSerialComln(String("Curva ") + String(i) + String(" Valor maximo actual del PWM: ") + String(PWMGetMaxDC(i)) + String(" %"));
+            }
             writeSerialComln("Ingrese nuevo valor (0..100) y presione 'ENTER'");
             break;
         case 15: // Ver curvas
@@ -651,6 +716,11 @@ static void onEnterNode(MenuNode* n) {
         case 19: // Seleccionar curva (al menos mostrar algo útil)
             printCargaElectronica();
             break;
+        case 21: //Imprimir el modo de las curvas
+            for(int i=0;i<getCurveArraySize();i++){
+                writeSerialComln(String("Curva ") + String(i) + String(": Modo ") + (getCurveMode(i)==ON_t ? "CURVA" : "MANUAL"));
+            }
+            break;
         case 23: 
             printAllCurvesNvs();
             
@@ -659,7 +729,9 @@ static void onEnterNode(MenuNode* n) {
             printPinToCurve();
             break;
         case 30:
-            writeSerialComln(String("Modo de control actual: ") + (getModoFuncionamiento() == PID ? "PID" : "NONE"));
+            for(int i=0;i<getCurveArraySize();i++){
+                writeSerialComln(String("Modo de control actual: ") + (getModoFuncionamiento(i) == PID ? "PID" : "NONE"));
+            }
             break;
         case 28:
             printCurves();

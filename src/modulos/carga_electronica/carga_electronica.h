@@ -35,16 +35,16 @@ typedef enum {
 void CargaElectronicaInit();
 void CargaElectronicaUpdate();
 float PWMSetDC(float dc);
-bool PWMSetFrequency(int frecuencies);
-
-bool PWMSetMaxDC(float dc);
-void PWMSetCurveMode(curve_mode_t mode);
-
+bool PWMSetFrequency(int frecuencies,int index);
+bool PWMSetMaxDC(float dc,int index);
+void PWMSetCurveMode(curve_mode_t state, int index);
+curve_mode_t getCurveMode(int index);
 void printCargaElectronica(); 
-void changeControlMode(modoFuncionamiento_t mode);
-float PWMGetMaxDC();
+void changeControlMode(modoFuncionamiento_t mode, int index);
+float PWMGetMaxDC(int index);
 bool setMaxCurrent(float current);
-modoFuncionamiento_t getModoFuncionamiento();
+modoFuncionamiento_t getModoFuncionamiento(int index);
 bool setCurrentReference_mA(float current_mA,int index);
 bool getPWMConfig(char index, int *channel, int *freq, int *resolution);
+float getCurrentReference_mA(int index);
 #endif

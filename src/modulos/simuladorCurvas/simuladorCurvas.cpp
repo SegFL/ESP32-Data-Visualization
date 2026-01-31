@@ -835,3 +835,8 @@ int getAvailableId() {
     return -1;
 }
 
+
+
+int getCurveArraySize() {
+    return curveArraySize;
+}

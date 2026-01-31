@@ -42,21 +42,21 @@ const int LED_OUTPUT_PIN = 18;   // Pin GPIO donde se genera la señal PWM
 // Variables globales
 float DC = 0;  // Duty cycle actual (0-100%)
 
-float max_dc_value = 800.0; // Valor máximo del duty cycle (0-100%)
+float max_dc_value[NUM_PWM] = {800.0, 800.0}; // Valor máximo del duty cycle (0-100%)
 float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
 float currentReference_mA[NUM_PWM] = {0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
 
-modoFuncionamiento_t modoFuncionamiento = NONE; // Modo de funcionamiento inicial (PID o directo/NONE)
+modoFuncionamiento_t modoFuncionamiento[NUM_PWM] = {NONE, NONE}; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
-curve_mode_t curveMode = ON_t; // Decide si le hace caso a los datos de la curva o a los del usuario
+curve_mode_t curveMode[NUM_PWM] = {OFF_t, OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
 
 bool arraySelected=false;
 int arraySelectedPos=-1;
 
 
-
+static void makeKey(char *out, const char *base, int index) ;
 
 void CargaElectronicaInit(){
 
@@ -76,7 +76,9 @@ void CargaElectronicaInit(){
   ledcAttachPin(pwmConfig[1].pin, pwmConfig[1].channel);
 
   DC = 0.0f; // Inicializar el duty cycle a 0 (%)
-  max_dc_value = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
+  for(int i=0;i<NUM_PWM;i++){
+    max_dc_value[i] = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
+  }
   currentReference_mA[0] = 0.0f; // referencia manual en mA
   currentReference_mA[1] = 0.0f; // referencia manual en mA
   ledcWrite(pwmConfig[0].channel,0); // Inicializar el PWM a 0 (apagado)
@@ -124,38 +126,38 @@ void CargaElectronicaInit(){
 
     
 }
+void cargarConfiguracionNvs() {
 
+    char key[32];
 
-void cargarConfiguracionNvs(){
+    for (int i = 0; i < NUM_PWM; i++) {
 
-    bool mode = readValueNVS(MODO_FUNCIONAMIENTO_NVS_KEY);
-    if (mode) {
-        modoFuncionamiento = PID;
-    } else {
-        modoFuncionamiento = NONE;
+        /* ===== MODO DE FUNCIONAMIENTO ===== */
+        makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, i);
+        bool mode = readValueNVS(key);
+
+        modoFuncionamiento[i] = mode ? PID : NONE;
+
+        /* ===== MAX DC ===== */
+        makeKey(key, MAX_DC_NVS_KEY, i);
+        int value = readValueNVSint32_t(key);
+
+        if (value != -1) {
+            if (value < 0) value = 0;
+            if (value > 100) value = 100;
+            max_dc_value[i] = (float)value;
+        } else {
+            max_dc_value[i] = 100.0f;
+        }
+
+        /* ===== CURVE MODE ===== */
+        makeKey(key, MODO_CURVA, i);
+        bool curve = readValueNVS(key);
+
+        curveMode[i] = curve ? ON_t : OFF_t;
     }
+}
 
-    int value = readValueNVSint32_t(MAX_DC_NVS_KEY);
-    if(value != -1){
-        // valor en % esperado 0..100
-        if(value < 0) value = 0;
-        if(value > 100) value = 100;
-        max_dc_value = (float)value;
-    } else {
-        max_dc_value = 100.0f; // Valor por defecto si no se encuentra en NVS -> sin recorte
-    }
-
-    //Cargo la configuracion guardada en NVS
-    if(readValueNVS(MODO_CURVA)){
-        curveMode=ON_t;
-    }else{
-        curveMode=OFF_t;
-    }
-
-
-
-
-  }
 void CargaElectronicaUpdate(){
 
 
@@ -166,7 +168,7 @@ void CargaElectronicaUpdate(){
     float referenceCurrent = 0.0f; // mA
     float aux = 0.0f;
     // Selección de referencia
-    switch(curveMode){
+    switch(curveMode[i]){
       // Usar siempre valor manual
       case OFF_t:
         // En modo OFF la referencia de corriente viene de la referencia manual (mA)
@@ -186,7 +188,7 @@ void CargaElectronicaUpdate(){
     }
 
     // Selección de modo de funcionamiento
-    switch(modoFuncionamiento){
+    switch(modoFuncionamiento[i]){
       case PID:  
       //El segundo argumento es el indice del pid que se quiere usar
         dutyCycleAux = getDCPID(referenceCurrent,i);
@@ -218,7 +220,7 @@ void CargaElectronicaUpdate(){
     */
     // Aplicar el duty cycle actual (invertido)
     int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
-    writeSerialComln(String( "Duty[") + String(i) + String("]: ") + String(dutyCycleAux)+ String("% -> PWM Value: ") + String(pwmValue));
+    //writeSerialComln(String( "Duty[") + String(i) + String("]: ") + String(dutyCycleAux)+ String("% -> PWM Value: ") + String(pwmValue));
 
     //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
     //ledcWrite(PWM_CHANNEL, pwmValue);
@@ -232,12 +234,13 @@ void CargaElectronicaUpdate(){
 // Se espera un valor entre 0 y 100, si el valor es mayor al máximo permitido se limita al máximo permitido
 // Se espera un valor entre 0 y 100 (corrige comportamiento previo)
 // Ahora recorta (clamp) usando max_dc_value
-float PWMSetDC(float currentReference) {
+float PWMSetDC(float currentReference,int index) {
+    if(index<0 || index>=NUM_PWM) return -1.0f;
     if (currentReference < 0.0f) return -1.0f;
     // aplicar límite máximo configurado
     float limited = currentReference;
-    if (max_dc_value >= 0.0f && max_dc_value <= 1000.0f) {
-        if (limited > max_dc_value) limited = max_dc_value;
+    if (max_dc_value[index] >= 0.0f && max_dc_value[index] <= 1000.0f) {
+        if (limited > max_dc_value[index]) limited = max_dc_value[index];
     }
     // límite físico 0..100
     if (limited > 1000.0f) limited = 1000.0f;
@@ -246,8 +249,16 @@ float PWMSetDC(float currentReference) {
 }
 
 
-void PWMSetCurveMode(curve_mode_t state){
-  curveMode = state;
+void PWMSetCurveMode(curve_mode_t state, int index){
+  if(index<0 || index>=NUM_PWM) return;
+  // Guardar en NVS
+  char key[32];
+  makeKey(key, MODO_CURVA, index);
+  if(saveValueNVS(key, state)==0){
+      writeSerialComln(String("Error al guardar el modo de curva en NVS"));
+      return;
+  }
+  curveMode[index] = state;
 }
 
 void printCargaElectronica(){
@@ -256,23 +267,28 @@ void printCargaElectronica(){
 }
 
 
-bool PWMSetFrequency(int frecuencies){
+bool PWMSetFrequency(int frecuencies,int index){
+  if(index<0 || index>=NUM_PWM) return false;
   if(frecuencies>0 && frecuencies<PWM_FREQ){
-    ledcSetup(PWM_CHANNEL, frecuencies, PWM_RESOLUTION);
+    ledcSetup(pwmConfig[index].channel, frecuencies, PWM_RESOLUTION);
+    pwmConfig[index].freq = frecuencies;
     return true;
   }
   return false;
 
 }
-bool PWMSetMaxDC(float dc){
+bool PWMSetMaxDC(float dc,int index){
+    if (index < 0 || index >= NUM_PWM) return false;
     if (dc < 0.0f || dc > 100.0f) return false;
-    max_dc_value = dc;
+    max_dc_value[index] = dc;
 
     // Guardar en NVS
     nvs_handle_t handle;
     if (nvs_open("storage", NVS_READWRITE, &handle) == ESP_OK) {
         int to_store = (int)dc;
-        nvs_set_i32(handle, MAX_DC_NVS_KEY, to_store);
+        char key[32];
+        makeKey(key, MAX_DC_NVS_KEY, index);
+        nvs_set_i32(handle, key, to_store);
         nvs_commit(handle);
         nvs_close(handle);
     }
@@ -280,19 +296,23 @@ bool PWMSetMaxDC(float dc){
     return true;
 }
 
-void changeControlMode(modoFuncionamiento_t mode){
-
+void changeControlMode(modoFuncionamiento_t mode, int index){
+  if(index<0 || index>=NUM_PWM) return;
+  // Guardar en NVS
+  char key[32];
+  makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, index);
   if(saveValueNVS(MODO_FUNCIONAMIENTO_NVS_KEY, mode)!=0){
       writeSerialComln(String("Error al guardar el modo de funcionamiento en NVS"));
       return;
   }
 
 
-  modoFuncionamiento = mode;
+  modoFuncionamiento[index] = mode;
 }
 
-float PWMGetMaxDC(){
-    return max_dc_value;
+float PWMGetMaxDC(int index){
+    if(index<0 || index>=NUM_PWM) return -1.0f;
+    return max_dc_value[index];
 }
 
 
@@ -300,6 +320,7 @@ float PWMGetMaxDC(){
 // - reference_current: mA
 // - usa maxCurrent para normalizar (mA -> 0..100%)
 // - respeta max_dc_value (tope %) y clampa 0..100
+/*
 float convertirCorrienteADc(float reference_current){
   // Si referencia viene en % por error, proteger
   // but expected unit is mA
@@ -320,7 +341,7 @@ float convertirCorrienteADc(float reference_current){
 
   return percent;
 }
-
+*/
 bool setMaxCurrent(float current){
     // maxCurrent está en mA. Aceptar rango razonable (0..2000 mA)
     if(current >= 0.0f && current <=2000.0f){
@@ -332,8 +353,9 @@ bool setMaxCurrent(float current){
 
 
 
-modoFuncionamiento_t getModoFuncionamiento(){
-    return modoFuncionamiento;
+modoFuncionamiento_t getModoFuncionamiento(int index){
+    if(index<0 || index>=NUM_PWM) return NONE;
+    return modoFuncionamiento[index];
 }
 
 
@@ -364,4 +386,20 @@ bool getPWMConfig(char index, int *channel, int *freq, int *resolution) {
     if (resolution) *resolution = pwmConfig[index].resolution;
 
     return true;
+}
+
+static void makeKey(char *out, const char *base, int index) {
+    sprintf(out, "%s_%d", base, index);
+}
+
+
+
+curve_mode_t getCurveMode(int index){
+    if(index<0 || index>=NUM_PWM) return OFF_t;
+    return curveMode[index];
+}
+
+float getCurrentReference_mA(int index){
+    if(index<0 || index>=NUM_PWM) return 0.0f;
+    return currentReference_mA[index];
 }
