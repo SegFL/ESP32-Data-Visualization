@@ -145,17 +145,30 @@ void userInterfaceUpdate() {
 }
 
 
-bool loadConfiguration(){
-    if (readValueNVS("mode") == SEND_DATA) { // Si el modo es SEND_DATA, se activa la opción de enviar datos
-        changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
-        writeSerialComln(String("Modo SEND DATA activado"));
-        return true;
-    } else {
-        changeMode(NOT_SEND_DATA); // Cambiar el modo a RECEIVE_DATA
-        writeSerialComln(String("Modo SEND DATA desactivado"));
-        return false;
+bool loadConfiguration() {
+
+    char mode = 0;
+
+    // Intentar leer el valor desde NVS
+    if (!readValueNVS("mode", &mode)) {
+        // No existe la clave o error → estado por defecto
+        changeMode(NOT_SEND_DATA);
+        writeSerialComln("Modo SEND DATA desactivado (valor por defecto)");
+        return false;   // falló la carga desde NVS
     }
+
+    // Interpretar el valor leído
+    if (mode == SEND_DATA) {
+        changeMode(SEND_DATA);
+        writeSerialComln("Modo SEND DATA activado");
+    } else {
+        changeMode(NOT_SEND_DATA);
+        writeSerialComln("Modo SEND DATA desactivado");
+    }
+
+    return true;    // carga exitosa
 }
+
 
 
 
@@ -282,7 +295,7 @@ void procesarDatos(String data) {
         }
 
         // Aplicar
-        if (PWMSetMaxDC(index, duty)) {
+        if (PWMSetMaxDC( duty,index)) {
             writeSerialComln(
                 String("Curva ") + String(index) +
                 String(" -> Max duty cycle: ") + String(duty) + "%"
@@ -415,22 +428,27 @@ void procesarDatos(String data) {
         int index = -1;
         char modeStr[8];   // suficiente para "PID" o "NONE"
 
-        // Espera formato: index,PID  o  index,NONE
+
         if (sscanf(data.c_str(), "%d,%7s", &index, modeStr) != 2) {
             writeSerialComln("Error: formato invalido. Use index,PID o index,NONE");
             return;
         }
         // Interpretar modo
         if (strcasecmp(modeStr, "PID") == 0) {
-            changeControlMode(PID,index);
+            if(setControlMode(PID,index)==false){
+                writeSerialComln(String("Error al cambiar el modo de control. Index invalido: ") + String(index));
+                return;
+            }
             writeSerialComln(String("Curva ") + index + " -> Modo de control PID");
         }
         else if (strcasecmp(modeStr, "NONE") == 0) {
-            changeControlMode(NONE,index);
+            if(setControlMode(NONE,index)==false){
+                writeSerialComln(String("Error al cambiar el modo de control. Index invalido: ") + String(index));
+                return;
+            }
             writeSerialComln(String("Curva ") + index + " -> Modo de control NONE");
-        }
-        else {
-            writeSerialComln("Error: modo invalido (use PID o NONE)");
+        }else {
+            writeSerialComln("Error: modo invalido ( < index > , < PID / NONE> )");
         }
     }
 
@@ -650,7 +668,7 @@ static bool nodeRequiresInput(int id) {
         case 16: // Activar curva -> requiere ID
         case 18: // Crear curva -> requiere pin
         case 20: // Agregar punto [curva,tiempo,valor]
-        case 21: // Activar modo curva (Y/N)
+        case 21: // Activar modo 
         case 22: // Guardar curva -> requiere ID
         case 23: // Cargar curva -> requiere ID
         case 25: // Modificar fecha
@@ -797,11 +815,11 @@ static void onEnterNode(MenuNode* n) {
             case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione 'ENTER'"); break;
             case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione 'ENTER'"); break;
             case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione 'ENTER'"); break;
-            case 21: writeSerialComln("Activar modo curva (Y/N) y presione 'ENTER'"); break;
+            case 21: writeSerialComln("Presione el numero de curva para cambiar de modo CURVA / MANUAL y luego presione 'ENTER'"); break;
             case 22: writeSerialComln("ID de curva a GUARDAR y presione 'ENTER'"); break;
             case 23: writeSerialComln("Ingrese el ID de la curva a CARGAR y presione 'ENTER'");break;
             case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione 'ENTER'"); break;
-            case 30: writeSerialComln("Ingrese 'PID' o 'NONE' y presione 'ENTER'"); break;
+            case 30: writeSerialComln("Ingrese  < index > , < PID / NONE>  y presione 'ENTER'"); break;
             case 28: writeSerialComln("Ingrese el ID de la curva a eliminar y presione 'ENTER'"); break;
             case 31: writeSerialComln("Para resetear los parametros del PID presione y-"); break;
             case 32: writeSerialComln("Ingrese parámetros PID en formato index,Kp,Ki,Kd y presione 'ENTER'"); break;

@@ -116,8 +116,8 @@ void setPIDTs(float ts) {
 bool resetPID(int index) {
     if (index < 0 || index >= MAX_CURVES) return false;
     // Establecer parámetros PID transparentes (sin acción de control)
-    pid[index].Kp = 0.0f;
-    pid[index].Ki = 0.0f;
+    pid[index].Kp = 0.6f;
+    pid[index].Ki = 0.05f;
     pid[index].Kd = 0.0f;
     pid[index].Ts = 0.2f;  // Período real de muestreo (200ms)
     

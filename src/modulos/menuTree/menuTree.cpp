@@ -127,7 +127,7 @@ MenuNode* menuInit() {
         MenuNode* child16 = create_node("Asociar curva a un pin", '3',16);
         add_child(child13, child16);
 
-        MenuNode* child21 = create_node("Activar modo curva (Y/N)", '4',21);
+        MenuNode* child21 = create_node("Activar / Desactivar modo curva ", '4',21);
         add_child(child13, child21);
 
         MenuNode* child22 = create_node("Guardar curva", '5',22);

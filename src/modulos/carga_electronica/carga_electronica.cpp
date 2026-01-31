@@ -8,8 +8,9 @@
 float convertirCorrienteADc(float reference_current);
 void cargarConfiguracionNvs();
 float getDCDirecto(float ref);
-const char* MAX_DC_NVS_KEY = "max_dc_value";
-const char* MODO_FUNCIONAMIENTO_NVS_KEY = "MODO_FUNCIONAMIENTO";
+#define MAX_DC_NVS_KEY  "max_dc_value"
+#define MODO_FUNCIONAMIENTO_NVS_KEY  "MODO_FUNC"
+
 
 typedef struct {
     int channel;
@@ -134,13 +135,25 @@ void cargarConfiguracionNvs() {
 
         /* ===== MODO DE FUNCIONAMIENTO ===== */
         makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, i);
-        bool mode = readValueNVS(key);
-
-        modoFuncionamiento[i] = mode ? PID : NONE;
+        char mode;
+        bool error = readValueNVS(key,&mode);// si falla devuelve false y se iniciliza en NONE
+        if(error==true){
+          if((modoFuncionamiento_t)mode == PID){
+            modoFuncionamiento[i] = PID;
+          } else {
+            modoFuncionamiento[i] = NONE;
+          }
+        } else {
+          modoFuncionamiento[i] = NONE;
+        }
 
         /* ===== MAX DC ===== */
         makeKey(key, MAX_DC_NVS_KEY, i);
-        int value = readValueNVSint32_t(key);
+        int value = 0;
+        if(readValueNVSint32_t(key,&value)==0){
+            writeSerialComln(String("Error al leer el valor max dc de NVS para el canal ") + String(i));
+            value = -1;
+        }
 
         if (value != -1) {
             if (value < 0) value = 0;
@@ -151,10 +164,18 @@ void cargarConfiguracionNvs() {
         }
 
         /* ===== CURVE MODE ===== */
+        char aux;
         makeKey(key, MODO_CURVA, i);
-        bool curve = readValueNVS(key);
-
-        curveMode[i] = curve ? ON_t : OFF_t;
+        error = readValueNVS(key, &aux);
+        if(error==true){
+          if((curve_mode_t)aux == ON_t){
+            curveMode[i] = ON_t;
+          } else {
+            curveMode[i] = OFF_t;
+          }
+        } else {
+          curveMode[i] = OFF_t;
+        }
     }
 }
 
@@ -254,11 +275,14 @@ void PWMSetCurveMode(curve_mode_t state, int index){
   // Guardar en NVS
   char key[32];
   makeKey(key, MODO_CURVA, index);
-  if(saveValueNVS(key, state)==0){
+  // saveValueNVS retorna 0 en éxito
+  if(saveValueNVS(key, (char)state) == 0){
+      // Éxito: actualizar variable local
+      curveMode[index] = state;
+  } else {
+      // Error al guardar
       writeSerialComln(String("Error al guardar el modo de curva en NVS"));
-      return;
   }
-  curveMode[index] = state;
 }
 
 void printCargaElectronica(){
@@ -296,18 +320,16 @@ bool PWMSetMaxDC(float dc,int index){
     return true;
 }
 
-void changeControlMode(modoFuncionamiento_t mode, int index){
-  if(index<0 || index>=NUM_PWM) return;
+bool setControlMode(modoFuncionamiento_t mode, int index){
+  if(index<0 || index>=NUM_PWM) return false;
   // Guardar en NVS
   char key[32];
   makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, index);
-  if(saveValueNVS(MODO_FUNCIONAMIENTO_NVS_KEY, mode)!=0){
-      writeSerialComln(String("Error al guardar el modo de funcionamiento en NVS"));
-      return;
+  if(saveValueNVS(key, (char)mode) == 0){  // ← Verificar que sea 0 (éxito)
+      modoFuncionamiento[index] = mode;     // Actualizar solo si fue exitoso
+      return true;
   }
-
-
-  modoFuncionamiento[index] = mode;
+  return false;  // Error al guardar
 }
 
 float PWMGetMaxDC(int index){
