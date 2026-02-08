@@ -19,9 +19,8 @@ typedef struct {
     int pin;
 } PWM_Config_t;
 
-#define NUM_PWM 2
 
-PWM_Config_t pwmConfig[NUM_PWM] = {
+PWM_Config_t pwmConfig[NUMBER_OF_SENSORS] = {
     { .channel = 0, .freq = 78125, .resolution = 10 ,.pin = 18},
     { .channel = 1, .freq = 78125, .resolution = 10 ,.pin = 19}
     /*,
@@ -43,15 +42,15 @@ const int LED_OUTPUT_PIN = 18;   // Pin GPIO donde se genera la señal PWM
 // Variables globales
 float DC = 0;  // Duty cycle actual (0-100%)
 
-float max_dc_value[NUM_PWM] = {800.0, 800.0}; // Valor máximo del duty cycle (0-100%)
+float max_dc_value[NUMBER_OF_SENSORS] = {800.0, 800.0}; // Valor máximo del duty cycle (0-100%)
 float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
-float currentReference_mA[NUM_PWM] = {0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
+float currentReference_mA[NUMBER_OF_SENSORS] = {0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
 
-modoFuncionamiento_t modoFuncionamiento[NUM_PWM] = {NONE, NONE}; // Modo de funcionamiento inicial (PID o directo/NONE)
+modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_SENSORS] = {NONE, NONE}; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
-curve_mode_t curveMode[NUM_PWM] = {OFF_t, OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
+curve_mode_t curveMode[NUMBER_OF_SENSORS] = {OFF_t, OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
 
 bool arraySelected=false;
 int arraySelectedPos=-1;
@@ -64,7 +63,7 @@ void CargaElectronicaInit(){
   // Configuración del canal PWM con frecuencia y resolución
   //ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
 
-  for(int i=0;i<NUM_PWM;i++){
+  for(int i=0;i<NUMBER_OF_SENSORS;i++){
     ledcSetup(
         pwmConfig[i].channel,
         pwmConfig[i].freq,
@@ -77,7 +76,7 @@ void CargaElectronicaInit(){
   ledcAttachPin(pwmConfig[1].pin, pwmConfig[1].channel);
 
   DC = 0.0f; // Inicializar el duty cycle a 0 (%)
-  for(int i=0;i<NUM_PWM;i++){
+  for(int i=0;i<NUMBER_OF_SENSORS;i++){
     max_dc_value[i] = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
   }
   currentReference_mA[0] = 0.0f; // referencia manual en mA
@@ -131,7 +130,7 @@ void cargarConfiguracionNvs() {
 
     char key[32];
 
-    for (int i = 0; i < NUM_PWM; i++) {
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
 
         /* ===== MODO DE FUNCIONAMIENTO ===== */
         makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, i);
@@ -183,7 +182,7 @@ void CargaElectronicaUpdate(){
 
 
 
-  for(int i=0;i<NUM_PWM;i++){
+  for(int i=0;i<NUMBER_OF_SENSORS;i++){
 
     float dutyCycleAux = 0.0f;
     float referenceCurrent = 0.0f; // mA
@@ -197,8 +196,9 @@ void CargaElectronicaUpdate(){
         break;
       case ON_t:        
         aux = getCurveValue(i);
+        writeSerialComln("GetCurveValue :" +String(aux));
         if(aux != -1){
-          writeSerialComln("Get Curve Value: " + String(aux) + " mA");
+          //writeSerialComln("Get Curve Value: " + String(aux) + " mA");
           referenceCurrent = aux; // Usar valor de la curva si es válido
         } else {
           referenceCurrent = 0.0f;
@@ -256,7 +256,7 @@ void CargaElectronicaUpdate(){
 // Se espera un valor entre 0 y 100 (corrige comportamiento previo)
 // Ahora recorta (clamp) usando max_dc_value
 float PWMSetDC(float currentReference,int index) {
-    if(index<0 || index>=NUM_PWM) return -1.0f;
+    if(index<0 || index>=NUMBER_OF_SENSORS) return -1.0f;
     if (currentReference < 0.0f) return -1.0f;
     // aplicar límite máximo configurado
     float limited = currentReference;
@@ -271,7 +271,7 @@ float PWMSetDC(float currentReference,int index) {
 
 
 void PWMSetCurveMode(curve_mode_t state, int index){
-  if(index<0 || index>=NUM_PWM) return;
+  if(index<0 || index>=NUMBER_OF_SENSORS) return;
   // Guardar en NVS
   char key[32];
   makeKey(key, MODO_CURVA, index);
@@ -292,7 +292,7 @@ void printCargaElectronica(){
 
 
 bool PWMSetFrequency(int frecuencies,int index){
-  if(index<0 || index>=NUM_PWM) return false;
+  if(index<0 || index>=NUMBER_OF_SENSORS) return false;
   if(frecuencies>0 && frecuencies<PWM_FREQ){
     ledcSetup(pwmConfig[index].channel, frecuencies, PWM_RESOLUTION);
     pwmConfig[index].freq = frecuencies;
@@ -302,7 +302,7 @@ bool PWMSetFrequency(int frecuencies,int index){
 
 }
 bool PWMSetMaxDC(float dc,int index){
-    if (index < 0 || index >= NUM_PWM) return false;
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return false;
     if (dc < 0.0f || dc > 100.0f) return false;
     max_dc_value[index] = dc;
 
@@ -321,7 +321,7 @@ bool PWMSetMaxDC(float dc,int index){
 }
 
 bool setControlMode(modoFuncionamiento_t mode, int index){
-  if(index<0 || index>=NUM_PWM) return false;
+  if(index<0 || index>=NUMBER_OF_SENSORS) return false;
   // Guardar en NVS
   char key[32];
   makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, index);
@@ -333,7 +333,7 @@ bool setControlMode(modoFuncionamiento_t mode, int index){
 }
 
 float PWMGetMaxDC(int index){
-    if(index<0 || index>=NUM_PWM) return -1.0f;
+    if(index<0 || index>=NUMBER_OF_SENSORS) return -1.0f;
     return max_dc_value[index];
 }
 
@@ -376,14 +376,14 @@ bool setMaxCurrent(float current){
 
 
 modoFuncionamiento_t getModoFuncionamiento(int index){
-    if(index<0 || index>=NUM_PWM) return NONE;
+    if(index<0 || index>=NUMBER_OF_SENSORS) return NONE;
     return modoFuncionamiento[index];
 }
 
 
 // Nuevo: setter para referencia manual de corriente (mA) usada por PID y curva en modo OFF
 bool setCurrentReference_mA(float current_mA,int index){
-  if(index<0 || index>=NUM_PWM) return false;
+  if(index<0 || index>=NUMBER_OF_SENSORS) return false;
     if (current_mA < 0.0f) return false;
     currentReference_mA[index] = current_mA;
     return true;
@@ -399,7 +399,7 @@ float getDCDirecto(float ref){
 
 
 bool getPWMConfig(char index, int *channel, int *freq, int *resolution) {
-    if (index < 0 || index >= NUM_PWM) {
+    if (index < 0 || index >= NUMBER_OF_SENSORS) {
         return false;   // índice inválido
     }
 
@@ -417,11 +417,11 @@ static void makeKey(char *out, const char *base, int index) {
 
 
 curve_mode_t getCurveMode(int index){
-    if(index<0 || index>=NUM_PWM) return OFF_t;
+    if(index<0 || index>=NUMBER_OF_SENSORS) return OFF_t;
     return curveMode[index];
 }
 
 float getCurrentReference_mA(int index){
-    if(index<0 || index>=NUM_PWM) return 0.0f;
+    if(index<0 || index>=NUMBER_OF_SENSORS) return 0.0f;
     return currentReference_mA[index];
 }

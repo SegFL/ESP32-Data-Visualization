@@ -5,6 +5,7 @@
 #include <modulos/serialCom/serialCom.h>
 #include <modulos/ina219/ina219.h>
 #include "../queueCom/queueCom.h"
+#include "../../config.h"
 
 
 void adcInit() ;

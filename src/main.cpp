@@ -32,18 +32,26 @@ void Task1(void *pvParameters) {
   }
 }
 
-void Task2(void *pvParameters) {
-  for (;;) {
-    leerADC();
-    CargaElectronicaUpdate();
-    dacUpdate();
+//Esta tarea se ejecuta cada 200mSmediante un timer,asi el tiempo de ejecucion no se acumula por lo que
+// no provoca delays constantesy un muestreo NO uniforme
+void Task2(void *pvParameters)
+{
+    TickType_t lastWake = xTaskGetTickCount();
+    const TickType_t period = pdMS_TO_TICKS(200);
 
-    int request = 1;
-    xQueueSend(timeRequestQueue, &request, pdMS_TO_TICKS(20));
+    for (;;)
+    {
+        leerADC();
+        CargaElectronicaUpdate();
+        dacUpdate();
 
-    vTaskDelay(pdMS_TO_TICKS(200)); // Tiempo suficiente para no saturar el CPU
-  }
+        int request = 1;
+        xQueueSend(timeRequestQueue, &request, 0); // no bloquear
+
+        vTaskDelayUntil(&lastWake, period);
+    }
 }
+
 
 void setup() {
   userInterfaceInit();
@@ -64,7 +72,9 @@ void setup() {
   timeRequestQueue = xQueueCreate(10, sizeof(int));
 
   xTaskCreatePinnedToCore(Task1, "Task1", 4096, NULL, 1, &Task1Handle, 0);
-  xTaskCreatePinnedToCore(Task2, "Task2", 4096, NULL, 1, &Task2Handle, 1);
+  //Task2 tendra la priordad maxima ya que se encarga se leer y escribir entradas/salidas
+
+  xTaskCreatePinnedToCore(Task2, "Task2", 4096, NULL, configMAX_PRIORITIES - 1, &Task2Handle, 1);
 
   writeSerialComln("Tareas inicializadas");
 }

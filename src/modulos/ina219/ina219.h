@@ -3,7 +3,7 @@
 #include <Adafruit_INA219.h>
 #include "ADCData.h"
 #include "../../modulos/time/time.h"
-
+#include "../../config.h"
 
 
 /*

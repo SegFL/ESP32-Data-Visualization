@@ -8,7 +8,6 @@
 #include <modulos/time/time.h>
 #include <modulos/carga_electronica/carga_electronica.h>
 
-#define NUMBER_OF_SENSORS 2// Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 float lastCurrent_mA[NUMBER_OF_SENSORS] = {0.0f,0.0f}; // Variable para almacenar la última corriente medida
 void adcInit() {
     // Inicializar el buffer

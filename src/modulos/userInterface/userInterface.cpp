@@ -640,7 +640,7 @@ bool parseStringToPoint(String str, int *curve, int *tiempo, float *value, aprox
     int typeInt = 0;
 
 
-    if (sscanf(str.c_str(), "[%d,%d,%f,%d]", curve, tiempo, value, &typeInt) == 4) {
+    if (sscanf(str.c_str(), "%d,%d,%f,%d", curve, tiempo, value, &typeInt) == 4) {
         switch (typeInt) {
             case 0: *type = STEP; break;
             case 1: *type = LINEAR; break;

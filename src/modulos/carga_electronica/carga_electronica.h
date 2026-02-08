@@ -8,6 +8,7 @@
 #include "../../modulos/pid/pid.h"
 #include "../../modulos/adc/adc.h"
 #include "../../modulos/nvs/nvs.h"
+#include "../../config.h"
 
 #define MODO_CURVA "modo_curva" // Clave NVS para modo curva
 

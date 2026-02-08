@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <modulos/serialCom/serialCom.h>
 #include "nvs.h"
-
+#include "../../config.h"
 typedef enum {
     STEP,
     LINEAR,
@@ -22,6 +22,10 @@ typedef struct {
     aproximation_point_type_t type; 
 } point_t;
 
+typedef struct {
+ int index_pasos,numero_pasos=0; //Contador de pasos dentro del segmento
+ float delta_v,delta_t,pendiente,incremento=0.0f;
+} linear_parameters_t;
 // Definición del typedef para una estructura que contiene un puntero a point_t 
 // y seis variables enteras
 typedef struct {
@@ -39,6 +43,7 @@ typedef struct {
     int pin;
     uint32_t timestamp;
     bool enabled;
+    linear_parameters_t linear_parameters;//Parametros
 } curve_t;
 
 

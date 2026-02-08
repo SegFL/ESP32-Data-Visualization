@@ -4,11 +4,10 @@
 
 
 
-#define NUM_SENSORS 2 // Número de sensores INA219. Si se cambia tambien se deberia cambiar el valor en adc.cpp
 
 
 // Crear un vector de punteros para manejar múltiples sensores
-Adafruit_INA219* ina219[NUM_SENSORS];
+Adafruit_INA219* ina219[NUMBER_OF_SENSORS];
 
 // Direcciones I2C para cada sensor
 uint8_t sensorAddresses[4] = { 0x40,0x41,0x44,0x45};//Direcciones de los in219 
@@ -19,7 +18,7 @@ void ina219Init(){
     writeSerialComln(String("Inicializando sensores INA219..."));
 
     // Inicializar los sensores en sus respectivas direcciones
-    for (int i = 0; i < NUM_SENSORS; i++) {
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
         ina219[i] = new Adafruit_INA219(sensorAddresses[i]); // Crear instancia con dirección específica
         if (!ina219[i]->begin()) {  //Se inicializa la comunicacion I2C
             writeSerialCom("Error al inicializar el sensor INA219 en la dirección 0x");
@@ -40,7 +39,7 @@ void ina219Init(){
 bool getData(ADCData& data, int sensor){ //Numero del sensor a leer
 
     //writeSerialComln(String("Leyendo sensor: ") + String(sensor));
-    if(sensor<NUM_SENSORS && sensorAvailable[sensor]==true){
+    if(sensor<NUMBER_OF_SENSORS && sensorAvailable[sensor]==true){
         
 
         // Leer todos los valores del sensor primero
