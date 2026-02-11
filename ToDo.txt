@@ -42,3 +42,9 @@ el corto dura mas, puede ser por alguna salida en 0, usar primero el Init de las
 
 Falta corregir el hecho de que se pierdan 4 incrementos en la interpolacion lineal.
 Falta ahcer varias pruebas con los nuevos cambios del modolineal.
+
+10/2/2026
+
+Terminar de corregir/agregar el hecho de poder guardar,borrar y crear curvas con nvs
+Agregar impresion de id guardados en nvs y verificar que no existan 2 curvas
+  con el mismo id en el array de curvas.
