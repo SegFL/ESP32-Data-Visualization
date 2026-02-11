@@ -9,6 +9,11 @@ int curveArraySize=0;
 #define PERIODO_INTERRUPCION 0.2f // segundos (200ms)
 
 
+//Numeros de ID guardados en NVS
+// POR EJEMPLO [1,10,13,0,0,0,0] donde 0 es un valor no permitido
+char idGuardadosEnNVS[100];
+
+
 
 curve_t* pinToCurve[NUMBER_OF_SENSORS];
 void calcular_incrementos(curve_t* curve);
@@ -166,8 +171,8 @@ float getCurveValue(int pin) {
     }
 
     unsigned long currentTime = getCurrentEpoch();
-    writeSerialComln(String("Current Time: ") + String(currentTime) +
-                     ", Curve Timestamp: " + String(curve->timestamp));
+    //writeSerialComln(String("Current Time: ") + String(currentTime) +
+   //                  ", Curve Timestamp: " + String(curve->timestamp));
 
 
  // Avanzar solo si no llegamos al último punto
@@ -489,28 +494,36 @@ void endCurve(curve_t* curve,int pin){
 
 
 //Nombre de la curva (key)<curveX> y el ID de la curva en el array
-void saveCurveNVS(const char* key, int curveId) {
+void saveCurveNVS(const char* key, int curveId)
+{
     nvs_handle_t handle;
-    if(curveArray == NULL) {
-        writeSerialComln(String("Error: Array de curvas no inicializado"));
+
+    if (curveArray == NULL) {
+        writeSerialComln("Error: Array de curvas no inicializado");
         return;
     }
+
     if (curveId < 0 || curveId >= curveArraySize) {
-        writeSerialComln(String("Error: Curva no valida"));
+        writeSerialComln("Error: Curva no valida");
         return;
     }
+
     curve_t *curve = curveArray[curveId];
     if (curve == NULL) {
-        writeSerialComln(String("Error: Curva no existe"));
+        writeSerialComln("Error: Curva no existe");
         return;
     }
+
     esp_err_t err = nvs_open("storage", NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         writeSerialComln("Error al abrir NVS");
         return;
     }
 
-    // Guardar enteros y banderas
+    /* -------- GUARDAR ID -------- */
+    nvs_set_u8(handle, (String(key) + "_id").c_str(), curve->id);
+
+    /* -------- PARAMETROS -------- */
     nvs_set_i32(handle, (String(key) + "_Imax").c_str(), curve->Imax);
     nvs_set_i32(handle, (String(key) + "_Imin").c_str(), curve->Imin);
     nvs_set_i32(handle, (String(key) + "_Vmax").c_str(), curve->Vmax);
@@ -523,13 +536,13 @@ void saveCurveNVS(const char* key, int curveId) {
     nvs_set_u32(handle, (String(key) + "_timestamp").c_str(), curve->timestamp);
     nvs_set_u8(handle, (String(key) + "_enabled").c_str(), curve->enabled ? 1 : 0);
 
-    // Guardar los puntos como BLOB
-    if (curve->point != NULL && curve->size > 0) {
-        nvs_set_blob(handle, (String(key) + "_points").c_str(),
-                     curve->point, sizeof(point_t) * curve->size);
+    if (curve->point && curve->size > 0) {
+        nvs_set_blob(handle,
+                     (String(key) + "_points").c_str(),
+                     curve->point,
+                     sizeof(point_t) * curve->size);
     }
 
-    // Confirmar
     err = nvs_commit(handle);
     if (err != ESP_OK) {
         writeSerialComln("Error al hacer commit en NVS");
@@ -545,10 +558,11 @@ bool loadCurveNVS(const char* key) {
         return false;
     }
     int i=0;
+    //Busco un lugar en el arreglo para poner la nueva curva
     for(i=0;i<curveArraySize;i++){
         if(curveArray[i]==NULL){
             writeSerialComln(String("Cargando curva en posición ") + String(i));
-            curveArray[i] = (curve_t *)malloc(sizeof(curve_t));
+            curveArray[i] = (curve_t *)calloc(1, sizeof(curve_t));
             if (curveArray[i] == NULL) {
                 writeSerialComln(String("Error al crear la curva"));
                 return false;
@@ -836,4 +850,44 @@ int getAvailableId() {
 
 int getCurveArraySize() {
     return curveArraySize;
+}
+
+
+
+//Hace un barrido buscando todas las curvas guardadas en NVS
+//deja los IDs guardados en elvector de direcciones para poder buscar luego. 
+//Ademas devuelve la cantidad de curvas encontradas.
+int loadIDsavedNVS(void)
+{
+    nvs_handle_t handle;
+    esp_err_t err;
+
+    /* Limpiar vector */
+    memset(idGuardadosEnNVS, 0, sizeof(idGuardadosEnNVS));
+
+    err = nvs_open("storage", NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return 0;
+    }
+
+    int count = 0;
+    char key[32];
+    uint8_t id;
+
+    for (int i = 1; i <= 255 && count < 100; i++) {
+
+        snprintf(key, sizeof(key), "curve%d_id", i);
+
+        if (nvs_get_u8(handle, key, &id) == ESP_OK) {
+
+            /* ID 0 prohibido */
+            if (id != 0) {
+                idGuardadosEnNVS[count] = (char)id;
+                count++;
+            }
+        }
+    }
+
+    nvs_close(handle);
+    return count;
 }

@@ -68,4 +68,5 @@ bool printCurveFromNvs(const char* key);
 void printPinToCurve();
 bool asociarCurvaAPin(int curveId, int pin);
 int getCurveArraySize();
+int loadIDsavedNVS(void);
 #endif // SIMULADORCURVAS_H

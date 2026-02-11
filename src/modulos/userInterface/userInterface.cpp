@@ -453,7 +453,9 @@ void procesarDatos(String data) {
     }
 
     if(menu->id ==28){
+        
         int curveId = data.toInt();
+        writeSerialComln("Eliminando curva"+String(curveId));
         if(deleteCurve(curveId)){
             writeSerialComln(String("Curva ") + String(curveId) + String(" eliminada correctamente"));
         }else{
@@ -726,6 +728,9 @@ static void onEnterNode(MenuNode* n) {
             writeSerialComln("Ingrese nuevo valor (0..100) y presione 'ENTER'");
             break;
         case 15: // Ver curvas
+            writeSerialComln("Curvas guardadas en flash");
+            writeSerialComln(String(loadIDsavedNVS()));
+            writeSerialComln("Curvas guardadas en RAM");
             printCurves();
             break;
         case 16:

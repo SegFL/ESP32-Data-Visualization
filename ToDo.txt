@@ -38,7 +38,7 @@ el corto dura mas, puede ser por alguna salida en 0, usar primero el Init de las
   en carga electronica.cpp linea 54 se iniciliza el pwm en 0, capas hay que inicializarlo en elmaximo
 
 
-29/1/2026
+8/2/2026
 
-Falta modificar para que se pueda habilitar deshabilitar el modopid para cada 
-carga electronica por separado
+Falta corregir el hecho de que se pierdan 4 incrementos en la interpolacion lineal.
+Falta ahcer varias pruebas con los nuevos cambios del modolineal.

@@ -25,8 +25,8 @@ typedef struct {
 static PID_t pid[MAX_CURVES];
 
 
-float Kp = 0.6f;
-float Ki = 0.05f;
+float Kp = 1.0f;
+float Ki = 1.0f;
 float Kd = 0.0f;
 
 //período de muestreo real (200ms) Tiene que coincidir con el periodo del task2 
@@ -116,8 +116,8 @@ void setPIDTs(float ts) {
 bool resetPID(int index) {
     if (index < 0 || index >= MAX_CURVES) return false;
     // Establecer parámetros PID transparentes (sin acción de control)
-    pid[index].Kp = 0.6f;
-    pid[index].Ki = 0.05f;
+    pid[index].Kp = 1.0f;
+    pid[index].Ki = 1.0f;
     pid[index].Kd = 0.0f;
     pid[index].Ts = 0.2f;  // Período real de muestreo (200ms)
     

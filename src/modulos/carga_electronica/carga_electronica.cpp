@@ -196,7 +196,7 @@ void CargaElectronicaUpdate(){
         break;
       case ON_t:        
         aux = getCurveValue(i);
-        writeSerialComln("GetCurveValue :" +String(aux));
+        //writeSerialComln("GetCurveValue :" +String(aux));
         if(aux != -1){
           //writeSerialComln("Get Curve Value: " + String(aux) + " mA");
           referenceCurrent = aux; // Usar valor de la curva si es válido
