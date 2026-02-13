@@ -29,7 +29,7 @@ typedef struct {
 // Definición del typedef para una estructura que contiene un puntero a point_t 
 // y seis variables enteras
 typedef struct {
-    char id;
+    int id;
     point_t *point;   // Puntero al tipo point_t
     int Imax;
     int Imin;
@@ -63,10 +63,12 @@ bool enableCurve(int curveId, int pin);
 void saveCurveNVS(const char* key, int curveId);
 bool loadCurveNVS(const char* key);
 bool deleteCurveNVS(const char* key);
-void printCurve(curve_t* c, int index = -1) ;
+void printCurve(curve_t* c) ;
 bool printCurveFromNvs(const char* key);
 void printPinToCurve();
 bool asociarCurvaAPin(int curveId, int pin);
 int getCurveArraySize();
 int loadIDsavedNVS(void);
+
+void printAllCurvesNvs();
 #endif // SIMULADORCURVAS_H

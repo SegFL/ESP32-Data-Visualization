@@ -17,10 +17,10 @@ char idGuardadosEnNVS[100];
 
 curve_t* pinToCurve[NUMBER_OF_SENSORS];
 void calcular_incrementos(curve_t* curve);
-int getAvailableId();
+int getAvailableId(int id);
 void startCurve(curve_t* curve,int pin);
 void endCurve(curve_t* curve,int pin);
-
+curve_t* loadCurveFromNVS(const char* key);
 curve_t** newCurveArray(int size){
     curve_t** newArray=(curve_t**)malloc(sizeof(curve_t*)*size);
     if (newArray == NULL) {
@@ -35,13 +35,14 @@ curve_t** newCurveArray(int size){
     }
     return newArray;
 }
-int createCurve(int pin) {
+
+//Acepta el id con el que se quiere crear la curva, devuelve el valor id elejidos
+int createCurve(int id) {
     // Verificar que el array esté inicializado
     if(curveArray == NULL) {
         writeSerialComln(String("Error: Array de curvas no inicializado"));
         return -1;
     }
-    
     // Buscar la próxima posición disponible
     int nextPosition = -1;
     for(int i = 0; i < curveArraySize; i++) {
@@ -69,6 +70,12 @@ int createCurve(int pin) {
         writeSerialComln(String("Error al crear la curva"));
         return -1;
     }
+    curve->id=getAvailableId(id); // Asignar un ID único
+    if(curve->id<=0){
+            writeSerialComln(String("No se pudo encontrar un id valido"));
+            free(curve);
+            return -1;
+    }
 
     curve->point = (point_t *)malloc( sizeof(point_t)*10);
     if (curve->point == NULL) {
@@ -84,14 +91,13 @@ int createCurve(int pin) {
     curve->Pmax = 0;
     curve->Pmin = 0;
     curve->enabled = false;
-    curve->pin = pin;
+    curve->pin = -1;
     curve->timestamp =0; // CORRECCIÓN: Inicializar con tiempo actual
     curve->point[0].tiempo = 0;
     curve->point[0].value = 0.0f;
     curve->point[0].type = STEP; // o LINEAR, pero definido
     curve->contador = 1;
     curve->currentIndex=0;  
-    curve->id=getAvailableId(); // Asignar un ID único
     curve->linear_parameters.index_pasos=0;
     curve->linear_parameters.numero_pasos=0;
     curve->linear_parameters.delta_v=0.0f;
@@ -315,7 +321,7 @@ void printCurves() {
     writeSerialComln(String("curveArraySize: ") + String(curveArraySize));
     for (int i = 0; i < curveArraySize; i++) {
         if (curveArray[i] != NULL) {
-            printCurve(curveArray[i], i);
+            printCurve(curveArray[i]);
         }
     }
 }
@@ -551,7 +557,8 @@ void saveCurveNVS(const char* key, int curveId)
     nvs_close(handle);
 }
 
-
+//Carga una curva de NVS al vector curveArray
+//No agranda el arreglo curveArray
 bool loadCurveNVS(const char* key) {
     if(curveArray == NULL) {
         writeSerialComln(String("Error: Array de curvas no inicializado"));
@@ -562,61 +569,17 @@ bool loadCurveNVS(const char* key) {
     for(i=0;i<curveArraySize;i++){
         if(curveArray[i]==NULL){
             writeSerialComln(String("Cargando curva en posición ") + String(i));
-            curveArray[i] = (curve_t *)calloc(1, sizeof(curve_t));
-            if (curveArray[i] == NULL) {
-                writeSerialComln(String("Error al crear la curva"));
+            curveArray[i]=loadCurveFromNVS(key);
+            if(curveArray[i]==NULL)
                 return false;
-            }
-            break;
+            return true;
         }
     }
-    curve_t *curve = curveArray[i];
-    nvs_handle_t handle;
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &handle);
-    if (err != ESP_OK) {
-        writeSerialComln("Error al abrir NVS para lectura");
-        return false;
-    }
 
-    // Leer enteros y banderas
-    nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &curve->Imax);
-    nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &curve->Imin);
-    nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &curve->Vmax);
-    nvs_get_i32(handle, (String(key) + "_Vmin").c_str(), &curve->Vmin);
-    nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &curve->Pmax);
-    nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &curve->Pmin);
-    nvs_get_i32(handle, (String(key) + "_contador").c_str(), &curve->contador);
-    nvs_get_i32(handle, (String(key) + "_size").c_str(), &curve->size);
-    nvs_get_i32(handle, (String(key) + "_pin").c_str(), &curve->pin);
-    nvs_get_u32(handle, (String(key) + "_timestamp").c_str(), &curve->timestamp);
-    uint8_t enabled;
-    nvs_get_u8(handle, (String(key) + "_enabled").c_str(), &enabled);
-    curve->enabled = (enabled != 0);
+    return NULL;
 
-    // Leer los puntos como BLOB
-    if (curve->size > 0) {
-        size_t blob_size = sizeof(point_t) * curve->size;
-        curve->point = (point_t*) malloc(blob_size);
-        if (curve->point == NULL) {
-            writeSerialComln("Error al reservar memoria para points");
-            nvs_close(handle);
-            return false;
-        }
-        err = nvs_get_blob(handle, (String(key) + "_points").c_str(),
-                           curve->point, &blob_size);
-        if (err != ESP_OK) {
-            writeSerialComln("Error al leer blob de points");
-            free(curve->point);
-            curve->point = NULL;
-            nvs_close(handle);
-            return false;
-        }
-    } else {
-        curve->point = NULL;
-    }
 
-    nvs_close(handle);
-    return true;
+   
 }
 
 
@@ -682,16 +645,14 @@ bool deleteCurveNVS(const char* key) {
 
 
 
-void printCurve(curve_t* c, int index) {
+void printCurve(curve_t* c) {
     if (c == NULL) {
         writeSerialComln("Curva NULL");
         return;
     }
 
-    writeSerialComln("===================================");
-    if (index >= 0) {
-        writeSerialComln(String("Curva ") + String(index));
-    }
+    writeSerialComln("==============================");
+    writeSerialComln("curve"+String((int)c->id));
     writeSerialComln(String("Pin asociado: ") + String(c->pin));
     writeSerialComln(String("Estado: ") + String(c->enabled ? "Habilitada" : "Deshabilitada"));
     writeSerialComln(String("Timestamp: ") + String(c->timestamp));
@@ -815,36 +776,50 @@ void printPinToCurve(){
     }
 }
 
-
-
-int getAvailableId() {
-    if (curveArray == NULL || curveArraySize <= 0)
+int getAvailableId(int requestedId)
+{
+    if (curveArray == NULL)
         return -1;
 
-    int id = 0;
-    bool idOcupado;
+    const int MAX_ID = 255;
+    bool idOcupado=false;
 
-    while (true) {
-        idOcupado = false;
-
-        // Verificar si alguna curva tiene este ID
-        for (int i = 0; i < curveArraySize; i++) {
-            if (curveArray[i] != NULL && curveArray[i]->id == id) {
-                idOcupado = true;
-                break;
+    if(requestedId>0 && requestedId<MAX_ID){
+        for(int i=0; i<getCurveArraySize();i++){
+            if(curveArray[i]!=NULL){
+                if(curveArray[i]->id==requestedId){
+                    idOcupado=true;
+                    break;
+                }
             }
+        
         }
-
-        // Si no está ocupado, lo devolvemos
-        if (!idOcupado)
-            return id;
-
-        id++; // probar el siguiente ID
     }
 
-    // En teoría nunca llega acá
-    return -1;
+    if(idOcupado==false)
+        return requestedId;
+        
+
+
+    for(int i=1;i<MAX_ID;i++){
+        idOcupado=false;
+        for(int k=0;k<getCurveArraySize();k++){
+            if(curveArray[k]!=NULL){
+                if(curveArray[k]->id==i)
+                    idOcupado=true;
+            }
+
+        }
+        if(idOcupado==false)
+            return i;
+
+    }
+
+
+        return -1;
 }
+
+
 
 
 
@@ -891,3 +866,133 @@ int loadIDsavedNVS(void)
     nvs_close(handle);
     return count;
 }
+
+
+//Imprime todas las curvas guardadas en nvs
+void printAllCurvesNvs()
+{
+    int cantidad = loadIDsavedNVS();
+
+    if (cantidad == 0) {
+        writeSerialComln("No hay curvas guardadas en NVS");
+        return;
+    }
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        int id = idGuardadosEnNVS[i];
+
+        if (id == 0)
+            continue;
+
+        char key[32];
+        snprintf(key, sizeof(key), "curve%d", id);
+
+        curve_t* curve = loadCurveFromNVS(key);
+
+        if (curve != NULL)
+        {
+            writeSerialComln(String(key));
+            printCurve(curve);
+
+            /* Liberar memoria correctamente */
+            if (curve->point)
+                free(curve->point);
+
+            free(curve);
+        }
+        else
+        {
+            writeSerialComln(String("Error cargando ") + String(key));
+        }
+    }
+}
+
+
+
+//Lee una curva de NVS con una cierta key y la devuelve comoparametro,ante cualquier error devuelve NULL.
+curve_t* loadCurveFromNVS(const char* key)
+{
+    nvs_handle_t handle;
+    esp_err_t err;
+
+    err = nvs_open("storage", NVS_READONLY, &handle);
+    if (err != ESP_OK)
+        return NULL;
+
+    curve_t* curve = (curve_t*)calloc(1, sizeof(curve_t));
+    if (!curve) {
+        nvs_close(handle);
+        return NULL;
+    }
+
+    char fullKey[64];
+
+
+    // ---- Leer parámetros obligatorios ----
+
+    snprintf(fullKey, sizeof(fullKey), "%s_size", key);
+    if (nvs_get_i32(handle, fullKey, &curve->size) != ESP_OK) {
+        free(curve);
+        nvs_close(handle);
+        return NULL;
+    }
+
+    // Protección básica contra corrupción
+    if (curve->size < 0 || curve->size > 1000) {
+        free(curve);
+        nvs_close(handle);
+        return NULL;
+    }
+
+    nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &curve->Imax);
+    nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &curve->Imin);
+    nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &curve->Vmax);
+    nvs_get_i32(handle, (String(key) + "_Vmin").c_str(), &curve->Vmin);
+    nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &curve->Pmax);
+    nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &curve->Pmin);
+    nvs_get_i32(handle, (String(key) + "_contador").c_str(), &curve->contador);
+    nvs_get_i32(handle, (String(key) + "_size").c_str(), &curve->size);
+    nvs_get_i32(handle, (String(key) + "_pin").c_str(), &curve->pin);
+    nvs_get_u32(handle, (String(key) + "_timestamp").c_str(), &curve->timestamp);
+    uint8_t enabled;
+    nvs_get_u8(handle, (String(key) + "_enabled").c_str(), &enabled);
+
+    curve->enabled = (enabled != 0);
+
+    // Extraer ID desde key (ej: "curve19")
+    int id = 0;
+    if (sscanf(key, "curve%d", &id) == 1)
+        curve->id = (char)id;
+
+    // ---- Leer puntos ----
+
+    if (curve->size > 0)
+    {
+        size_t blob_size = sizeof(point_t) * curve->size;
+
+        curve->point = (point_t*)malloc(blob_size);
+        if (!curve->point) {
+            free(curve);
+            nvs_close(handle);
+            return NULL;
+        }
+
+        snprintf(fullKey, sizeof(fullKey), "%s_points", key);
+
+        if (nvs_get_blob(handle, fullKey, curve->point, &blob_size) != ESP_OK) {
+            free(curve->point);
+            free(curve);
+            nvs_close(handle);
+            return NULL;
+        }
+    }
+    else
+    {
+        curve->point = NULL;
+    }
+
+    nvs_close(handle);
+    return curve;
+}
+

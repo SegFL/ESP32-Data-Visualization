@@ -133,7 +133,7 @@ MenuNode* menuInit() {
         MenuNode* child22 = create_node("Guardar curva", '5',22);
         add_child(child13, child22);
 
-        MenuNode* child23 = create_node("Cargar curva", '6',23);
+        MenuNode* child23 = create_node("Cargar curva de la flash", '6',23);
         add_child(child13, child23);
 
         MenuNode* child26 = create_node("Ver curvas asociadas a pines", '7',26);
@@ -161,8 +161,8 @@ MenuNode* menuInit() {
         MenuNode* child34 = create_node("Estructura de estados", '0',34);
         add_child(root, child34);
 
-        MenuNode* child35 = create_node("Dacs", '8',35);
-        add_child(root, child35);
+        //MenuNode* child35 = create_node("Dacs", '8',35);
+        //add_child(root, child35);
 
     return root;
 }

@@ -48,3 +48,14 @@ Falta ahcer varias pruebas con los nuevos cambios del modolineal.
 Terminar de corregir/agregar el hecho de poder guardar,borrar y crear curvas con nvs
 Agregar impresion de id guardados en nvs y verificar que no existan 2 curvas
   con el mismo id en el array de curvas.
+
+12/2/2026
+
+bool loadCurveNVS(const char* key):
+  No agranda el curveArray si no hay lugar. Mas adletnate deberia agregar posiciones al arreglo
+
+Agregar que cuando se cargue una curva de la flash se diga en que posicion y
+con que id(podria simplemente decir que ese id ya esta usado o modificar el
+de la nueva curva)
+
+Eliminar curva (RAM)no fucniona

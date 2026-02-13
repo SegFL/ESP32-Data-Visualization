@@ -47,7 +47,6 @@ static bool nodeRequiresInput(int id);
 bool parseStringToInts(String str, int *num1, int *num2);
 bool parseStringToFloats(String str, int *index, float *num1, float *num2, float *num3);
 void printSavedCurves();
-void printAllCurvesNvs();
 void printSensorInfo();
 
 
@@ -328,7 +327,7 @@ void procesarDatos(String data) {
         if(sscanf(data.c_str(), "%d", &num1) == 1){
             int id =createCurve(num1);
             if(id>=0){
-                writeSerialComln(String("Curva creada en pin: ") + String(num1) +String(" con id:")+String(id) );
+                writeSerialComln(String("Curva creada con id: ") + String(id) );
             }else{
                 writeSerialComln(String("Error al crear la curva en el pin: ") + String(num1) );
 
@@ -396,8 +395,6 @@ void procesarDatos(String data) {
     }
 
     if(menu->id ==22){
-        writeSerialComln(String("Selecciona la curva a guardar (ID):"));
-        printCargaElectronica();
         int curveId = data.toInt();
         saveCurveNVS(("curve" + String(curveId)).c_str(), curveId);
 
@@ -406,7 +403,6 @@ void procesarDatos(String data) {
         int curveId = data.toInt();
 
         loadCurveNVS(("curve" + String(curveId)).c_str());
-        printCargaElectronica();
 
     }
 
@@ -674,6 +670,7 @@ static bool nodeRequiresInput(int id) {
         case 22: // Guardar curva -> requiere ID
         case 23: // Cargar curva -> requiere ID
         case 25: // Modificar fecha
+        case 29: // Eliminar curva de nvs
         case 30: // Cambiar modo de control (PID/NONE)
         case 31: // Resetear parámetros PID
         case 32: // Modificar parámetros PID
@@ -728,8 +725,6 @@ static void onEnterNode(MenuNode* n) {
             writeSerialComln("Ingrese nuevo valor (0..100) y presione 'ENTER'");
             break;
         case 15: // Ver curvas
-            writeSerialComln("Curvas guardadas en flash");
-            writeSerialComln(String(loadIDsavedNVS()));
             writeSerialComln("Curvas guardadas en RAM");
             printCurves();
             break;
@@ -743,6 +738,10 @@ static void onEnterNode(MenuNode* n) {
             for(int i=0;i<getCurveArraySize();i++){
                 writeSerialComln(String("Curva ") + String(i) + String(": Modo ") + (getCurveMode(i)==ON_t ? "CURVA" : "MANUAL"));
             }
+            break;
+        case 22:
+            writeSerialComln(String("Selecciona la curva a guardar (ID):"));
+            printCargaElectronica();
             break;
         case 23: 
             printAllCurvesNvs();
@@ -826,6 +825,7 @@ static void onEnterNode(MenuNode* n) {
             case 25: writeSerialComln("Ingrese nueva fecha en formato DD/MM/AAAA HH:MM y presione 'ENTER'"); break;
             case 30: writeSerialComln("Ingrese  < index > , < PID / NONE>  y presione 'ENTER'"); break;
             case 28: writeSerialComln("Ingrese el ID de la curva a eliminar y presione 'ENTER'"); break;
+            case 29: writeSerialComln("Ingrese el ID de la curva a eliminar de la flash y presione 'ENTER");break;
             case 31: writeSerialComln("Para resetear los parametros del PID presione y-"); break;
             case 32: writeSerialComln("Ingrese parámetros PID en formato index,Kp,Ki,Kd y presione 'ENTER'"); break;
             case 35: writeSerialComln("DAC (0-255): " + String(getDACValue())); break;
@@ -869,6 +869,8 @@ void printSavedCurves(){
     */
 
 }
+
+/*
 //Imprime todas las curvas guardadas en NVS
 void printAllCurvesNvs() {
     int id = 0;
@@ -881,3 +883,4 @@ void printAllCurvesNvs() {
         id++;
     }
 }
+*/
