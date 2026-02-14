@@ -11,7 +11,7 @@ int curveArraySize=0;
 
 //Numeros de ID guardados en NVS
 // POR EJEMPLO [1,10,13,0,0,0,0] donde 0 es un valor no permitido
-char idGuardadosEnNVS[100];
+char idGuardadosEnNVS[100]={};
 
 
 
@@ -21,6 +21,7 @@ int getAvailableId(int id);
 void startCurve(curve_t* curve,int pin);
 void endCurve(curve_t* curve,int pin);
 curve_t* loadCurveFromNVS(const char* key);
+int getPosWithId(int curveId);
 curve_t** newCurveArray(int size){
     curve_t** newArray=(curve_t**)malloc(sizeof(curve_t*)*size);
     if (newArray == NULL) {
@@ -117,7 +118,7 @@ int createCurve(int id) {
     
     writeSerialComln(String("Curva creada correctamente con id ") + String(curve->id) + 
                      String(" - Size: ") + String(curve->size) + String(", Contador: ") + String(curve->contador));
-    return nextPosition; // Devolver el ID de la curva (posición en el array)
+    return curve->id; // Devolver el ID de la curva (posición en el array)
 }
 
 bool validateCurve(curve_t *curve) {
@@ -290,16 +291,17 @@ int addPointToCurve(int curveId, int tiempo, float value,aproximation_point_type
         return -1;
     }
     
-    if (curveId < 0 || curveId >= curveArraySize) {
+    if (curveId <= 0 ) {
         writeSerialComln(String("Error: Curva no valida"));
         return -1;
     }
-    
-    curve_t *curve = curveArray[curveId];
-    if (curve == NULL) {
+
+    int aux=getPosWithId(curveId);
+    if(aux<0 || aux>=getCurveArraySize()){
         writeSerialComln(String("Error: Curva no existe"));
         return -1;
     }
+    curve_t *curve = curveArray[aux];
     
     curve_t* result = addPoint(curve, tiempo, value,type);
     if (result == NULL) {
@@ -404,14 +406,19 @@ bool deleteCurve(int curveId) {
         return false;
     }
     
-    if (curveId < 0 || curveId >= curveArraySize) {
+    if (curveId < 0) {
         writeSerialComln(String("Error: Curva no valida"));
         return false;
     }
-    
-    curve_t *curve = curveArray[curveId];
-    if (curve == NULL) {
+    int pos = getPosWithId(curveId);
+    if(pos<0){
         writeSerialComln(String("Error: Curva no existe"));
+        return false;
+    }
+    curve_t *curve = curveArray[pos];
+
+    if(curve==NULL){
+        writeSerialComln("Curva invalida");
         return false;
     }
     
@@ -424,7 +431,7 @@ bool deleteCurve(int curveId) {
     free(curve);
     
     // Marcar la posición como disponible
-    curveArray[curveId] = NULL;
+    curveArray[pos] = NULL;
     
     writeSerialComln(String("Curva ") + String(curveId) + String(" eliminada correctamente"));
     return true;
@@ -450,7 +457,7 @@ int getCurveCount() {
 bool asociarCurvaAPin(int curveId, int pin){
 
 
-    if(curveId<0 || curveId>=curveArraySize){
+    if(curveId<0){
         writeSerialComln(String("ID de curva no válido"));
         return false;
     }
@@ -458,11 +465,18 @@ bool asociarCurvaAPin(int curveId, int pin){
         writeSerialComln(String("Pin no válido"));
         return false;
     }
-    curve_t* curve=curveArray[curveId];
-    if(curve==NULL){
-        writeSerialComln(String("Curva no existente"));
+
+    int pos = getPosWithId(curveId);
+    if(pos<0){
+        writeSerialComln("No se encontro una curva con ese ID");
         return false;
     }
+    curve_t *curve = curveArray[pos];
+    if (curve == NULL) {
+        writeSerialComln("Error: Curva no existe");
+        return false;
+    }
+
 
     //Elimino la curva anterior si es que existiay la doy por finalizada
     if(pinToCurve[pin]!=NULL){
@@ -500,8 +514,7 @@ void endCurve(curve_t* curve,int pin){
 
 
 //Nombre de la curva (key)<curveX> y el ID de la curva en el array
-void saveCurveNVS(const char* key, int curveId)
-{
+void saveCurveNVS(const char* key, int curveId){
     nvs_handle_t handle;
 
     if (curveArray == NULL) {
@@ -509,12 +522,17 @@ void saveCurveNVS(const char* key, int curveId)
         return;
     }
 
-    if (curveId < 0 || curveId >= curveArraySize) {
+    if (curveId <=0) {
         writeSerialComln("Error: Curva no valida");
         return;
     }
 
-    curve_t *curve = curveArray[curveId];
+    int aux = getPosWithId(curveId);
+    if(aux<0){
+        writeSerialComln("No se encontro una curva con ese ID");
+        return;
+    }
+    curve_t *curve = curveArray[aux];
     if (curve == NULL) {
         writeSerialComln("Error: Curva no existe");
         return;
@@ -542,11 +560,11 @@ void saveCurveNVS(const char* key, int curveId)
     nvs_set_u32(handle, (String(key) + "_timestamp").c_str(), curve->timestamp);
     nvs_set_u8(handle, (String(key) + "_enabled").c_str(), curve->enabled ? 1 : 0);
 
-    if (curve->point && curve->size > 0) {
+    if (curve->point && curve->contador > 0) {
         nvs_set_blob(handle,
                      (String(key) + "_points").c_str(),
                      curve->point,
-                     sizeof(point_t) * curve->size);
+                     sizeof(point_t) * curve->contador);
     }
 
     err = nvs_commit(handle);
@@ -554,7 +572,9 @@ void saveCurveNVS(const char* key, int curveId)
         writeSerialComln("Error al hacer commit en NVS");
     }
 
+
     nvs_close(handle);
+    writeSerialComln("Se guardo la curva"+String(curve->id)+" correctamente");
 }
 
 //Carga una curva de NVS al vector curveArray
@@ -564,22 +584,47 @@ bool loadCurveNVS(const char* key) {
         writeSerialComln(String("Error: Array de curvas no inicializado"));
         return false;
     }
-    int i=0;
-    //Busco un lugar en el arreglo para poner la nueva curva
-    for(i=0;i<curveArraySize;i++){
-        if(curveArray[i]==NULL){
+    
+    // ========== PASO 1: Cargar en TEMPORAL (NO en curveArray) ==========
+    curve_t* tempCurve = loadCurveFromNVS(key);
+    if(tempCurve == NULL) {
+        writeSerialComln(String("Error al cargar de NVS"));
+        return false;
+    }
+    
+    // ========== PASO 2: Verificar ID (curva AÚN NO está en curveArray) ==========
+    int aux = getAvailableId(tempCurve->id);
+    writeSerialComln("ID disponible:" + String(aux));
+    
+    if(aux <= 0) {
+        writeSerialComln("No se encontró ID válido");
+        if(tempCurve->point) free(tempCurve->point);
+        free(tempCurve);
+        return false;
+    }
+    
+    // Actualizar ID si es necesario
+    if(aux != tempCurve->id) {
+        tempCurve->id = aux;
+        writeSerialComln("Se modifico el id de la curva a :" + String(aux));
+    } else {
+        writeSerialComln("Se guardo la curva con id:" + String(tempCurve->id));
+    }
+    
+    // ========== PASO 3: AHORA SÍ buscar posición libre y asignar ==========
+    for(int i=0; i<curveArraySize; i++) {
+        if(curveArray[i] == NULL) {
             writeSerialComln(String("Cargando curva en posición ") + String(i));
-            curveArray[i]=loadCurveFromNVS(key);
-            if(curveArray[i]==NULL)
-                return false;
+            curveArray[i] = tempCurve;  // ← RECIÉN ACÁ se agrega al array
             return true;
         }
     }
-
-    return NULL;
-
-
-   
+    
+    // No había espacio
+    writeSerialComln("No hay espacio disponible");
+    if(tempCurve->point) free(tempCurve->point);
+    free(tempCurve);
+    return false;
 }
 
 
@@ -614,7 +659,7 @@ bool deleteCurveNVS(const char* key) {
 
     // Lista de sufijos a borrar
     const char* suffixes[] = {
-        "_Imax","_Imin","_Vmax","_Vmin","_Pmax","_Pmin",
+        "_id","_Imax","_Imin","_Vmax","_Vmin","_Pmax","_Pmin",
         "_contador","_size","_pin","_timestamp","_enabled","_points"
     };
 
@@ -784,13 +829,16 @@ int getAvailableId(int requestedId)
     const int MAX_ID = 255;
     bool idOcupado=false;
 
+    writeSerialComln("Buscando con id:"+String(requestedId));
     if(requestedId>0 && requestedId<MAX_ID){
         for(int i=0; i<getCurveArraySize();i++){
             if(curveArray[i]!=NULL){
+                writeSerialComln("Id ocupado"+String(curveArray[i]->id));
                 if(curveArray[i]->id==requestedId){
                     idOcupado=true;
                     break;
                 }
+
             }
         
         }
@@ -799,7 +847,8 @@ int getAvailableId(int requestedId)
     if(idOcupado==false)
         return requestedId;
         
-
+    writeSerialComln("El id estaba ocupado");
+        
 
     for(int i=1;i<MAX_ID;i++){
         idOcupado=false;
@@ -890,8 +939,7 @@ void printAllCurvesNvs()
 
         curve_t* curve = loadCurveFromNVS(key);
 
-        if (curve != NULL)
-        {
+        if (curve != NULL){
             writeSerialComln(String(key));
             printCurve(curve);
 
@@ -900,8 +948,7 @@ void printAllCurvesNvs()
                 free(curve->point);
 
             free(curve);
-        }
-        else
+        }else
         {
             writeSerialComln(String("Error cargando ") + String(key));
         }
@@ -928,9 +975,7 @@ curve_t* loadCurveFromNVS(const char* key)
 
     char fullKey[64];
 
-
-    // ---- Leer parámetros obligatorios ----
-
+    // ---- Leer size ----
     snprintf(fullKey, sizeof(fullKey), "%s_size", key);
     if (nvs_get_i32(handle, fullKey, &curve->size) != ESP_OK) {
         free(curve);
@@ -938,13 +983,13 @@ curve_t* loadCurveFromNVS(const char* key)
         return NULL;
     }
 
-    // Protección básica contra corrupción
     if (curve->size < 0 || curve->size > 1000) {
         free(curve);
         nvs_close(handle);
         return NULL;
     }
 
+    // ---- Leer otros parámetros ----
     nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &curve->Imax);
     nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &curve->Imin);
     nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &curve->Vmax);
@@ -952,43 +997,51 @@ curve_t* loadCurveFromNVS(const char* key)
     nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &curve->Pmax);
     nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &curve->Pmin);
     nvs_get_i32(handle, (String(key) + "_contador").c_str(), &curve->contador);
-    nvs_get_i32(handle, (String(key) + "_size").c_str(), &curve->size);
     nvs_get_i32(handle, (String(key) + "_pin").c_str(), &curve->pin);
     nvs_get_u32(handle, (String(key) + "_timestamp").c_str(), &curve->timestamp);
+    
     uint8_t enabled;
     nvs_get_u8(handle, (String(key) + "_enabled").c_str(), &enabled);
-
     curve->enabled = (enabled != 0);
 
-    // Extraer ID desde key (ej: "curve19")
+    // Extraer ID
     int id = 0;
     if (sscanf(key, "curve%d", &id) == 1)
         curve->id = (char)id;
 
+    // ---- Validación ----
+    if (curve->contador > curve->size || curve->contador < 0) {
+        writeSerialComln("Datos corruptos: contador inválido");
+        free(curve);
+        nvs_close(handle);
+        return NULL;
+    }
+
     // ---- Leer puntos ----
-
-    if (curve->size > 0)
-    {
-        size_t blob_size = sizeof(point_t) * curve->size;
-
+    if (curve->contador > 0) {
+        size_t blob_size = sizeof(point_t) * curve->contador;
         curve->point = (point_t*)malloc(blob_size);
+        
         if (!curve->point) {
             free(curve);
             nvs_close(handle);
             return NULL;
         }
-
+        
+        // ========== CONSTRUIR KEY CORRECTA ==========
         snprintf(fullKey, sizeof(fullKey), "%s_points", key);
-
+        // ============================================
+        
         if (nvs_get_blob(handle, fullKey, curve->point, &blob_size) != ESP_OK) {
+            writeSerialComln("Error al leer blob de puntos");
             free(curve->point);
             free(curve);
             nvs_close(handle);
             return NULL;
         }
-    }
-    else
-    {
+        
+        curve->size = curve->contador;
+    } else {
         curve->point = NULL;
     }
 
@@ -996,3 +1049,15 @@ curve_t* loadCurveFromNVS(const char* key)
     return curve;
 }
 
+int getPosWithId(int curveId){
+
+    if(curveId<=0)
+        return -1;
+    for(int i=0;i<getCurveArraySize();i++){
+        if(curveArray[i]!=NULL){
+            if(curveArray[i]->id==curveId)
+                return i;
+        }
+    }
+    return -1;
+}

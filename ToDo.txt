@@ -15,20 +15,14 @@ No funciona el limite maximo de corriente en modo manual:
             writeSerialComln(String("Corriente medida supera el máximo permitido. Duty Cycle ajustado al ultimo valor seguro."));
         }
 
-Chequear bien que menu acepta datos de una y despues tengo que poner el - y cual tendria 
-que ser-dato-. Agregar correcciones como en ellaburo
 
 Agregar pesta;a para crear curvas y enviarlas al esp32
 
 Agregar menu para ver curva asociada a principio
 
-Agregary corregir el hecho de que cuando se termina una curva queda habilitada
-
 Agregar curva de calibracion para cuando la carga electronica no tenga elpid activo. Modificar convertirCorrienteADc()
 
 Agregar la opcion para deshabilitar la autoconexion de wifi
-
-Corregir el hecho de que no se meustra bien el pin en el menu 1 sensores analogicos
 
 Cambiar para que el WiFi se conecte de forma asincionica y no quede un loop trabado cada x tiempo.
 Bajar cantidad de intentos
@@ -43,19 +37,14 @@ el corto dura mas, puede ser por alguna salida en 0, usar primero el Init de las
 Falta corregir el hecho de que se pierdan 4 incrementos en la interpolacion lineal.
 Falta ahcer varias pruebas con los nuevos cambios del modolineal.
 
-10/2/2026
 
-Terminar de corregir/agregar el hecho de poder guardar,borrar y crear curvas con nvs
-Agregar impresion de id guardados en nvs y verificar que no existan 2 curvas
-  con el mismo id en el array de curvas.
 
 12/2/2026
 
 bool loadCurveNVS(const char* key):
   No agranda el curveArray si no hay lugar. Mas adletnate deberia agregar posiciones al arreglo
 
-Agregar que cuando se cargue una curva de la flash se diga en que posicion y
-con que id(podria simplemente decir que ese id ya esta usado o modificar el
-de la nueva curva)
+Cada vez que se envie la impresion de modulos se deberian enviar almenso 7 /n/r 
+para que en la app no se muestre todo seguido
 
-Eliminar curva (RAM)no fucniona
+

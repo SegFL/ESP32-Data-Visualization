@@ -86,15 +86,16 @@ void CargaElectronicaInit(){
   simuladorCurvasInit(3);
 
         //Crear la curva usando la nueva función encapsulada
+        /*
         int curveId = createCurve(1);
         if(curveId == -1){
             writeSerialComln(String("Error al crear la curva"));
             return;
         }
-
+*/
 
         //Agregar puntos a la curva usando la nueva función encapsulada
-        addPointToCurve(curveId, 10, 30.0f,STEP);
+        //addPointToCurve(curveId, 10, 30.0f,STEP);
 
         
         // Las funciones sendCurves y printCurves ahora usan el array interno

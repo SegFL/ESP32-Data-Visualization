@@ -130,7 +130,7 @@ MenuNode* menuInit() {
         MenuNode* child21 = create_node("Activar / Desactivar modo curva ", '4',21);
         add_child(child13, child21);
 
-        MenuNode* child22 = create_node("Guardar curva", '5',22);
+        MenuNode* child22 = create_node("Guardar curva en flash", '5',22);
         add_child(child13, child22);
 
         MenuNode* child23 = create_node("Cargar curva de la flash", '6',23);

@@ -326,7 +326,7 @@ void procesarDatos(String data) {
         int num1;
         if(sscanf(data.c_str(), "%d", &num1) == 1){
             int id =createCurve(num1);
-            if(id>=0){
+            if(id>0){
                 writeSerialComln(String("Curva creada con id: ") + String(id) );
             }else{
                 writeSerialComln(String("Error al crear la curva en el pin: ") + String(num1) );
@@ -452,7 +452,7 @@ void procesarDatos(String data) {
         
         int curveId = data.toInt();
         writeSerialComln("Eliminando curva"+String(curveId));
-        if(deleteCurve(curveId)){
+        if(deleteCurve(curveId)==true){
             writeSerialComln(String("Curva ") + String(curveId) + String(" eliminada correctamente"));
         }else{
             writeSerialComln(String("Error al eliminar la curva ") + String(curveId));
@@ -670,6 +670,7 @@ static bool nodeRequiresInput(int id) {
         case 22: // Guardar curva -> requiere ID
         case 23: // Cargar curva -> requiere ID
         case 25: // Modificar fecha
+        case 28: // Eliminar curva de RAM 
         case 29: // Eliminar curva de nvs
         case 30: // Cambiar modo de control (PID/NONE)
         case 31: // Resetear parámetros PID
