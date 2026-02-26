@@ -16,10 +16,10 @@ void serialComInit() {
 char readSerialChar() {
     if (Serial.available() > 0) { // Verifica si hay datos disponibles en la terminal serie
         char receivedChar = Serial.read(); // Lee un carácter del buffer serie
-        Serial.print(receivedChar); // Loopback: Imprime el carácter recibido (opcional)
-        if(receivedChar=='\r'){
-            return '\0';    //Filtro los \r pero si los imprimo en pantalla
-        }
+        //Serial.print(receivedChar); // Loopback: Imprime el carácter recibido (opcional)
+            if(receivedChar=='\r'){
+                return 0;  // simplemente ignorar CR sin interferir
+            }
         return receivedChar; // Retorna el carácter leído
     }
     return '\0'; // Retorna un carácter nulo si no hay datos

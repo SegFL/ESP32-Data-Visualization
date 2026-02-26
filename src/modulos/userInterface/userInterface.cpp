@@ -78,7 +78,8 @@ void userInterfaceUpdate() {
     if (menu == nullptr) return;
 
     char charReceived = readSerialChar();
-    if(charReceived== GO_BACK){ // ESCAPE
+    if(charReceived== GO_BACK || charReceived == '<'){ // ESCAPE
+        charReceived = GO_BACK; // Normalizamos ambos casos a GO_BACK
         menuUpdate(charReceived, &menu);
         
             clearScreen();
@@ -818,7 +819,7 @@ static void onEnterNode(MenuNode* n) {
             case 8:  writeSerialComln("Ingrese la corriente de referencia <indice>,<corriente_mA>  (ej: 0,500) y presione 'ENTER'"); break;
             case 9:  writeSerialComln("Ingrese frecuencia <0-78125> y presione 'ENTER'"); break;
             case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione 'ENTER'"); break;
-            case 18: writeSerialComln("Introduzca el pin asociado a la curva y presione 'ENTER'"); break;
+            case 18: writeSerialComln("Introduzca el id deseado de la curva y presione 'ENTER'"); break;
             case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione 'ENTER'"); break;
             case 21: writeSerialComln("Presione el numero de curva para cambiar de modo CURVA / MANUAL y luego presione 'ENTER'"); break;
             case 22: writeSerialComln("ID de curva a GUARDAR y presione 'ENTER'"); break;

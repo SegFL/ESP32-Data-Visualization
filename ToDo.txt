@@ -48,3 +48,5 @@ Cada vez que se envie la impresion de modulos se deberian enviar almenso 7 /n/r
 para que en la app no se muestre todo seguido
 
 
+Cuando se agrega un punto con corriente 20.0 se termina parseando a 200, sacar opcion de 
+poner floats con punto
