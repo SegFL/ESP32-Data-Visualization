@@ -5,7 +5,7 @@
 
 #define DATA 0 //Define el tipo de mensaje como dato
 #define COMMAND 1 //Define el tipo de mensaje como comando
-
+#define APP_MODE 2 //Define el tipo de mensaje como modo APP
 bool MODE_SEND_DATA=true;
 void writeSerialComWithChecksum(const String &payload);
 uint8_t calculateChecksum(const String &data) ;
@@ -14,15 +14,14 @@ void serialComInit() {
 }
 
 char readSerialChar() {
-    if (Serial.available() > 0) { // Verifica si hay datos disponibles en la terminal serie
-        char receivedChar = Serial.read(); // Lee un carácter del buffer serie
-        //Serial.print(receivedChar); // Loopback: Imprime el carácter recibido (opcional)
-            if(receivedChar=='\r'){
-                return 0;  // simplemente ignorar CR sin interferir
-            }
-        return receivedChar; // Retorna el carácter leído
+    if (Serial.available() > 0) {
+        char receivedChar = Serial.read();
+        if (receivedChar == '\r') {
+            return '\0';  // ignorar CR
+        }
+        return receivedChar;
     }
-    return '\0'; // Retorna un carácter nulo si no hay datos
+    return '\0';
 }
 
 //Este funcion tiene que recivir un String
@@ -63,6 +62,19 @@ void writeSerialComlnDATA(String data) {
 
 void writeSerialComlnCOMMAND(String data) {
     writeSerialComWithChecksum(String(COMMAND) + "," + data);
+}
+
+void writeSerialComlnAPP(String data) {
+
+    String payload = String(APP_MODE) + "," + data;
+    uint8_t checksum = calculateChecksum(payload);
+
+    char buffer[8];
+    sprintf(buffer, "*%02X", checksum);
+
+    String fullLine = payload + String(buffer) + "\r\n";
+
+    Serial.print(fullLine);
 }
 
 

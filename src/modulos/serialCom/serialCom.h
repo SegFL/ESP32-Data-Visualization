@@ -43,7 +43,7 @@ void writeSerialCom(double data);
 
 void writeSerialCom(unsigned long data);
 
-
+void writeSerialComlnAPP(String data);
 
 
 #endif // SERIALCOM_H

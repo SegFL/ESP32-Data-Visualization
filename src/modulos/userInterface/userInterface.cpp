@@ -20,6 +20,13 @@
 #define NOT_SEND_DATA false
 #define MAX_SENSORS 2   //Cantidad de sensores a imprimir en el menu se sensores analogicos
 
+#define MAX_APP_BUFFER 128
+char app_buffer[MAX_APP_BUFFER];
+int app_index = 0;
+
+bool APP_MODE = false;
+
+
 static MenuNode *menu = nullptr;
 char data_buffer[MAX_DATA_BUFFER] ; //Variable para almacenar los datos recibidos
 unsigned char buffer_index = 0; //Índice para el buffer de datos
@@ -33,11 +40,11 @@ static int lastMenuId = -1;
 void moveCursor(int row, int col);
 void procesarDatos(String data);
 void printSensorData();
-
+void handleAppMode(char c);
 bool loadConfiguration();
-
+bool procesarComandoApp(String cmd);
 void printSensor(ADCData data);
-
+void  cleanBufferApp();
 bool parseStringToPoint(String str, int* curve, int* tiempo, float* value, aproximation_point_type_t *type);
 
 static void onEnterNode(MenuNode* n);
@@ -78,14 +85,41 @@ void userInterfaceUpdate() {
     if (menu == nullptr) return;
 
     char charReceived = readSerialChar();
+    if (charReceived == '@') {
+        APP_MODE = true;
+
+        app_index = 0;
+        memset(app_buffer, 0, sizeof(app_buffer));
+        while(Serial.available()) Serial.read();  // Descarto todos los datos pendientes antes de pasar almodoapp
+
+        writeSerialComlnAPP("APP_MODE_ON");
+        return;
+    }
+
+    if (charReceived == '#') {
+        APP_MODE = false;
+        writeSerialComlnAPP("APP_MODE_OFF");
+        cleanBufferApp();
+        clearScreen();
+        printNode(menu);
+        onEnterNode(menu);
+        return;
+    }
+
+    if (APP_MODE) {
+        if (charReceived == '\0') return;  // ← AGREGAR ESTO
+        handleAppMode(charReceived);
+        return;
+    }
+
     if(charReceived== GO_BACK || charReceived == '<'){ // ESCAPE
         charReceived = GO_BACK; // Normalizamos ambos casos a GO_BACK
         menuUpdate(charReceived, &menu);
         
-            clearScreen();
-            printNode(menu);
-            onEnterNode(menu);
-            lastMenuId = menu->id;
+        clearScreen();
+        printNode(menu);
+        onEnterNode(menu);
+        lastMenuId = menu->id;
         
         //Si el nodo es nuevo y requiere datos, preparo el buffer para recibirlos
         //Si no es nuevo pero aun asi requiere datos(porque ya se enviaron datos previamente
@@ -178,14 +212,21 @@ bool loadConfiguration() {
 
 
 void procesarDatos(String data) {
+        
+
+    if(data.isEmpty()){
+        return;
+    }
     if (data.isEmpty() || menu == nullptr) { // Mejor forma de validar String vacío
         return;
     }
+    
 
     if(menu->id==1){
         writeSerialComln(String("Datos de sensores"));
         printSensorData();
     }
+    
 
     if (menu->id == 3) {
         setSSID(data); // Cambiar el SSID
@@ -209,6 +250,7 @@ void procesarDatos(String data) {
         }
 
     }
+    
 
     if (menu->id == 8) {
 
@@ -249,6 +291,7 @@ void procesarDatos(String data) {
             );
         }
     }
+    
     if (menu->id == 9) {
 
         int index = -1;
@@ -276,6 +319,7 @@ void procesarDatos(String data) {
             writeSerialComln("Error al configurar la frecuencia PWM");
         }
     }
+    
 
     if (menu->id == 10) {
 
@@ -305,6 +349,7 @@ void procesarDatos(String data) {
         }
     }
 
+    
 
     if (menu->id == 11){
         float current = data.toFloat(); 
@@ -322,9 +367,11 @@ void procesarDatos(String data) {
 
     }
 
+    
     if(menu->id==18){
 
         int num1;
+        writeSerialComln(String("Creando curva para el pin: ") + data);
         if(sscanf(data.c_str(), "%d", &num1) == 1){
             int id =createCurve(num1);
             if(id>0){
@@ -555,7 +602,7 @@ void printSensor(ADCData data){
 }
 
 bool parseStringToInts(String str, int *num1, int *num2) {
-    writeSerialComln(String("Parseando: ") + str);
+    writeSerialComln(String("Parseando1: ") + str);
 
     // Convertir el String de Arduino a un const char* para sscanf
     if (sscanf(str.c_str(), "%d,%d", num1, num2) == 2) {
@@ -565,7 +612,7 @@ bool parseStringToInts(String str, int *num1, int *num2) {
 }
 
 bool parseStringToFloats(String str, int *index, float *num1, float *num2, float *num3) {
-    writeSerialComln(String("Parseando: ") + str);
+    writeSerialComln(String("Parseando2: ") + str);
 
     // Convertir el String de Arduino a un const char* para sscanf
     if (sscanf(str.c_str(), "%d,%f,%f,%f", index, num1, num2, num3) == 4) {
@@ -634,7 +681,7 @@ void printSensorData() {
 
 
 bool parseStringToPoint(String str, int *curve, int *tiempo, float *value, aproximation_point_type_t *type) {
-    writeSerialComln(String("Parseando: ") + str);
+    writeSerialComln(String("Parseando3: ") + str);
 
     int typeInt = 0;
 
@@ -886,3 +933,121 @@ void printAllCurvesNvs() {
     }
 }
 */
+
+void handleAppMode(char c) {
+
+    writeSerialCom(String("APP_MODE char recibido: '") + c + String("' (") + String((int)c) + String(")"));
+    if (c == '\r') return;
+
+    if (c == '\n') {
+        app_buffer[app_index] = '\0';
+
+        if (app_index == 0) return;  // ignorar líneas vacías
+
+        bool ok = procesarComandoApp(String(app_buffer));
+        if (!ok) {
+            writeSerialComlnAPP("ERROR");
+        }
+        memset(app_buffer, 0, sizeof(app_buffer));
+        app_index = 0;
+        return;
+    }
+
+    if (app_index < MAX_APP_BUFFER - 1) {
+        app_buffer[app_index++] = c;
+    }
+}
+
+bool procesarComandoApp(String cmd)
+{
+    cmd.trim();
+
+    writeSerialComlnAPP(String("CMD:[") + cmd + String("]"));
+
+    // ==============================
+    // CREAR CURVA
+    // Formato:        CREATE_CURVE,<pin>
+    // Respuesta OK:   CURVE_CREATED,<id>
+    // Respuesta ERR:  CURVE_ERR,<motivo>
+    // ==============================
+    if (cmd.startsWith("CREATE_CURVE"))
+    {
+        writeSerialComln(String("Comando recibido para crear curva: ") + cmd);
+        int comaIdx = cmd.indexOf(',');
+        if (comaIdx < 0) {
+            writeSerialComlnAPP("CURVE_ERR,falta_coma");
+            return false;
+        }
+
+        int pin = cmd.substring(comaIdx + 1).toInt();
+        int id  = createCurve(pin);
+
+        if (id >= 0) {
+            // Antes de responder, limpiar el buffer
+            cleanBufferApp();
+            writeSerialComlnAPP(String("CURVE_CREATED,") + String(id));
+            return true;
+        }
+
+        writeSerialComlnAPP("CURVE_ERR,no_se_pudo_crear");
+        return false;
+    }
+
+    // ==============================
+    // AGREGAR PUNTO
+    // formato: curve,time,value,type
+    // ==============================
+    int curve, tiempo;
+    float value;
+    aproximation_point_type_t type;
+
+    if (cmd.startsWith("ADD_POINT"))
+    {
+        int comaIdx = cmd.indexOf(',');
+        if (comaIdx < 0) {
+            writeSerialComlnAPP("POINT_ERR,falta_coma");
+            return false;
+        }
+
+        String args = cmd.substring(comaIdx + 1);
+        int curve, tiempo;
+        float value;
+        aproximation_point_type_t type;
+
+        if (parseStringToPoint(args, &curve, &tiempo, &value, &type))
+        {
+            if (addPointToCurve(curve, tiempo, value, type) == 0)
+            {
+                cleanBufferApp();
+                writeSerialComlnAPP("POINT_ADDED");
+                return true;
+            }
+
+            cleanBufferApp();
+            writeSerialComlnAPP("POINT_ERR,no_se_pudo_agregar");
+            return false;
+        }
+
+        writeSerialComlnAPP("POINT_ERR,formato_invalido");
+        return false;
+    }
+
+    // ==============================
+    // FIN CURVA
+    // ==============================
+    if (cmd.startsWith("END_CURVE"))
+    {
+        // Antes de responder, limpiar el buffer
+        cleanBufferApp();
+        writeSerialComlnAPP("CURVE_FINISHED");
+        return true;
+    }
+
+    writeSerialComlnAPP(String(cmd)+" no reconocido");
+    return false;
+}
+
+void cleanBufferApp(){
+   memset(app_buffer, 0, sizeof(app_buffer));
+    app_index = 0;
+}

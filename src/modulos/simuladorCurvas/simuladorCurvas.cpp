@@ -54,10 +54,36 @@ int createCurve(int id) {
     }
     
     
-    // Si no hay posición disponible
+
+    // Si no hay posición disponible, agrandar el array
     if(nextPosition == -1) {
-        writeSerialComln(String("Error: No hay espacio disponible en el array de curvas"));
-        return -1;
+        if(curveArraySize > 10)
+            return -1; // Limitar el tamaño máximo del array para evitar problemas de memoria
+        int newSize = curveArraySize + 5; // agrandar de a 5
+        
+        curve_t** newArray = (curve_t**)malloc(sizeof(curve_t*) * newSize);
+        if(newArray == NULL) {
+            writeSerialComln(String("Error: No se pudo agrandar el array de curvas"));
+            return -1;
+        }
+        
+        // Copiar punteros existentes
+        for(int i = 0; i < curveArraySize; i++) {
+            newArray[i] = curveArray[i];
+        }
+        
+        // Inicializar las nuevas posiciones en NULL
+        for(int i = curveArraySize; i < newSize; i++) {
+            newArray[i] = NULL;
+        }
+        
+        // Liberar array viejo y actualizar globales
+        free(curveArray);
+        curveArray = newArray;
+        nextPosition = curveArraySize; // primera posición nueva
+        curveArraySize = newSize;
+        
+        writeSerialComln(String("Array agrandado a: ") + String(curveArraySize));
     }
     
     // CORRECCIÓN: Verificar memoria disponible antes de crear
