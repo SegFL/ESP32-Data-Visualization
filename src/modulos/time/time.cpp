@@ -24,10 +24,10 @@ void enviarComandoCrearArchivo();
 
 void TimeInit() {
     // 1. Intentar conectar WiFi y usar NTP
-    if (connectWiFi() == true) {
+    connectWiFi();
+    if (checkWiFi() == true) {
         updateDateTimeNTP();
-    }
-    // 2. Si NO hay WiFi → usar fecha guardada manualmente
+    }// 2. Si NO hay WiFi → usar fecha guardada manualmente
     else {
         if (loadManualDateTime()) {
             WiFiConected = false;
@@ -48,7 +48,7 @@ void updateDateTimeNTP(){
         millisInit = 0; // Guardar el tiempo inicial
         millisTranscurridos = 0; 
         WiFiConected = true;
-        enviarComandoCrearArchivo();
+        //enviarComandoCrearArchivo();
         isFileCreated = true;
 
         // Si hay WiFi/NTP, borrar la fecha manual para que no se use más
@@ -72,6 +72,8 @@ el tiempo en milisegundos desde la utlimaacutalizacion de epoch time.
 void TimeUpdate() {
     // Si no hay WiFi intentar reconectar
     // cada 2 minutos
+
+    /*Se saco toda esta parte porque en connectWiFi() ya se hace el intento de reconexion de forma automatica
     if (!WiFiConected &&( (customMillis() - lastWifiAttempt >= 2 * 60000)|| intentoManual==true)) {
         intentoManual=false;
         lastWifiAttempt = customMillis();  // actualizo el contador
@@ -90,7 +92,18 @@ void TimeUpdate() {
             return;
         }
     }
+*/
 
+        if (checkWiFi()) {
+            WiFiConected = true;
+            updateDateTimeNTP();
+
+            if (!isFileCreated) {
+                enviarComandoCrearArchivo();
+                isFileCreated = true;
+            }
+
+        }
     // Actualizar NTP
     if (WiFiConected) {
         if (timeClient.update()) {
@@ -273,6 +286,3 @@ bool getWiFiStatus(){
     return WiFiConected;
 }
 
-void intentarConexionManual(){
-    intentoManual=true;
-}

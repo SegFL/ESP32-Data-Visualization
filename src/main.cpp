@@ -28,7 +28,7 @@ void Task1(void *pvParameters) {
 
     userInterfaceUpdate(); // Mantenerla si no bloquea más de unos ms
     TimeUpdate();
-    vTaskDelay(pdMS_TO_TICKS(20)); // Cede CPU al resto de tareas
+    vTaskDelay(pdMS_TO_TICKS(200)); // Cede CPU al resto de tareas
   }
 }
 
@@ -43,7 +43,7 @@ void Task2(void *pvParameters)
     {
         leerADC();
         CargaElectronicaUpdate();
-        dacUpdate();
+        //dacUpdate();
 
         int request = 1;
         xQueueSend(timeRequestQueue, &request, 0); // no bloquear

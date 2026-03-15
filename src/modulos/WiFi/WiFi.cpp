@@ -7,11 +7,29 @@ String password = "17727630";
 
 
 
+void wifi_timer_callback(TimerHandle_t xTimer);
+TimerHandle_t wifi_timer;
 
-bool connectWiFi() {
+int wifiRetryCount = 0;
+int wifiMaxRetries = 20;
+bool wifiRetrying = false; // Variable para saber si estoy reintentando conectar o no
+bool wifiConnected = false;
+void connectWiFi() {
 
-    //Si tengo valores ssid-password guardados en NVS los uso
-    char ssidBuf[64];//tienen que ser de 64 pq esta hardcoedeado asi en nsv.cpp
+    if(wifiRetrying==true){
+        return; // Si ya estoy reintentando conectar, no hago nada. El timer/hanlder ya esta activo
+    }
+    wifiRetryCount = 0;
+
+    wifi_timer = xTimerCreate(
+        "wifi_retry",
+        pdMS_TO_TICKS(5000),
+        pdTRUE,      // repetitivo
+        NULL,
+        wifi_timer_callback
+    );
+
+    char ssidBuf[64];
     char passBuf[64];
 
     esp_err_t err_ssid = readStringNVS("WIFI_SSID", ssidBuf);
@@ -22,26 +40,13 @@ bool connectWiFi() {
         password = String(passBuf);
     }
 
-
-
+    writeSerialComln("Intentando conectar WiFi");
 
     WiFi.begin(ssid.c_str(), password.c_str());
-    writeSerialComln(String("Conectando a Wi-Fi..."));
 
-    // Esperar hasta 5 segundos para conectar
-    int maxRetries = 20;
-    while (WiFi.status() != WL_CONNECTED && maxRetries-- > 0) {
-        delay(500);
-        writeSerialCom(String("."));
-    }
+    xTimerStart(wifi_timer, 0);
 
-    if (WiFi.status() == WL_CONNECTED) {
-        writeSerialComln(String("\nConectado a Wi-Fi"));
-        return true;
-    } else {
-        writeSerialComln(String("\nError al conectar a Wi-Fi"));
-        return false;
-    }
+  
 }
 
 
@@ -68,3 +73,34 @@ void getWiFiCredentials(String &outSSID, String &outPassword) {
     outSSID = ssid;
     outPassword = password;
 }
+
+void wifi_timer_callback(TimerHandle_t xTimer){
+
+    if (WiFi.status() == WL_CONNECTED) {
+        xTimerStop(wifi_timer,0);
+        wifiRetrying=false;
+        wifiConnected=true;
+        return;
+    }
+
+    wifiRetryCount++;
+    WiFi.reconnect();
+}
+
+bool checkWiFi(){
+
+    if(wifiConnected){
+        return true;
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+
+        xTimerStop(wifi_timer,0);
+        wifiConnected = true;
+        wifiRetrying = false;
+        return true;
+    }
+
+    return false;
+
+}
+

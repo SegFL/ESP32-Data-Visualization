@@ -26,7 +26,7 @@ void ina219Init(){
             sensorAvailable[i] = false; // Marcar como no disponible
             continue;
         }
-        ina219[i]->setCalibration_32V_1A();
+        ina219[i]->setCalibration_32V_2A();
         sensorAvailable[i] = true; // Marcar como disponible
         writeSerialCom("INA219 en dirección 0x");
         writeSerialCom(String(sensorAddresses[i], HEX));

@@ -162,10 +162,11 @@ void userInterfaceUpdate() {
     } else {
         // Captura de caracteres
         if(buffer_index < MAX_DATA_BUFFER - 1) {
-            // Aceptamos solo números,caracteres , coma y espacios
-            if (isdigit(charReceived) || isalpha(charReceived) || charReceived == ',' || isspace(charReceived)) {
-                data_buffer[buffer_index++] = charReceived;
-            } 
+            // Aceptamos solo números,caracteres , coma y espacios y puntos para los floats
+        if (isdigit(charReceived) || isalpha(charReceived) || 
+            charReceived == ',' || charReceived == '.' || isspace(charReceived)) {
+            data_buffer[buffer_index++] = charReceived;
+        }
         }
     }
 
@@ -266,8 +267,8 @@ void procesarDatos(String data) {
                 return;
             }
 
-            if (current < 0.0f || current > 1000.0f) {
-                writeSerialComln("Corriente invalida (0..1000 mA)");
+            if (current < 0.0f || current > 2000.0f) {
+                writeSerialComln("Corriente invalida (0..2000 mA)");
                 return;
             }
 
@@ -837,8 +838,9 @@ static void onEnterNode(MenuNode* n) {
         case 33:
         {
             //Intenta realizar una conexion a wifi sin esperar el tiempo de espera
-            intentarConexionManual();
+            connectWiFi();
         }
+        /*
         case 34:
         {
             printStructInfo();
@@ -849,6 +851,7 @@ static void onEnterNode(MenuNode* n) {
             writeSerialComln("DAC (0-255): " + String(getDACValue()));
             
         }
+            */
         default:
             break;
     }

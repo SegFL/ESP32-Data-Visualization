@@ -50,3 +50,21 @@ para que en la app no se muestre todo seguido
 
 Cuando se agrega un punto con corriente 20.0 se termina parseando a 200, sacar opcion de 
 poner floats con punto
+
+
+La carga sigue entrando en corto cuando arranca la esp32, al no tener wifi elcorto es mas largopor
+lo que se puede deducir que es porque nos e pone en 0 una salida del pwm. Fijarse si inicilizando a 3.3V elpin del adc en adcinit se soluciona
+
+Deberia cambiar el limite de corriente que tengo en userinterface de 2000mA,podriaconfigurarlo para cada carga electronica
+
+Podria agregar un sensado de tension en Vo para que si no hay tension no se activen las salida delpwm, asi evito que
+cuando no halla tension el PID haga creceel dutycycle de formaautomatica
+
+
+Para la carga de poca potencia al no poder calentar los focos para poca ptencia oscila, deberia usar resistneicas cermaicos en vez de focos
+
+
+Chaquerar porque el ina219esta midiendo mal
+
+Pensar bien que pasa si cambio los tiempos en loq ue se ejecutan las tareas, elpid va a una velocidad y el sensado a otra, deberianser
+al mismotiempo? podria cambiar ellugar de las funciones? sipongo sensado y actuacion con el mismo periodo?

@@ -1,7 +1,7 @@
 
 
 #include "pid.h"
-#define MAX_SAFE_CURRENT 800.0f
+#define MAX_SAFE_CURRENT 2000.0f
 
 
 // ====== Parámetros PID ======
