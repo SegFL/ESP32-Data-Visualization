@@ -212,7 +212,7 @@ void CargaElectronicaUpdate(){
         break;
       default:   
         dutyCycleAux = 0.0f; 
-        writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
+        //writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
         break;
     }
   /*

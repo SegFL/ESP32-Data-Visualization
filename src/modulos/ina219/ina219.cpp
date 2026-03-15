@@ -2,57 +2,63 @@
 #include <modulos/serialCom/serialCom.h>
 #include <ADCData.h>
 
+// ── Resistencias shunt reales por sensor (en Ohms) ───────────────────────
+// Ajustá cada valor si medís diferente con multímetro
+const float R_SHUNT_OHMS[4] = {
+    0.12282f,   // Sensor 0x40
+    0.12495f,   // Sensor 0x41
+    0.1f,   // Sensor 0x44
+    0.1f    // Sensor 0x45
+};
 
-
-
-
-// Crear un vector de punteros para manejar múltiples sensores
+// ── Variables globales ────────────────────────────────────────────────────
 Adafruit_INA219* ina219[NUMBER_OF_SENSORS];
+uint8_t sensorAddresses[4] = {0x40, 0x41, 0x44, 0x45};
+bool sensorAvailable[4]    = {false, false, false, false};
 
-// Direcciones I2C para cada sensor
-uint8_t sensorAddresses[4] = { 0x40,0x41,0x44,0x45};//Direcciones de los in219 
-bool sensorAvailable[4] = {false, false, false, false}; // Estado de disponibilidad de los sensores
-void ina219Init(){
-  // Iniciar la comunicación serie
-    
+// ── Init ──────────────────────────────────────────────────────────────────
+void ina219Init() {
     writeSerialComln(String("Inicializando sensores INA219..."));
 
-    // Inicializar los sensores en sus respectivas direcciones
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
-        ina219[i] = new Adafruit_INA219(sensorAddresses[i]); // Crear instancia con dirección específica
-        if (!ina219[i]->begin()) {  //Se inicializa la comunicacion I2C
-            writeSerialCom("Error al inicializar el sensor INA219 en la dirección 0x");
+        ina219[i] = new Adafruit_INA219(sensorAddresses[i]);
+
+        if (!ina219[i]->begin()) {
+            writeSerialCom("Error al inicializar INA219 en 0x");
             writeSerialComln(String(sensorAddresses[i], HEX));
-            sensorAvailable[i] = false; // Marcar como no disponible
+            sensorAvailable[i] = false;
             continue;
         }
-        ina219[i]->setCalibration_32V_2A();
-        sensorAvailable[i] = true; // Marcar como disponible
-        writeSerialCom("INA219 en dirección 0x");
-        writeSerialCom(String(sensorAddresses[i], HEX));
-        writeSerialComln(String(" inicializado correctamente."));
-    }
 
+        // begin() llama internamente a setCalibration_32V_2A()
+        // que configura el modo correcto (32V, ganancia /8, 12bit, continuo)
+        // No necesitamos hacer nada más — la corriente la calculamos
+        // manualmente desde shuntVoltage, sin usar el registro de calibración
+
+        sensorAvailable[i] = true;
+        writeSerialCom("INA219 en 0x");
+        writeSerialCom(String(sensorAddresses[i], HEX));
+        writeSerialComln(String(" listo."));
+    }
 }
 
+// ── Lectura de datos ──────────────────────────────────────────────────────
+bool getData(ADCData& data, int sensor) {
+    if (sensor < NUMBER_OF_SENSORS && sensorAvailable[sensor] == true) {
 
-bool getData(ADCData& data, int sensor){ //Numero del sensor a leer
-
-    //writeSerialComln(String("Leyendo sensor: ") + String(sensor));
-    if(sensor<NUMBER_OF_SENSORS && sensorAvailable[sensor]==true){
-        
-
-        // Leer todos los valores del sensor primero
-        data.busVoltage_V = ina219[sensor]->getBusVoltage_V();
-        data.current_mA = ina219[sensor]->getCurrent_mA();
-        data.power_mW = ina219[sensor]->getPower_mW();
+        // getBusVoltage_V() y getShuntVoltage_mV() no tocan el registro
+        // de calibración → valores directos del ADC, siempre confiables
+        data.busVoltage_V    = ina219[sensor]->getBusVoltage_V();
         data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV();
-        data.pin = sensor;
+
+        // Corriente y potencia calculadas manualmente
+        // I = V_shunt / R_shunt
+        data.current_mA = data.shuntVoltage_mV / R_SHUNT_OHMS[sensor];
+        data.power_mW   = data.current_mA * data.busVoltage_V;
+
+        data.pin             = sensor;
         data.timestampMillis = customMillis();
         return true;
-    }else{
-        return false;
     }
-
-    
+    return false;
 }
