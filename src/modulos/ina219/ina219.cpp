@@ -5,8 +5,8 @@
 // ── Resistencias shunt reales por sensor (en Ohms) ───────────────────────
 // Ajustá cada valor si medís diferente con multímetro
 const float R_SHUNT_OHMS[4] = {
-    0.12282f,   // Sensor 0x40
-    0.12495f,   // Sensor 0x41
+    0.1f,   // Sensor 0x40
+    0.0535111f,   // Sensor 0x41
     0.1f,   // Sensor 0x44
     0.1f    // Sensor 0x45
 };
@@ -55,6 +55,7 @@ bool getData(ADCData& data, int sensor) {
         // I = V_shunt / R_shunt
         data.current_mA = data.shuntVoltage_mV / R_SHUNT_OHMS[sensor];
         data.power_mW   = data.current_mA * data.busVoltage_V;
+
 
         data.pin             = sensor;
         data.timestampMillis = customMillis();

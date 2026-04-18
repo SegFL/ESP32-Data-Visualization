@@ -267,8 +267,8 @@ void procesarDatos(String data) {
                 return;
             }
 
-            if (current < 0.0f || current > 2000.0f) {
-                writeSerialComln("Corriente invalida (0..2000 mA)");
+            if (current < 0.0f || current > 6000.0f) {
+                writeSerialComln("Corriente invalida (0..6000 mA)");
                 return;
             }
 
@@ -352,14 +352,7 @@ void procesarDatos(String data) {
 
     
 
-    if (menu->id == 11){
-        float current = data.toFloat(); 
-        if (setMaxCurrent(current)==true) {
-            writeSerialComln(String("Valor maximo de corriente: ") + String(current) + "mA");
-        } else {
-            writeSerialComln(String("Valor máximo de corriente inválido. Debe estar entre 0 y 1000mA."));
-        }
-    }
+
 
     
     if(menu->id ==17){
@@ -966,86 +959,57 @@ bool procesarComandoApp(String cmd)
     cmd.trim();
 
     writeSerialComlnAPP(String("CMD:[") + cmd + String("]"));
-
     // ==============================
-    // CREAR CURVA
-    // Formato:        CREATE_CURVE,<pin>
-    // Respuesta OK:   CURVE_CREATED,<id>
-    // Respuesta ERR:  CURVE_ERR,<motivo>
-    // ==============================
-    if (cmd.startsWith("CREATE_CURVE"))
-    {
-        writeSerialComln(String("Comando recibido para crear curva: ") + cmd);
-        int comaIdx = cmd.indexOf(',');
-        if (comaIdx < 0) {
-            writeSerialComlnAPP("CURVE_ERR,falta_coma");
+    // Detecta el comando batch
+    if (cmd.startsWith("CURVE,")) {
+        // Parsear: CURVE,id,n,t1,v1,tipo1;t2,v2,tipo2;...,checksum
+        int lastComma = cmd.lastIndexOf(',');
+        String checksumStr = cmd.substring(lastComma + 1);
+        String payload     = cmd.substring(0, lastComma);
+        
+        // Verificar checksum
+        uint8_t cs = 0;
+        for (int i = 0; i < payload.length(); i++) cs ^= payload[i];
+        if (strtoul(checksumStr.c_str(), nullptr, 16) != cs) {
+            writeSerialComlnAPP("ERROR,CHECKSUM");
             return false;
         }
-
-        int pin = cmd.substring(comaIdx + 1).toInt();
-        int id  = createCurve(pin);
-
-        if (id >= 0) {
-            // Antes de responder, limpiar el buffer
-            cleanBufferApp();
-            writeSerialComlnAPP(String("CURVE_CREATED,") + String(id));
-            return true;
-        }
-
-        writeSerialComlnAPP("CURVE_ERR,no_se_pudo_crear");
-        return false;
-    }
-
-    // ==============================
-    // AGREGAR PUNTO
-    // formato: curve,time,value,type
-    // ==============================
-    int curve, tiempo;
-    float value;
-    aproximation_point_type_t type;
-
-    if (cmd.startsWith("ADD_POINT"))
-    {
-        int comaIdx = cmd.indexOf(',');
-        if (comaIdx < 0) {
-            writeSerialComlnAPP("POINT_ERR,falta_coma");
-            return false;
-        }
-
-        String args = cmd.substring(comaIdx + 1);
-        int curve, tiempo;
-        float value;
-        aproximation_point_type_t type;
-
-        if (parseStringToPoint(args, &curve, &tiempo, &value, &type))
-        {
-            if (addPointToCurve(curve, tiempo, value, type) == 0)
-            {
-                cleanBufferApp();
-                writeSerialComlnAPP("POINT_ADDED");
-                return true;
+        
+        // Extraer id y n
+        // payload = "CURVE,id,n,puntos"
+        int c1 = payload.indexOf(',');
+        int c2 = payload.indexOf(',', c1+1);
+        int c3 = payload.indexOf(',', c2+1);
+        int id = payload.substring(c1+1, c2).toInt();
+        int n  = payload.substring(c2+1, c3).toInt();
+        
+        // Crear la curva
+        if (createCurve(id) < 0) { writeSerialComlnAPP("ERROR,CREATE"); return false; }
+        
+        // Parsear puntos separados por ';'
+        String puntos = payload.substring(c3+1);
+        int parsed = 0;
+        while (puntos.length() > 0 && parsed < n) {
+            int sep = puntos.indexOf(';');
+            String pt = (sep >= 0) ? puntos.substring(0, sep) : puntos;
+            puntos   = (sep >= 0) ? puntos.substring(sep+1) : "";
+            
+            int a = pt.indexOf(','), b = pt.lastIndexOf(',');
+            int t    = pt.substring(0, a).toInt();
+            float v  = pt.substring(a+1, b).toFloat();
+            int tipo = pt.substring(b+1).toInt();
+            
+            aproximation_point_type_t type = (tipo == 1) ? LINEAR : STEP;
+            if (addPointToCurve(id, t, v, type) != 0) {
+                writeSerialComlnAPP("ERROR,POINT_" + String(parsed));
+                return false;
             }
-
-            cleanBufferApp();
-            writeSerialComlnAPP("POINT_ERR,no_se_pudo_agregar");
-            return false;
+            parsed++;
         }
-
-        writeSerialComlnAPP("POINT_ERR,formato_invalido");
-        return false;
-    }
-
-    // ==============================
-    // FIN CURVA
-    // ==============================
-    if (cmd.startsWith("END_CURVE"))
-    {
-        // Antes de responder, limpiar el buffer
-        cleanBufferApp();
-        writeSerialComlnAPP("CURVE_FINISHED");
+        
+        writeSerialComlnAPP("OK," + String(id));
         return true;
     }
-
     writeSerialComlnAPP(String(cmd)+" no reconocido");
     return false;
 }

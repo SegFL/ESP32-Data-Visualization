@@ -22,11 +22,6 @@ Agregar menu para ver curva asociada a principio
 
 Agregar curva de calibracion para cuando la carga electronica no tenga elpid activo. Modificar convertirCorrienteADc()
 
-Agregar la opcion para deshabilitar la autoconexion de wifi
-
-Cambiar para que el WiFi se conecte de forma asincionica y no quede un loop trabado cada x tiempo.
-Bajar cantidad de intentos
-
 Corregir el hecho de que la carga entre en corto al iniciar el uC, ahora que el WiFi es mas lento
 el corto dura mas, puede ser por alguna salida en 0, usar primero el Init de las salidas, ejecutarlo primero.
   en carga electronica.cpp linea 54 se iniciliza el pwm en 0, capas hay que inicializarlo en elmaximo
@@ -63,8 +58,7 @@ cuando no halla tension el PID haga creceel dutycycle de formaautomatica
 
 Para la carga de poca potencia al no poder calentar los focos para poca ptencia oscila, deberia usar resistneicas cermaicos en vez de focos
 
-
-Chaquerar porque el ina219esta midiendo mal
-
 Pensar bien que pasa si cambio los tiempos en loq ue se ejecutan las tareas, elpid va a una velocidad y el sensado a otra, deberianser
 al mismotiempo? podria cambiar ellugar de las funciones? sipongo sensado y actuacion con el mismo periodo?
+
+Verificar que el datalogger funcion bien en segundo plano, fijarse si fucniona con la app cerrada y con lapc suspendida

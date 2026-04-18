@@ -10,8 +10,6 @@
 
 float lastCurrent_mA[NUMBER_OF_SENSORS] = {0.0f,0.0f}; // Variable para almacenar la última corriente medida
 void adcInit() {
-    // Inicializar el buffer
-
 
     // Configuración de pines
     pinMode(36, INPUT);
@@ -41,7 +39,7 @@ void  leerADC(){
           writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.current_mA)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.power_mW)+","+String(temp.pin));
         }
       }
-      lastCurrent_mA[i] = temp.current_mA; // Actualizar la última corriente medida
+      lastCurrent_mA[i] = temp.current_mA; // Actualizar la última corriente medida(para el PID)
       i++;
   }
 }

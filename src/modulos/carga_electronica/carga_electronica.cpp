@@ -108,8 +108,8 @@ void CargaElectronicaInit(){
 
 
         //Inicilizo los pid
-        PID_Init(0,0.6,0.05,0.0,0.2);
-        PID_Init(1,0.6,0.05,0.0,0.2);
+        PID_Init(0,0.05,0.05,0.0,0.2);
+        PID_Init(1,0.05,0.05,0.0,0.2);
 
 
 
@@ -230,7 +230,7 @@ void CargaElectronicaUpdate(){
     */
     // Aplicar el duty cycle actual (invertido)
     int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
-    writeSerialComln(String( "Duty[") + String(i) + String("]: ") + String(dutyCycleAux)+ String("% -> PWM Value: ") + String(pwmValue));
+    //writeSerialComln(String( "Duty[") + String(i) + String("]: ") + String(dutyCycleAux)+ String("% -> PWM Value: ") + String(pwmValue));
 
     //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
     //ledcWrite(PWM_CHANNEL, pwmValue);
@@ -353,14 +353,7 @@ float convertirCorrienteADc(float reference_current){
   return percent;
 }
 */
-bool setMaxCurrent(float current){
-    // maxCurrent está en mA. Aceptar rango razonable (0..2000 mA)
-    if(current >= 0.0f && current <=2000.0f){
-        maxCurrent = current;
-        return true;
-    }
-    return false;
-}
+
 
 
 
