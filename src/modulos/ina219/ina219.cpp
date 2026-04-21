@@ -1,44 +1,84 @@
 #include "ina219.h"
 #include <modulos/serialCom/serialCom.h>
 #include <ADCData.h>
+#include "ADS1X15.h"
 
-// ── Resistencias shunt reales por sensor (en Ohms) ───────────────────────
-// Ajustá cada valor si medís diferente con multímetro
+
+typedef enum {
+    INA219_,
+    ADS1115_
+} sensor_type_t;
+
+sensor_type_t type_sensor[4] = {INA219_, INA219_, ADS1115_, ADS1115_}; // Configura el tipo de cada sensor
+
+
+// ── Calibracion  ───────────────────────
+//INA219
 const float R_SHUNT_OHMS[4] = {
-    0.1f,   // Sensor 0x40
-    0.0535111f,   // Sensor 0x41
-    0.1f,   // Sensor 0x44
-    0.1f    // Sensor 0x45
+    0.1f,         // Sensor 0x40 (INA219)
+    0.0535111f,   // Sensor 0x41 (INA219)
+    0.1f,         // Sensor 0x48 (ADS1115) - no se usa
+    0.1f          // Sensor 0x49 (ADS1115) - no se usa
 };
+//ADS1115
+float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f};
+float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 13.04f};
+
+float ads_offset_i[NUMBER_OF_SENSORS];   
+float ads_gain_i[NUMBER_OF_SENSORS];
+//ACS712
+
+float acs_offset_V[NUMBER_OF_SENSORS]={0.0f,0.0f,2.5f + 0.050f};   // ~2.5V + error real medido
+float acs_gain[NUMBER_OF_SENSORS]={0.0f,0.0f,1000*0.10f};       // V/A (ej: 0.100 para 100mV/A*1000 para mA/A)
+
 
 // ── Variables globales ────────────────────────────────────────────────────
-Adafruit_INA219* ina219[NUMBER_OF_SENSORS];
-uint8_t sensorAddresses[4] = {0x40, 0x41, 0x44, 0x45};
-bool sensorAvailable[4]    = {false, false, false, false};
+ADS1115* ads1115[NUMBER_OF_SENSORS]; // Sensores ADS1115 
+Adafruit_INA219* ina219[NUMBER_OF_SENSORS];  // ← CAMBIO: era [2], ahora [NUMBER_OF_SENSORS]
+uint8_t sensorAddresses[4] = {0x40, 0x41, 0x48, 0x49};  // Direcciones I2C de los sensores
+bool sensorAvailable[4] = {false, false, false, false};
 
+
+
+float getCalibratedCurrentADS1115(int sensor);
+float getCalibratedVoltageADS1115(int sensor) ;
 // ── Init ──────────────────────────────────────────────────────────────────
 void ina219Init() {
-    writeSerialComln(String("Inicializando sensores INA219..."));
+    writeSerialComln(String("Inicializando sensores INA219 y ADS1115..."));
 
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
-        ina219[i] = new Adafruit_INA219(sensorAddresses[i]);
 
-        if (!ina219[i]->begin()) {
-            writeSerialCom("Error al inicializar INA219 en 0x");
-            writeSerialComln(String(sensorAddresses[i], HEX));
-            sensorAvailable[i] = false;
-            continue;
+        if(type_sensor[i] == INA219_) {
+
+            ina219[i] = new Adafruit_INA219(sensorAddresses[i]);
+            
+            if (!ina219[i]->begin()) {
+                writeSerialCom("Error al inicializar INA219 en 0x");
+                writeSerialComln(String(sensorAddresses[i], HEX));
+                sensorAvailable[i] = false;
+                continue;
+            }
+            
+            sensorAvailable[i] = true;
+            writeSerialCom("INA219 en 0x");
+            writeSerialCom(String(sensorAddresses[i], HEX));
+            writeSerialComln(String(" listo."));
+            
+        } else if(type_sensor[i] == ADS1115_) {
+            ads1115[i] = new ADS1115(sensorAddresses[i], &Wire);
+            if (!ads1115[i]->begin()) {   // depende de la librería, algunas usan begin()
+                    writeSerialCom("Error al inicializar ADS1115 en 0x");
+                    writeSerialComln(String(sensorAddresses[i], HEX));
+                    sensorAvailable[i] = false;
+                    continue;
+                }
+                ads1115[i]->setGain(1); // ±4.096V, para medir hasta 3.3V con margen
+                sensorAvailable[i] = true;
+                writeSerialCom("ADS1115 en 0x");
+                writeSerialCom(String(sensorAddresses[i], HEX));
+                writeSerialComln(" listo.");
+
         }
-
-        // begin() llama internamente a setCalibration_32V_2A()
-        // que configura el modo correcto (32V, ganancia /8, 12bit, continuo)
-        // No necesitamos hacer nada más — la corriente la calculamos
-        // manualmente desde shuntVoltage, sin usar el registro de calibración
-
-        sensorAvailable[i] = true;
-        writeSerialCom("INA219 en 0x");
-        writeSerialCom(String(sensorAddresses[i], HEX));
-        writeSerialComln(String(" listo."));
     }
 }
 
@@ -46,20 +86,63 @@ void ina219Init() {
 bool getData(ADCData& data, int sensor) {
     if (sensor < NUMBER_OF_SENSORS && sensorAvailable[sensor] == true) {
 
-        // getBusVoltage_V() y getShuntVoltage_mV() no tocan el registro
-        // de calibración → valores directos del ADC, siempre confiables
-        data.busVoltage_V    = ina219[sensor]->getBusVoltage_V();
-        data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV();
+        if(type_sensor[sensor] == INA219_) {
+            
+            // getBusVoltage_V() y getShuntVoltage_mV() no tocan el registro
+            // de calibración → valores directos del ADC, siempre confiables
+            data.busVoltage_V    = ina219[sensor]->getBusVoltage_V();
+            data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV();
 
-        // Corriente y potencia calculadas manualmente
-        // I = V_shunt / R_shunt
-        data.current_mA = data.shuntVoltage_mV / R_SHUNT_OHMS[sensor];
-        data.power_mW   = data.current_mA * data.busVoltage_V;
-
+            // Corriente y potencia calculadas manualmente
+            // I = V_shunt / R_shunt
+            data.current_mA = data.shuntVoltage_mV / R_SHUNT_OHMS[sensor];
+            data.power_mW   = data.current_mA * data.busVoltage_V;
+            
+        } else if(type_sensor[sensor] == ADS1115_) {
+            int16_t val_cur = getCalibratedCurrentADS1115(sensor);
+            int16_t val_bus = getCalibratedVoltageADS1115(sensor);
+            //Asigno la tension y corriente a la estructura como si fuese un INA219 
+            data.busVoltage_V   = getCalibratedVoltageADS1115(sensor);
+            data.shuntVoltage_mV = 0.0f;
+            data.current_mA      = getCalibratedCurrentADS1115(sensor);
+            data.power_mW        = data.current_mA * data.busVoltage_V;
+        }
 
         data.pin             = sensor;
         data.timestampMillis = customMillis();
         return true;
     }
     return false;
+}
+
+
+//Comoel ADS1115 no se calibra,lo hago a mano
+float getCalibratedVoltageADS1115(int sensor) {
+
+    int16_t raw = ads1115[sensor]->readADC_Differential_2_3();
+
+    float corrected = raw - ads_offset_v[sensor];
+
+    float voltage = ads1115[sensor]->toVoltage(corrected);
+
+    voltage *= ads_gain_v[sensor];
+
+    // corregir divisor resistivo
+    //voltage /= 0.076621;
+
+    return voltage;
+}
+float getCalibratedCurrentADS1115(int sensor) {
+
+    int16_t raw = ads1115[sensor]->readADC_Differential_0_1();
+    // Paso 1: convertir directo a voltaje
+    float voltage = ads1115[sensor]->toVoltage(raw);
+
+    // Paso 2: restar offset del ACS712 (~2.5V real)
+    float deltaV = voltage - acs_offset_V[sensor];
+
+    // Paso 3: convertir a corriente (V/A)
+    float current = deltaV / acs_gain[sensor]; // Convertir a mA
+
+    return current; // amperios
 }

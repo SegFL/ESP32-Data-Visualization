@@ -1,6 +1,7 @@
-adafruit/Adafruit INA219 @ ^1.1.1
-arduino-libraries/NTPClient
-tobiasschuerg/ESP8266 Influxdb @ ^3.13.2
 bblanchon/ArduinoJson
 paulstoffregen/Time @ ^1.6
 unity
+arduino-libraries/NTPClient
+tobiasschuerg/ESP8266 Influxdb @ ^3.13.2
+adafruit/Adafruit INA219 @ ^1.1.1
+robtillaart/ADS1X15@^0.6.1

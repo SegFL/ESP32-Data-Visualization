@@ -62,3 +62,7 @@ Pensar bien que pasa si cambio los tiempos en loq ue se ejecutan las tareas, elp
 al mismotiempo? podria cambiar ellugar de las funciones? sipongo sensado y actuacion con el mismo periodo?
 
 Verificar que el datalogger funcion bien en segundo plano, fijarse si fucniona con la app cerrada y con lapc suspendida
+
+
+Cuando leo todos los datos de la colaentre las task de adc y send data receiveSensorDataToUserInterface() no deberia quedarmesolo con el ultimo, o si?
+Estos datos se envian a la app o solo se muestran en pantalla?(creo que solo son los que se muestra en lainterfaz)

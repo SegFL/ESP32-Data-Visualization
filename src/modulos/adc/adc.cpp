@@ -8,7 +8,7 @@
 #include <modulos/time/time.h>
 #include <modulos/carga_electronica/carga_electronica.h>
 
-float lastCurrent_mA[NUMBER_OF_SENSORS] = {0.0f,0.0f}; // Variable para almacenar la última corriente medida
+float lastCurrent_mA[NUMBER_OF_SENSORS] = {0.0f,0.0f,0.0f}; // Variable para almacenar la última corriente medida
 void adcInit() {
 
     // Configuración de pines
@@ -26,7 +26,6 @@ void  leerADC(){
   int i = 0;
 
   while(i < NUMBER_OF_SENSORS){
-        //writeSerialComln(String("0"));
 
       if(getData(temp, i) == true){
         // Solo enviar la corriente al actuador
@@ -34,14 +33,15 @@ void  leerADC(){
         sendSensorDataToUserInterface(temp);
 
         if(sendDataStatus()==true){
-          //writeSerialComln(String("1"));
 
+          //Envio datos por la terminal serie hacia la app
           writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.current_mA)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.power_mW)+","+String(temp.pin));
         }
       }
       lastCurrent_mA[i] = temp.current_mA; // Actualizar la última corriente medida(para el PID)
       i++;
   }
+
 }
 
 float getLastCurrentData(int index){

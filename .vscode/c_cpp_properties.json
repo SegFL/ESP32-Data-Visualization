@@ -10,6 +10,7 @@
             "includePath": [
                 "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/include",
                 "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/src",
+                "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/ADS1X15",
                 "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Time",
                 "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/NTPClient",
                 "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Adafruit INA219",
@@ -256,6 +257,7 @@
                 "path": [
                     "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/include",
                     "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/src",
+                    "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/ADS1X15",
                     "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Time",
                     "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/NTPClient",
                     "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Adafruit INA219",

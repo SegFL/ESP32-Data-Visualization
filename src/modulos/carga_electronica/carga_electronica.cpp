@@ -1,6 +1,6 @@
 #include "carga_electronica.h"
 //#define PRUEBA_CURVAS 0 //Si se define como 1 se habilita la prueba de curvas, si no se deja como 0
-
+#include "driver/ledc.h"
 
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
 // CORRECCIÓN: Eliminada variable global curve innecesaria que causaba confusión 
@@ -8,49 +8,57 @@
 float convertirCorrienteADc(float reference_current);
 void cargarConfiguracionNvs();
 float getDCDirecto(float ref);
+static int calcularMaxDuty(int resolution);
 #define MAX_DC_NVS_KEY  "max_dc_value"
 #define MODO_FUNCIONAMIENTO_NVS_KEY  "MODO_FUNC"
 
 
 typedef struct {
     int channel;
+    int timer;        
     int freq;
     int resolution;
     int pin;
+    int max_duty;  
 } PWM_Config_t;
+/*
+Pin 6 ESP32 = PIN0 TERMINAL = EL0 = GPIO 16 (TIMER 0)
+Pin 7 ESP32 = PIN1 TERMINAL = EL1 = GPIO 17 (TIMER 1)
+Pin 24 ESP32 = PIN2  TERMINAL = EL2_HV = GPIO 26 (TIMER 2)
+Pin 25 ESP32 = PIN3  TERMINAL = EL3_HV = GPIO 27 (TIMER 2) (comparte timer con GPIO 26)
+Pin 22 ESP32 = PIN4  TERMINAL = AUXILIAR = GPIO 33 (TIMER 3)
 
 
-PWM_Config_t pwmConfig[NUMBER_OF_SENSORS] = {
-    { .channel = 0, .freq = 78125, .resolution = 10 ,.pin = 18},
-    { .channel = 1, .freq = 78125, .resolution = 10 ,.pin = 19}
-    /*,
-    { .channel = 2, .freq = 78125, .resolution = 10 },
-    { .channel = 3, .freq = 78125, .resolution = 10 }*/
+
+*/
+
+PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
+    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = 16},  // GPIO 16 → Timer 0
+    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = 17},  // GPIO 17 → Timer 1
+    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = 26},  // GPIO 26 → Timer 2
+    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = 27},  // GPIO 27 → Timer 2 (comparte timer con GPIO 26)
+    { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = 33}   // GPIO 33 → Timer 3
 };
 
-const int PWM_CHANNEL = 0;       // Canal PWM (ESP32 tiene 16 canales disponibles: 0-15)
-const int PWM_FREQ = 78125;     // Frecuencia PWM deseada: 312 kHz
-const int PWM_RESOLUTION = 10;    // Resolución de 8 bits (valores de duty cycle entre 0 y 255)
+
 //La resolucion maxima depende de la frecuecnia utilizada, si se quiere mas frecuencia se tiene que
 //sacrificar resolucion
 
 
 
-const int MAX_DUTY_CYCLE = (int)(pow(2, PWM_RESOLUTION) - 1); // Valor máximo del duty cycle
-const int LED_OUTPUT_PIN = 18;   // Pin GPIO donde se genera la señal PWM
 
 // Variables globales
 float DC = 0;  // Duty cycle actual (0-100%)
 
-float max_dc_value[NUMBER_OF_SENSORS] = {800.0, 800.0}; // Valor máximo del duty cycle (0-100%)
+float max_dc_value[NUMBER_OF_ELECTRONIC_LOADS] = {800.0, 800.0}; // Valor máximo del duty cycle (0-100%)
 float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
-float currentReference_mA[NUMBER_OF_SENSORS] = {0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
+float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
 
-modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_SENSORS] = {NONE, NONE}; // Modo de funcionamiento inicial (PID o directo/NONE)
+modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_ELECTRONIC_LOADS] = {NONE, NONE}; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
-curve_mode_t curveMode[NUMBER_OF_SENSORS] = {OFF_t, OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
+curve_mode_t curveMode[NUMBER_OF_ELECTRONIC_LOADS] = {OFF_t, OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
 
 bool arraySelected=false;
 int arraySelectedPos=-1;
@@ -62,8 +70,8 @@ void CargaElectronicaInit(){
 
   // Configuración del canal PWM con frecuencia y resolución
   //ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
-
-  for(int i=0;i<NUMBER_OF_SENSORS;i++){
+/*
+  for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
     ledcSetup(
         pwmConfig[i].channel,
         pwmConfig[i].freq,
@@ -74,9 +82,35 @@ void CargaElectronicaInit(){
   // Asociar el canal PWM al pin de salida
   ledcAttachPin(pwmConfig[0].pin, pwmConfig[0].channel);
   ledcAttachPin(pwmConfig[1].pin, pwmConfig[1].channel);
+*/
+
+    for(int i = 0; i < NUMBER_OF_ELECTRONIC_LOADS; i++) {  
+        // Calcular max_duty ANTES de configurar
+        pwmConfig[i].max_duty = calcularMaxDuty(pwmConfig[i].resolution);
+
+        // CONFIGURAR TIMER
+        ledc_timer_config_t timer = {};
+        timer.speed_mode = LEDC_HIGH_SPEED_MODE;
+        timer.timer_num = (ledc_timer_t)pwmConfig[i].timer;
+        timer.freq_hz = (uint32_t)pwmConfig[i].freq;
+        timer.duty_resolution = (ledc_timer_bit_t)pwmConfig[i].resolution;
+        timer.clk_cfg = LEDC_AUTO_CLK;
+
+        ledc_timer_config(&timer);
+
+        // CONFIGURAR CANAL
+        ledc_channel_config_t channel = {};
+        channel.gpio_num = pwmConfig[i].pin;
+        channel.channel = (ledc_channel_t)pwmConfig[i].channel;
+        channel.timer_sel = (ledc_timer_t)pwmConfig[i].timer;
+        channel.duty = 0;
+        channel.speed_mode = LEDC_HIGH_SPEED_MODE;
+
+        ledc_channel_config(&channel);
+    }
 
   DC = 0.0f; // Inicializar el duty cycle a 0 (%)
-  for(int i=0;i<NUMBER_OF_SENSORS;i++){
+  for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
     max_dc_value[i] = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
   }
   currentReference_mA[0] = 0.0f; // referencia manual en mA
@@ -119,7 +153,7 @@ void cargarConfiguracionNvs() {
 
     char key[32];
 
-    for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
+    for (int i = 0; i < NUMBER_OF_ELECTRONIC_LOADS; i++) {
 
         /* ===== MODO DE FUNCIONAMIENTO ===== */
         makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, i);
@@ -171,7 +205,7 @@ void CargaElectronicaUpdate(){
 
 
 
-  for(int i=0;i<NUMBER_OF_SENSORS;i++){
+  for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
 
     float dutyCycleAux = 0.0f;
     float referenceCurrent = 0.0f; // mA
@@ -229,7 +263,8 @@ void CargaElectronicaUpdate(){
     }
     */
     // Aplicar el duty cycle actual (invertido)
-    int pwmValue = (int)((100.0f - dutyCycleAux) * MAX_DUTY_CYCLE / 100.0f);
+    int pwmValue = (int)((100.0f - dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);
+        
     //writeSerialComln(String( "Duty[") + String(i) + String("]: ") + String(dutyCycleAux)+ String("% -> PWM Value: ") + String(pwmValue));
 
     //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
@@ -245,7 +280,7 @@ void CargaElectronicaUpdate(){
 // Se espera un valor entre 0 y 100 (corrige comportamiento previo)
 // Ahora recorta (clamp) usando max_dc_value
 float PWMSetDC(float currentReference,int index) {
-    if(index<0 || index>=NUMBER_OF_SENSORS) return -1.0f;
+    if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return -1.0f;
     if (currentReference < 0.0f) return -1.0f;
     // aplicar límite máximo configurado
     float limited = currentReference;
@@ -260,7 +295,7 @@ float PWMSetDC(float currentReference,int index) {
 
 
 void PWMSetCurveMode(curve_mode_t state, int index){
-  if(index<0 || index>=NUMBER_OF_SENSORS) return;
+  if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return;
   // Guardar en NVS
   char key[32];
   makeKey(key, MODO_CURVA, index);
@@ -280,18 +315,50 @@ void printCargaElectronica(){
 }
 
 
-bool PWMSetFrequency(int frecuencies,int index){
-  if(index<0 || index>=NUMBER_OF_SENSORS) return false;
-  if(frecuencies>0 && frecuencies<PWM_FREQ){
-    ledcSetup(pwmConfig[index].channel, frecuencies, PWM_RESOLUTION);
-    pwmConfig[index].freq = frecuencies;
-    return true;
-  }
-  return false;
+bool PWMSetFrequency(int frecuencies, int index){
+    if(index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return false;
 
+    int timer = pwmConfig[index].timer;
+    
+    // Calcular nueva resolución óptima según frecuencia
+    // Fórmula: freq_pwm = clk_source / (2^resolution)
+    // Para 80MHz: resolution_max ≈ log2(80000000 / freq)
+    int nueva_resolucion = pwmConfig[index].resolution;
+    
+    // Ajuste automático si la frecuencia es muy alta
+    if(frecuencies > 100000) {
+        nueva_resolucion = 8;  // Menor resolución para alta frecuencia
+    } else if(frecuencies > 50000) {
+        nueva_resolucion = 10;
+    } else {
+        nueva_resolucion = 12; // Máxima resolución para baja frecuencia
+    }
+
+    // Actualizar timer con nueva configuración
+    ledc_timer_config_t timer_cfg = {};
+    timer_cfg.speed_mode = LEDC_HIGH_SPEED_MODE;
+    timer_cfg.timer_num = (ledc_timer_t)timer;
+    timer_cfg.freq_hz = frecuencies;
+    timer_cfg.duty_resolution = (ledc_timer_bit_t)nueva_resolucion;
+    timer_cfg.clk_cfg = LEDC_AUTO_CLK;
+    
+    if(ledc_timer_config(&timer_cfg) != ESP_OK) {
+        return false;
+    }
+
+    // Actualizar todos los canales que usan ese timer
+    for(int i = 0; i < NUMBER_OF_ELECTRONIC_LOADS; i++){
+        if(pwmConfig[i].timer == timer){
+            pwmConfig[i].freq = frecuencies;
+            pwmConfig[i].resolution = nueva_resolucion;
+            pwmConfig[i].max_duty = calcularMaxDuty(nueva_resolucion);  // ← RECALCULAR
+        }
+    }
+
+    return true;
 }
 bool PWMSetMaxDC(float dc,int index){
-    if (index < 0 || index >= NUMBER_OF_SENSORS) return false;
+    if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return false;
     if (dc < 0.0f || dc > 100.0f) return false;
     max_dc_value[index] = dc;
 
@@ -310,7 +377,7 @@ bool PWMSetMaxDC(float dc,int index){
 }
 
 bool setControlMode(modoFuncionamiento_t mode, int index){
-  if(index<0 || index>=NUMBER_OF_SENSORS) return false;
+  if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return false;
   // Guardar en NVS
   char key[32];
   makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, index);
@@ -322,8 +389,8 @@ bool setControlMode(modoFuncionamiento_t mode, int index){
 }
 
 float PWMGetMaxDC(int index){
-    if(index<0 || index>=NUMBER_OF_SENSORS) return -1.0f;
-    return max_dc_value[index];
+    if(index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return -1;
+    return pwmConfig[index].max_duty;
 }
 
 
@@ -358,14 +425,14 @@ float convertirCorrienteADc(float reference_current){
 
 
 modoFuncionamiento_t getModoFuncionamiento(int index){
-    if(index<0 || index>=NUMBER_OF_SENSORS) return NONE;
+    if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return NONE;
     return modoFuncionamiento[index];
 }
 
 
 // Nuevo: setter para referencia manual de corriente (mA) usada por PID y curva en modo OFF
 bool setCurrentReference_mA(float current_mA,int index){
-  if(index<0 || index>=NUMBER_OF_SENSORS) return false;
+  if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return false;
     if (current_mA < 0.0f) return false;
     currentReference_mA[index] = current_mA;
     return true;
@@ -381,7 +448,7 @@ float getDCDirecto(float ref){
 
 
 bool getPWMConfig(char index, int *channel, int *freq, int *resolution) {
-    if (index < 0 || index >= NUMBER_OF_SENSORS) {
+    if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) {
         return false;   // índice inválido
     }
 
@@ -399,11 +466,21 @@ static void makeKey(char *out, const char *base, int index) {
 
 
 curve_mode_t getCurveMode(int index){
-    if(index<0 || index>=NUMBER_OF_SENSORS) return OFF_t;
+    if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return OFF_t;
     return curveMode[index];
 }
 
 float getCurrentReference_mA(int index){
-    if(index<0 || index>=NUMBER_OF_SENSORS) return 0.0f;
+    if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return 0.0f;
     return currentReference_mA[index];
+}
+
+
+// Calcula el valor máximo de duty según la resolución
+static int calcularMaxDuty(int resolution) {
+    return (1 << resolution) - 1;  // 2^resolution - 1
+    // Ejemplos:
+    // resolution 10 → (1 << 10) - 1 = 1023
+    // resolution 12 → (1 << 12) - 1 = 4095
+    // resolution 8  → (1 << 8)  - 1 = 255
 }

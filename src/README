@@ -51,6 +51,10 @@ Ultimo cambio...
 
 
 
+Las comunicaciones i2c con el sensor se cargan automaticamente pero 
+SDA=D21
+SCL=D22
+
 
 Curva 0 que se simula
 

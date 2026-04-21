@@ -18,7 +18,7 @@
 #define MAX_DATA_BUFFER 30
 #define SEND_DATA true
 #define NOT_SEND_DATA false
-#define MAX_SENSORS 2   //Cantidad de sensores a imprimir en el menu se sensores analogicos
+#define MAX_SENSORS 3   //Cantidad de sensores a imprimir en el menu se sensores analogicos
 
 #define MAX_APP_BUFFER 128
 char app_buffer[MAX_APP_BUFFER];
