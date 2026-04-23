@@ -4,12 +4,13 @@
 #include "ADS1X15.h"
 
 
+
 typedef enum {
     INA219_,
     ADS1115_
 } sensor_type_t;
 
-sensor_type_t type_sensor[4] = {INA219_, INA219_, ADS1115_, ADS1115_}; // Configura el tipo de cada sensor
+sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_, ADS1115_}; // Configura el tipo de cada sensor
 
 
 // ── Calibracion  ───────────────────────
@@ -21,22 +22,22 @@ const float R_SHUNT_OHMS[4] = {
     0.1f          // Sensor 0x49 (ADS1115) - no se usa
 };
 //ADS1115
-float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f};
-float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 13.04f};
+float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f,0.0f,  0.0f};
+float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f,0.0f, 0.0f, 13.04f};
 
 float ads_offset_i[NUMBER_OF_SENSORS];   
 float ads_gain_i[NUMBER_OF_SENSORS];
 //ACS712
 
-float acs_offset_V[NUMBER_OF_SENSORS]={0.0f,0.0f,2.5f + 0.050f};   // ~2.5V + error real medido
-float acs_gain[NUMBER_OF_SENSORS]={0.0f,0.0f,1000*0.10f};       // V/A (ej: 0.100 para 100mV/A*1000 para mA/A)
+float acs_offset_V[NUMBER_OF_SENSORS]={0.0f,0.0f,0.0f,0.0f,2.5f + 0.050f};   // ~2.5V + error real medido
+float acs_gain[NUMBER_OF_SENSORS]={0.0f,0.0f,0.0f,0.0f,1000*0.10f};       // V/A (ej: 0.100 para 100mV/A*1000 para mA/A)
 
 
 // ── Variables globales ────────────────────────────────────────────────────
 ADS1115* ads1115[NUMBER_OF_SENSORS]; // Sensores ADS1115 
 Adafruit_INA219* ina219[NUMBER_OF_SENSORS];  // ← CAMBIO: era [2], ahora [NUMBER_OF_SENSORS]
-uint8_t sensorAddresses[4] = {0x40, 0x41, 0x48, 0x49};  // Direcciones I2C de los sensores
-bool sensorAvailable[4] = {false, false, false, false};
+uint8_t sensorAddresses[NUMBER_OF_SENSORS] = {0x40, 0x41,0x44, 0x45, 0x48};  // Direcciones I2C de los sensores
+bool sensorAvailable[NUMBER_OF_SENSORS] = {false, false, false,false, false};
 
 
 
@@ -116,7 +117,7 @@ bool getData(ADCData& data, int sensor) {
 }
 
 
-//Comoel ADS1115 no se calibra,lo hago a mano
+//Como el ADS1115 no se calibra,lo hago a mano
 float getCalibratedVoltageADS1115(int sensor) {
 
     int16_t raw = ads1115[sensor]->readADC_Differential_2_3();
@@ -142,7 +143,6 @@ float getCalibratedCurrentADS1115(int sensor) {
     float deltaV = voltage - acs_offset_V[sensor];
 
     // Paso 3: convertir a corriente (V/A)
-    float current = deltaV / acs_gain[sensor]; // Convertir a mA
-
-    return current; // amperios
+    float current = deltaV / acs_gain[sensor]; 
+    return current; 
 }

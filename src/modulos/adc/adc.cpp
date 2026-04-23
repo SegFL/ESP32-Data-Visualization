@@ -7,8 +7,8 @@
 #include <modulos/userInterface/userInterface.h>
 #include <modulos/time/time.h>
 #include <modulos/carga_electronica/carga_electronica.h>
-
-float lastCurrent_mA[NUMBER_OF_SENSORS] = {0.0f,0.0f,0.0f}; // Variable para almacenar la última corriente medida
+#include <config.h>
+float lastCurrent_mA[4] = {0.0f,0.0f,0.0f,0.0f}; // Variable para almacenar la última corriente medida
 void adcInit() {
 
     // Configuración de pines
