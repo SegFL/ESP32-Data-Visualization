@@ -20,6 +20,9 @@ curve_t** newCurveArray(int size){
     }
     return newArray;
 }
+
+
+
 curve_t* createCurve(int pin) {
     curve_t *curve = (curve_t *)malloc(sizeof(curve_t));
     if (curve == NULL) {
