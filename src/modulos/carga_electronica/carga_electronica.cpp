@@ -47,15 +47,15 @@ PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
 // Variables globales
 float DC = 0;  // Duty cycle actual (0-100%)
 
-float max_dc_value[NUMBER_OF_ELECTRONIC_LOADS] = {800.0, 800.0}; // Valor máximo del duty cycle (0-100%)
+float max_dc_value[NUMBER_OF_ELECTRONIC_LOADS] = {100.0, 100.0, 100.0, 100.0}; // Valor máximo del duty cycle (0-100%)
 float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
-float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
+float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {0.0f, 0.0f,0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
 
-modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_ELECTRONIC_LOADS] = {NONE, NONE}; // Modo de funcionamiento inicial (PID o directo/NONE)
+modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_ELECTRONIC_LOADS] = {NONE, NONE, NONE, NONE}; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
-curve_mode_t curveMode[NUMBER_OF_ELECTRONIC_LOADS] = {OFF_t, OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
+curve_mode_t curveMode[NUMBER_OF_ELECTRONIC_LOADS] = {OFF_t, OFF_t, OFF_t, OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
 
 bool arraySelected=false;
 int arraySelectedPos=-1;
@@ -238,6 +238,7 @@ void CargaElectronicaUpdate(){
         break;
       case NONE: 
 
+      //Todo valor que reciva de referenceCurrent termina siendo un porcentaje de Duty Cycle directo
         dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
         //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
         break;
@@ -246,6 +247,7 @@ void CargaElectronicaUpdate(){
         //writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
         break;
     }
+
   /*
     if(modoFuncionamiento==PID){
       writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
@@ -276,6 +278,7 @@ void CargaElectronicaUpdate(){
 // Se espera un valor entre 0 y 100, si el valor es mayor al máximo permitido se limita al máximo permitido
 // Se espera un valor entre 0 y 100 (corrige comportamiento previo)
 // Ahora recorta (clamp) usando max_dc_value
+
 float PWMSetDC(float currentReference,int index) {
     if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return -1.0f;
     if (currentReference < 0.0f) return -1.0f;
