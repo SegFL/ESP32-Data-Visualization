@@ -1,9 +1,11 @@
+
+
+
 #include "carga_electronica.h"
 //#define PRUEBA_CURVAS 0 //Si se define como 1 se habilita la prueba de curvas, si no se deja como 0
 #include "driver/ledc.h"
 
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
-// CORRECCIÓN: Eliminada variable global curve innecesaria que causaba confusión 
 
 float convertirCorrienteADc(float reference_current);
 void cargarConfiguracionNvs();
@@ -30,11 +32,11 @@ Pin 22 ESP32 = PIN4  TERMINAL = AUXILIAR = GPIO 33 (TIMER 3)
 */
 
 PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
-    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = 16},  // GPIO 16 → Timer 0
-    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = 17},  // GPIO 17 → Timer 1
-    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = 26},  // GPIO 26 → Timer 2
-    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = 27},  // GPIO 27 → Timer 2 (comparte timer con GPIO 26)
-    { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = 33}   // GPIO 33 → Timer 3
+    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = 16, .max_duty = 0},  // GPIO 16 → Timer 0
+    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = 17, .max_duty = 0},  // GPIO 17 → Timer 1
+    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = 26, .max_duty = 0},  // GPIO 26 → Timer 2
+    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = 27, .max_duty = 0},  // GPIO 27 → Timer 2 (comparte timer con GPIO 26)
+    { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = 33, .max_duty = 0}   // GPIO 33 → Timer 3
 };
 
 
@@ -47,15 +49,15 @@ PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
 // Variables globales
 float DC = 0;  // Duty cycle actual (0-100%)
 
-float max_dc_value[NUMBER_OF_ELECTRONIC_LOADS] = {100.0, 100.0, 100.0, 100.0}; // Valor máximo del duty cycle (0-100%)
+float max_dc_value[NUMBER_OF_ELECTRONIC_LOADS]={100.0f}; // Valor máximo del duty cycle (0-100%)
 float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
-float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {0.0f, 0.0f,0.0f, 0.0f};   // Referencia manual en mA usada por PID/curvas
+float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {0.0f};
 
-modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_ELECTRONIC_LOADS] = {NONE, NONE, NONE, NONE}; // Modo de funcionamiento inicial (PID o directo/NONE)
+modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_ELECTRONIC_LOADS]={NONE} ; // Modo de funcionamiento inicial (PID o directo/NONE)
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
-curve_mode_t curveMode[NUMBER_OF_ELECTRONIC_LOADS] = {OFF_t, OFF_t, OFF_t, OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
+curve_mode_t curveMode[NUMBER_OF_ELECTRONIC_LOADS] ={OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
 
 bool arraySelected=false;
 int arraySelectedPos=-1;
@@ -109,12 +111,14 @@ void CargaElectronicaInit(){
   DC = 0.0f; // Inicializar el duty cycle a 0 (%)
   for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
     max_dc_value[i] = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
+    ledcWrite(pwmConfig[i].channel,0); // Inicializar el PWM a 0 (apagado)
+
+    setCurrentReference_mA(0.0f,i); // referencia manual en mA
+    writeSerialComln(String("Reference set to : ") + String(getCurrentReference_mA(i)) + String(" mA for channel ") + String(i));
+
   }
-  currentReference_mA[0] = 0.0f; // referencia manual en mA
-  currentReference_mA[1] = 0.0f; // referencia manual en mA
-  ledcWrite(pwmConfig[0].channel,0); // Inicializar el PWM a 0 (apagado)
-  ledcWrite(pwmConfig[1].channel,0); // Inicializar el PWM a 0 (apagado)
-  simuladorCurvasInit(3);
+  
+  simuladorCurvasInit(4);//Son 4 curvas porque la HV son 2 en una
 
         //Crear la curva usando la nueva función encapsulada
         /*
@@ -133,7 +137,15 @@ void CargaElectronicaInit(){
         sendCurves();
         printCurves();
  
-
+        for(int i=0; i<NUMBER_OF_ELECTRONIC_LOADS; i++){
+            currentReference_mA[i] = 0.0f;
+            max_dc_value[i] = 100.0f;
+            ledcWrite(pwmConfig[i].channel, 0);
+            
+            // ⚠️ NO USAR setCurrentReference_mA aquí, asignación directa
+            writeSerialComln(String("Canal ") + String(i) + 
+                            String(" inicializado: ") + String(currentReference_mA[i]) + String(" mA"));
+        }
 
         cargarConfiguracionNvs();
 
@@ -212,7 +224,8 @@ void CargaElectronicaUpdate(){
       // Usar siempre valor manual
       case OFF_t:
         // En modo OFF la referencia de corriente viene de la referencia manual (mA)
-        referenceCurrent = currentReference_mA[i];
+        referenceCurrent = getCurrentReference_mA(i);
+
         break;
       case ON_t:        
         aux = getCurveValue(i);
@@ -224,7 +237,7 @@ void CargaElectronicaUpdate(){
           referenceCurrent = 0.0f;
         } break;
       default:
-        referenceCurrent = 0;
+        referenceCurrent = 0.0f;
         break;
     }
 
@@ -248,6 +261,15 @@ void CargaElectronicaUpdate(){
         break;
     }
 
+
+/*
+    // Aplicar recorte por max_dc_value
+    if (max_dc_value[i] >= 0.0f && max_dc_value[i] <= 100.0f) {
+        if (dutyCycleAux > max_dc_value[i]) {
+            dutyCycleAux = max_dc_value[i];
+            writeSerialComln(String("DC recortado a max_dc_value: ") + String(dutyCycleAux) + " %");
+        }
+    }*/
   /*
     if(modoFuncionamiento==PID){
       writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
@@ -269,6 +291,8 @@ void CargaElectronicaUpdate(){
     //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
     //ledcWrite(PWM_CHANNEL, pwmValue);
 
+
+
     ledcWrite(pwmConfig[i].channel,pwmValue); // Inicializar el PWM a 0 (apagado)  
   }
 }
@@ -279,16 +303,16 @@ void CargaElectronicaUpdate(){
 // Se espera un valor entre 0 y 100 (corrige comportamiento previo)
 // Ahora recorta (clamp) usando max_dc_value
 
-float PWMSetDC(float currentReference,int index) {
+float PWMSetDC(float currentRef,int index) {
     if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return -1.0f;
-    if (currentReference < 0.0f) return -1.0f;
+    if (currentRef < 0.0f) return -1.0f;
     // aplicar límite máximo configurado
-    float limited = currentReference;
-    if (max_dc_value[index] >= 0.0f && max_dc_value[index] <= 1000.0f) {
+    float limited = currentRef;
+    if (max_dc_value[index] >= 0.0f && max_dc_value[index] <= 100.0f) {
         if (limited > max_dc_value[index]) limited = max_dc_value[index];
     }
     // límite físico 0..100
-    if (limited > 1000.0f) limited = 1000.0f;
+    if (limited > 100.0f) limited = 100.0f;
     DC = limited;
     return DC;
 }
@@ -431,9 +455,17 @@ modoFuncionamiento_t getModoFuncionamiento(int index){
 
 
 // Nuevo: setter para referencia manual de corriente (mA) usada por PID y curva en modo OFF
-bool setCurrentReference_mA(float current_mA,int index){
-  if(index<0 || index>=NUMBER_OF_ELECTRONIC_LOADS) return false;
-    if (current_mA < 0.0f) return false;
+bool setCurrentReference_mA(float current_mA, int index){
+    if(index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) {
+        writeSerialComln(String("ERROR: Index fuera de rango: ") + String(index));
+        return false;
+    }
+    if(current_mA < 0.0f) {
+        writeSerialComln(String("ERROR: Corriente negativa: ") + String(current_mA));
+        return false;
+    }
+    
+    
     currentReference_mA[index] = current_mA;
     return true;
 }

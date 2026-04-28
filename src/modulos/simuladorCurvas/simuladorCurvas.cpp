@@ -188,7 +188,7 @@ float getCurveValue(int pin) {
         writeSerialComln("Error: Array de curvas no inicializado");
         return -1;
     }
-    if (pin < 0 || pin >= NUMBER_OF_SENSORS) {
+    if (pin < 0 || pin >= NUMBER_OF_ELECTRONIC_LOADS) {
         writeSerialComln("Error: Curva no válida");
         return -1;
     }

@@ -274,6 +274,7 @@ void procesarDatos(String data) {
 
             // OK
             if(setCurrentReference_mA(current, index)){
+                getCurrentReference_mA(index); // Para imprimir el valor actualizado en consola
                 writeSerialComln(
                     String("Corriente de referencia cambiada: Curva ")
                     + String(index)
@@ -341,9 +342,10 @@ void procesarDatos(String data) {
 
         // Aplicar
         if (PWMSetMaxDC( duty,index)) {
+            float maxDC = PWMGetMaxDC(index); // Para imprimir el valor actualizado en consola
             writeSerialComln(
                 String("Curva ") + String(index) +
-                String(" -> Max duty cycle: ") + String(duty) + "%"
+                String(" -> Max duty cycle: ") + String(maxDC) + "%"
             );
         } else {
             writeSerialComln("Error al configurar max duty cycle");
@@ -633,7 +635,7 @@ void printSensorData() {
 
     // 1) Crear array para recibir TODOS los sensores
     //Se queda con el ultimo valor de cada uno
-    ADCData data[MAX_SENSORS];
+    ADCData data[NUMBER_OF_SENSORS];
 
     // 2) Llenarlo con receiveSensorDataToUserInterface()
     if (!receiveSensorDataToUserInterface(data)) {
@@ -644,7 +646,7 @@ void printSensorData() {
     const int LINES_PER_SENSOR = 6;
 
     // 4) Recorrer todos los sensores por pin
-    for (int pin = 0; pin < MAX_SENSORS; pin++) {
+    for (int pin = 0; pin < NUMBER_OF_SENSORS; pin++) {
 
         // Si no hay datos válidos para este sensor, saltearlo
         // Podés agregar un flag de validez si querés
@@ -743,7 +745,7 @@ static void onEnterNode(MenuNode* n) {
             //updateScreen = true; // ya lo usabas para refrescar periódicamente
             break;
         case 8:
-            for(int i=0;i<getCurveArraySize();i++){
+            for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
                 float currentRef = getCurrentReference_mA(i);
                 writeSerialComln(String("Curva ") + String(i) + String(": Corriente de referencia actual: ") + String(currentRef) + String(" mA"));
             }
@@ -932,16 +934,17 @@ void printAllCurvesNvs() {
 
 void handleAppMode(char c) {
 
-    writeSerialCom(String("APP_MODE char recibido: '") + c + String("' (") + String((int)c) + String(")"));
+    
     if (c == '\r') return;
 
     if (c == '\n') {
         app_buffer[app_index] = '\0';
 
         if (app_index == 0) return;  // ignorar líneas vacías
-
+        writeSerialComln(String("APP_MODE cadena recivida:") + String(" (") + String(app_buffer) + String(")"));
         bool ok = procesarComandoApp(String(app_buffer));
         if (!ok) {
+            
             writeSerialComlnAPP("ERROR");
         }
         memset(app_buffer, 0, sizeof(app_buffer));
@@ -958,7 +961,7 @@ bool procesarComandoApp(String cmd)
 {
     cmd.trim();
 
-    writeSerialComlnAPP(String("CMD:[") + cmd + String("]"));
+    //writeSerialComlnAPP(String("CMD:[") + cmd + String("]"));
     // ==============================
     // Detecta el comando batch
     if (cmd.startsWith("CURVE,")) {
@@ -984,7 +987,21 @@ bool procesarComandoApp(String cmd)
         int n  = payload.substring(c2+1, c3).toInt();
         
         // Crear la curva
-        if (createCurve(id) < 0) { writeSerialComlnAPP("ERROR,CREATE"); return false; }
+        int idElejido = createCurve(id);
+        if (idElejido   < 0) {
+            writeSerialComlnAPP("ERROR,CREATE"); 
+            return false; 
+        }
+        //Para limitar posibles errores nole permito al usuario elegir un id diferente al que se le asigno a la curva
+        if(idElejido != id){
+            if(deleteCurve(idElejido) != 0){
+                writeSerialComlnAPP("ERROR,DELETE(id ocupado:" + String(id) + ")");
+                return false;
+            }
+            writeSerialComlnAPP("ERROR,ID_ASIGNADO_" + String(idElejido));
+            return false;
+        }
+
         
         // Parsear puntos separados por ';'
         String puntos = payload.substring(c3+1);

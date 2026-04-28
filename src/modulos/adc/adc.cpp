@@ -8,7 +8,7 @@
 #include <modulos/time/time.h>
 #include <modulos/carga_electronica/carga_electronica.h>
 #include <config.h>
-float lastCurrent_mA[4] = {0.0f,0.0f,0.0f,0.0f}; // Variable para almacenar la última corriente medida
+float lastCurrent_mA[NUMBER_OF_SENSORS] = {0.0f}; // Variable para almacenar la última corriente medida
 void adcInit() {
 
     // Configuración de pines
@@ -45,5 +45,9 @@ void  leerADC(){
 }
 
 float getLastCurrentData(int index){
+  if(index<0 || index>=NUMBER_OF_SENSORS){
+    writeSerialComln(String("ERROR: Índice de sensor fuera de rango: ") + String(index));
+    return 0.0f;
+  } 
   return lastCurrent_mA[index];
 }

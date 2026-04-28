@@ -15,12 +15,14 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 
 // ── Calibracion  ───────────────────────
 //INA219
-const float R_SHUNT_OHMS[4] = {
+const float R_SHUNT_OHMS[NUMBER_OF_SENSORS] = {
     0.1f,         // Sensor 0x40 (INA219)
     0.0535111f,   // Sensor 0x41 (INA219)
     0.1f,         // Sensor 0x48 (ADS1115) - no se usa
     0.1f          // Sensor 0x49 (ADS1115) - no se usa
 };
+float shuntVoltageOffset_mV[NUMBER_OF_SENSORS]={0.67f,0.38f,0.67f,0.67f,0.0f}; // Offset de tensión en mV para cada sensor INA219 (se mide con carga cero)
+
 //ADS1115
 float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f,0.0f,  0.0f};
 float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f,0.0f, 0.0f, 13.04f};
@@ -29,8 +31,9 @@ float ads_offset_i[NUMBER_OF_SENSORS];
 float ads_gain_i[NUMBER_OF_SENSORS];
 //ACS712
 
-float acs_offset_V[NUMBER_OF_SENSORS]={0.0f,0.0f,0.0f,0.0f,2.5f + 0.050f};   // ~2.5V + error real medido
-float acs_gain[NUMBER_OF_SENSORS]={0.0f,0.0f,0.0f,0.0f,1000*0.10f};       // V/A (ej: 0.100 para 100mV/A*1000 para mA/A)
+float acs_offset_V[NUMBER_OF_SENSORS]={0.0f,0.0f,0.0f,0.0f,2.5f + 0.068f};   // ~2.5V + error real medido
+//En realidad la ganancia seria el valor normal, pero se invierte para evitar dividir por 0
+float acs_gain[NUMBER_OF_SENSORS]={1.0f,1.0f,1.0f,1.0f,10000.0f};       // V/A (ej: 0.100 para 100mV/A*1000 para mA/A)
 
 
 // ── Variables globales ────────────────────────────────────────────────────
@@ -41,6 +44,7 @@ bool sensorAvailable[NUMBER_OF_SENSORS] = {false, false, false,false, false};
 
 
 
+
 float getCalibratedCurrentADS1115(int sensor);
 float getCalibratedVoltageADS1115(int sensor) ;
 // ── Init ──────────────────────────────────────────────────────────────────
@@ -48,6 +52,7 @@ void ina219Init() {
     writeSerialComln(String("Inicializando sensores INA219 y ADS1115..."));
 
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
+
 
         if(type_sensor[i] == INA219_) {
 
@@ -84,15 +89,16 @@ void ina219Init() {
 }
 
 // ── Lectura de datos ──────────────────────────────────────────────────────
-bool getData(ADCData& data, int sensor) {
-    if (sensor < NUMBER_OF_SENSORS && sensorAvailable[sensor] == true) {
+bool getData(ADCData& data, int const sensor) {
+    if (sensor >= 0 && sensor < NUMBER_OF_SENSORS && sensorAvailable[sensor] == true) {
+
 
         if(type_sensor[sensor] == INA219_) {
-            
+
             // getBusVoltage_V() y getShuntVoltage_mV() no tocan el registro
             // de calibración → valores directos del ADC, siempre confiables
             data.busVoltage_V    = ina219[sensor]->getBusVoltage_V();
-            data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV();
+            data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV()-shuntVoltageOffset_mV[sensor]; // Restar offset de shunt
 
             // Corriente y potencia calculadas manualmente
             // I = V_shunt / R_shunt
@@ -100,12 +106,12 @@ bool getData(ADCData& data, int sensor) {
             data.power_mW   = data.current_mA * data.busVoltage_V;
             
         } else if(type_sensor[sensor] == ADS1115_) {
-            int16_t val_cur = getCalibratedCurrentADS1115(sensor);
-            int16_t val_bus = getCalibratedVoltageADS1115(sensor);
+            float val_cur = getCalibratedCurrentADS1115(sensor);
+            float val_bus = getCalibratedVoltageADS1115(sensor);
             //Asigno la tension y corriente a la estructura como si fuese un INA219 
-            data.busVoltage_V   = getCalibratedVoltageADS1115(sensor);
+            data.busVoltage_V   = val_bus;
             data.shuntVoltage_mV = 0.0f;
-            data.current_mA      = getCalibratedCurrentADS1115(sensor);
+            data.current_mA      = val_cur;
             data.power_mW        = data.current_mA * data.busVoltage_V;
         }
 
@@ -120,7 +126,7 @@ bool getData(ADCData& data, int sensor) {
 //Como el ADS1115 no se calibra,lo hago a mano
 float getCalibratedVoltageADS1115(int sensor) {
 
-    int16_t raw = ads1115[sensor]->readADC_Differential_2_3();
+    float raw = ads1115[sensor]->readADC_Differential_2_3();
 
     float corrected = raw - ads_offset_v[sensor];
 
@@ -135,14 +141,16 @@ float getCalibratedVoltageADS1115(int sensor) {
 }
 float getCalibratedCurrentADS1115(int sensor) {
 
-    int16_t raw = ads1115[sensor]->readADC_Differential_0_1();
+    float raw = ads1115[sensor]->readADC_Differential_0_1();
     // Paso 1: convertir directo a voltaje
     float voltage = ads1115[sensor]->toVoltage(raw);
 
     // Paso 2: restar offset del ACS712 (~2.5V real)
     float deltaV = voltage - acs_offset_V[sensor];
+    //  PROTECCIÓN
 
     // Paso 3: convertir a corriente (V/A)
-    float current = deltaV / acs_gain[sensor]; 
+    float current = deltaV * acs_gain[sensor]; 
+
     return current; 
 }
