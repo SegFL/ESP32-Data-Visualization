@@ -30,13 +30,15 @@ void  leerADC(){
       if(getData(temp, i) == true){
         // Solo enviar la corriente al actuador
         //sendToActuator(temp.current_mA); 
-        sendSensorDataToUserInterface(temp);
+        
 
         if(sendDataStatus()==true){
 
           //Envio datos por la terminal serie hacia la app
           writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.current_mA)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.power_mW)+","+String(temp.pin));
         }
+        sendSensorDataToUserInterface(temp);
+        
       }
       lastCurrent_mA[i] = temp.current_mA; // Actualizar la última corriente medida(para el PID)
       i++;

@@ -37,13 +37,16 @@ void Task1(void *pvParameters) {
 void Task2(void *pvParameters)
 {
     TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(200);
+    const TickType_t period = pdMS_TO_TICKS(50);
 
     for (;;)
     {
+
+
         leerADC();
         CargaElectronicaUpdate();
         //dacUpdate();
+
 
         int request = 1;
         xQueueSend(timeRequestQueue, &request, 0); // no bloquear

@@ -1,6 +1,6 @@
 #include "queueCom.h"
 
-#define QUEUE_LENGTH 100       // Máximo número de elementos en la cola
+#define QUEUE_LENGTH 10       // Máximo número de elementos en la cola
 #define ITEM_SIZE sizeof(ADCData) // Tamaño de cada elemento (en este caso, un struct ADCData)
 
 QueueHandle_t xQueueAdcUserInterface;  // Cola para los datos de ADC
@@ -21,7 +21,9 @@ void queueInit(){
 bool sendSensorDataToUserInterface(ADCData data){
 
 
-    if (xQueueSend(xQueueAdcUserInterface, &data, pdMS_TO_TICKS(100)) == pdTRUE) {
+    //Si la cola esta llena descarto los datos porque signfica que no se estan consumiendo, o sea el usuario
+    //no esta en el menu de sensores analogicos, por lo que no tiene sentido acumular datos que no se van a mostrar
+    if (xQueueSend(xQueueAdcUserInterface, &data, pdMS_TO_TICKS(0)) == pdTRUE) {
         return true;
     }
     return false;

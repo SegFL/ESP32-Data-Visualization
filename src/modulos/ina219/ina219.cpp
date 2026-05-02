@@ -51,6 +51,10 @@ float getCalibratedVoltageADS1115(int sensor) ;
 void ina219Init() {
     writeSerialComln(String("Inicializando sensores INA219 y ADS1115..."));
 
+    //Inicio el bus I2C antes de inicializar los sensores para poder elejir a que frecuencia funciona
+    Wire.begin();
+    Wire.setClock(400000);  
+
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
 
 
@@ -117,6 +121,7 @@ bool getData(ADCData& data, int const sensor) {
 
         data.pin             = sensor;
         data.timestampMillis = customMillis();
+        writeSerialComln(String(data.timestampMillis));
         return true;
     }
     return false;

@@ -637,6 +637,10 @@ void printSensorData() {
     //Se queda con el ultimo valor de cada uno
     ADCData data[NUMBER_OF_SENSORS];
 
+    if(SEND_DATA == false){
+        writeSerialComln("Modo SEND DATA desactivado. No se enviarán datos de sensores.");
+        return;
+    }
     // 2) Llenarlo con receiveSensorDataToUserInterface()
     if (!receiveSensorDataToUserInterface(data)) {
         return;
