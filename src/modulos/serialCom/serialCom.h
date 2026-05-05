@@ -45,6 +45,7 @@ void writeSerialCom(unsigned long data);
 
 void writeSerialComlnAPP(String data);
 
+void writeSerialComlnDATA(const char* data);
 
 #endif // SERIALCOM_H
 

@@ -32,28 +32,42 @@ void Task1(void *pvParameters) {
   }
 }
 
-//Esta tarea se ejecuta cada 200mSmediante un timer,asi el tiempo de ejecucion no se acumula por lo que
-// no provoca delays constantesy un muestreo NO uniforme
-void Task2(void *pvParameters)
-{
+/*
+Task2 (Core 1)
+├── leerADC()
+│   ├── getData(sensor 0)  ← I2C ~1ms
+│   │   └── writeSerialComlnDATA()  ← String + malloc x6
+│   ├── getData(sensor 1)  ← I2C ~1ms
+│   │   └── writeSerialComlnDATA()
+│   └── ... x5 sensores
+│   └── lastCurrent_mA[i] = temp.current_mA  ← variable global sin protección
+│
+└── CargaElectronicaUpdate()
+    └── getLastCurrentData(i)  ← lee lastCurrent_mA[] sin protección
+
+
+
+*/
+void TaskSensors(void *pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(50);
+    const TickType_t period = pdMS_TO_TICKS(20);
 
-    for (;;)
-    {
-
-
+    for (;;) {
         leerADC();
-        CargaElectronicaUpdate();
-        //dacUpdate();
-
-
-        int request = 1;
-        xQueueSend(timeRequestQueue, &request, 0); // no bloquear
-
         vTaskDelayUntil(&lastWake, period);
     }
 }
+//Tarea que solo controla el PID
+void TaskControl(void *pvParameters) {
+    TickType_t lastWake = xTaskGetTickCount();
+    const TickType_t period = pdMS_TO_TICKS(20); // PID puede correr más seguido
+
+    for (;;) {
+        CargaElectronicaUpdate();
+        vTaskDelayUntil(&lastWake, period);
+    }
+}
+
 
 
 void setup() {
@@ -77,8 +91,8 @@ void setup() {
   xTaskCreatePinnedToCore(Task1, "Task1", 4096, NULL, 1, &Task1Handle, 0);
   //Task2 tendra la priordad maxima ya que se encarga se leer y escribir entradas/salidas
 
-  xTaskCreatePinnedToCore(Task2, "Task2", 4096, NULL, configMAX_PRIORITIES - 1, &Task2Handle, 1);
-
+  xTaskCreatePinnedToCore(TaskSensors, "Sensors", 4096, NULL, 4, NULL, 1);
+  xTaskCreatePinnedToCore(TaskControl, "Control", 2048, NULL, 5, NULL, 1); 
   writeSerialComln("Tareas inicializadas");
 }
 

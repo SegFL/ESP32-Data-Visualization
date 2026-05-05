@@ -15,11 +15,12 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 
 // ── Calibracion  ───────────────────────
 //INA219
-const float R_SHUNT_OHMS[NUMBER_OF_SENSORS] = {
-    0.1f,         // Sensor 0x40 (INA219)
-    0.0535111f,   // Sensor 0x41 (INA219)
-    0.1f,         // Sensor 0x48 (ADS1115) - no se usa
-    0.1f          // Sensor 0x49 (ADS1115) - no se usa
+const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
+    1.0f / 0.1f,        // 10.0f
+    1.0f / 0.0535111f,  // ~18.69f
+    1.0f / 0.1f,
+    1.0f / 0.1f,
+    0.0f
 };
 float shuntVoltageOffset_mV[NUMBER_OF_SENSORS]={0.67f,0.38f,0.67f,0.67f,0.0f}; // Offset de tensión en mV para cada sensor INA219 (se mide con carga cero)
 
@@ -94,37 +95,35 @@ void ina219Init() {
 
 // ── Lectura de datos ──────────────────────────────────────────────────────
 bool getData(ADCData& data, int const sensor) {
-    if (sensor >= 0 && sensor < NUMBER_OF_SENSORS && sensorAvailable[sensor] == true) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS || !sensorAvailable[sensor])
+        return false;
 
+    // Puntero local al sensor, el compilador puede mantenerlo en registro
+    Adafruit_INA219* const ina = ina219[sensor];
 
-        if(type_sensor[sensor] == INA219_) {
+    if (type_sensor[sensor] == INA219_) {
+        const float shuntV = ina->getShuntVoltage_mV() - shuntVoltageOffset_mV[sensor];
+        const float busV   = ina->getBusVoltage_V();
+        const float cur    = shuntV * R_SHUNT_INV[sensor];
 
-            // getBusVoltage_V() y getShuntVoltage_mV() no tocan el registro
-            // de calibración → valores directos del ADC, siempre confiables
-            data.busVoltage_V    = ina219[sensor]->getBusVoltage_V();
-            data.shuntVoltage_mV = ina219[sensor]->getShuntVoltage_mV()-shuntVoltageOffset_mV[sensor]; // Restar offset de shunt
+        data.shuntVoltage_mV = shuntV;
+        data.busVoltage_V    = busV;
+        data.current_mA      = cur;
+        data.power_mW        = cur * busV;  // reusar variables locales, no campos del struct
 
-            // Corriente y potencia calculadas manualmente
-            // I = V_shunt / R_shunt
-            data.current_mA = data.shuntVoltage_mV / R_SHUNT_OHMS[sensor];
-            data.power_mW   = data.current_mA * data.busVoltage_V;
-            
-        } else if(type_sensor[sensor] == ADS1115_) {
-            float val_cur = getCalibratedCurrentADS1115(sensor);
-            float val_bus = getCalibratedVoltageADS1115(sensor);
-            //Asigno la tension y corriente a la estructura como si fuese un INA219 
-            data.busVoltage_V   = val_bus;
-            data.shuntVoltage_mV = 0.0f;
-            data.current_mA      = val_cur;
-            data.power_mW        = data.current_mA * data.busVoltage_V;
-        }
+    } else { // ADS1115_
+        const float cur  = getCalibratedCurrentADS1115(sensor);
+        const float busV = getCalibratedVoltageADS1115(sensor);
 
-        data.pin             = sensor;
-        data.timestampMillis = customMillis();
-        writeSerialComln(String(data.timestampMillis));
-        return true;
+        data.shuntVoltage_mV = 0.0f;
+        data.busVoltage_V    = busV;
+        data.current_mA      = cur;
+        data.power_mW        = cur * busV;
     }
-    return false;
+
+    data.pin             = sensor;
+    data.timestampMillis = customMillis();
+    return true;
 }
 
 

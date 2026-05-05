@@ -9,10 +9,15 @@
 #include <modulos/carga_electronica/carga_electronica.h>
 #include <config.h>
 float lastCurrent_mA[NUMBER_OF_SENSORS] = {0.0f}; // Variable para almacenar la última corriente medida
+static SemaphoreHandle_t currentMutex = nullptr;
+
+
+
 void adcInit() {
 
     // Configuración de pines
     pinMode(36, INPUT);
+    currentMutex = xSemaphoreCreateMutex();
 
 }
 
@@ -35,21 +40,40 @@ void  leerADC(){
         if(sendDataStatus()==true){
 
           //Envio datos por la terminal serie hacia la app
-          writeSerialComlnDATA(String(temp.timestampMillis)+","+String(temp.current_mA)+","+String(temp.busVoltage_V)+","+String(temp.shuntVoltage_mV)+","+String(temp.power_mW)+","+String(temp.pin));
+
+            char buf[96];
+            snprintf(buf, sizeof(buf), "%lu,%.3f,%.3f,%.3f,%.3f,%d",
+                temp.timestampMillis,
+                temp.current_mA,
+                temp.busVoltage_V,
+                temp.shuntVoltage_mV,
+                temp.power_mW,
+                temp.pin
+            );
+            writeSerialComlnDATA(buf);
         }
         sendSensorDataToUserInterface(temp);
         
       }
-      lastCurrent_mA[i] = temp.current_mA; // Actualizar la última corriente medida(para el PID)
+       // Actualizar la última corriente medida(para el PID)
+
+       if (xSemaphoreTake(currentMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+            lastCurrent_mA[i] = temp.current_mA;
+            xSemaphoreGive(currentMutex);
+        }
+
       i++;
   }
 
 }
 
-float getLastCurrentData(int index){
-  if(index<0 || index>=NUMBER_OF_SENSORS){
-    writeSerialComln(String("ERROR: Índice de sensor fuera de rango: ") + String(index));
-    return 0.0f;
-  } 
-  return lastCurrent_mA[index];
+float getLastCurrentData(int index) {
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return 0.0f;
+    
+    float val = 0.0f;
+    if (xSemaphoreTake(currentMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+        val = lastCurrent_mA[index];
+        xSemaphoreGive(currentMutex);
+    }
+    return val;
 }

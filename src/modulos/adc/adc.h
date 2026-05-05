@@ -6,6 +6,7 @@
 #include <modulos/ina219/ina219.h>
 #include "../queueCom/queueCom.h"
 #include "../../config.h"
+#include <freertos/semphr.h>
 
 
 void adcInit() ;

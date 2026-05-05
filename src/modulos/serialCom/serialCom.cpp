@@ -29,7 +29,7 @@ extern QueueHandle_t serialQueue= nullptr;
 void serialComInit() {
     Serial.begin(115200);
     serialQueue = xQueueCreate(SERIAL_QUEUE_SIZE, SERIAL_MSG_MAX_LEN);
-    xTaskCreatePinnedToCore(taskSerialWriter, "TaskSerial", 2048, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(taskSerialWriter, "TaskSerial", 3*2048, NULL, 1, NULL, 0);
 
 }
 
@@ -44,10 +44,7 @@ static void taskSerialWriter(void *pvParameters) {
         }
     }
 }
-void serialTaskInit() {
-    // prioridad 1: la mas baja, corre solo cuando nadie mas necesita CPU
-    xTaskCreatePinnedToCore(taskSerialWriter, "TaskSerial", 2048, NULL, 1, NULL, 0);
-}
+
 
 static void enqueueMsg(const String &data) {
     if (serialQueue == nullptr) return;
@@ -135,4 +132,23 @@ void writeSerialComlnCOMMAND(String data) {
 
 void writeSerialComlnAPP(String data) {
     writeSerialComWithChecksum(String(APP_MODE) + "," + data);
+}
+
+
+
+
+// En serialCom.cpp:
+void writeSerialComlnDATA(const char* data) {
+    char payload[SERIAL_MSG_MAX_LEN];
+    uint8_t checksum = 0;
+    
+    // Construir "0,<data>" y calcular checksum en un solo paso
+    int len = snprintf(payload, sizeof(payload), "%d,%s", DATA, data);
+    for (int i = 0; i < len; i++) checksum ^= (uint8_t)payload[i];
+    
+    char final[SERIAL_MSG_MAX_LEN + 8];
+    snprintf(final, sizeof(final), "%s*%02X\r\n", payload, checksum);
+    
+    if (serialQueue != nullptr)
+        xQueueSend(serialQueue, final, 0);
 }
