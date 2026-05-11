@@ -78,7 +78,7 @@ float getDCPID(float referencia_mA, int index) {
     // PID
     float u = p->Kp * error + p->Ki * p->integral + p->Kd * derivative;
 
-    p->duty += u;
+    p->duty = u;
 
     // saturación + anti-windup simple
     if (p->duty > 100.0f) {
@@ -89,6 +89,27 @@ float getDCPID(float referencia_mA, int index) {
 
     p->error_prev = error;
 
+
+    char buf[128];
+
+    /*
+    if(index==0){
+                float term_p = p->Kp * error;
+        float term_i = p->Ki * p->integral;
+        float term_d = p->Kd * derivative;
+
+        snprintf(buf, sizeof(buf),
+            "[PID %d] ref=%.2f meas=%.2f err=%.3f",
+            index, ref_percent, meas_percent, error);
+        writeSerialComln(buf);
+
+        snprintf(buf, sizeof(buf),
+            "[PID %d]  P=%.3f  I=%.3f  D=%.3f  u=%.3f  duty=%.2f",
+            index, term_p, term_i, term_d, u, p->duty);
+        writeSerialComln(buf);
+    }
+
+*/
     return p->duty;
 }
 

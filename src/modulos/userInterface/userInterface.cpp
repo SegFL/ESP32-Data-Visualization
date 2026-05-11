@@ -163,10 +163,11 @@ void userInterfaceUpdate() {
         // Captura de caracteres
         if(buffer_index < MAX_DATA_BUFFER - 1) {
             // Aceptamos solo números,caracteres , coma y espacios y puntos para los floats
-        if (isdigit(charReceived) || isalpha(charReceived) || 
-            charReceived == ',' || charReceived == '.' || isspace(charReceived)) {
-            data_buffer[buffer_index++] = charReceived;
-        }
+            if (isdigit(charReceived) || isalpha(charReceived) || 
+                charReceived == ',' || charReceived == '.' || 
+                charReceived == '-' || isspace(charReceived)) {
+                data_buffer[buffer_index++] = charReceived;
+            }
         }
     }
 
@@ -382,9 +383,33 @@ void procesarDatos(String data) {
 
     }
 
-    if(menu->id ==19){
-        printCargaElectronica();
+if(menu->id == 19) {
+    // Debug: imprimir el string raw caracter por caracter
+
+    int curveId;
+    float Imin, Imax, Vmin, Vmax, Pmin, Pmax;
+    
+    int parsed = sscanf(data.c_str(), "%d,%f,%f,%f,%f,%f,%f", 
+                        &curveId, &Imin, &Imax, &Vmin, &Vmax, &Pmin, &Pmax);
+
+    writeSerialComln(String("Parsed: ") + String(parsed));
+    writeSerialComln(String("CurveId=") + String(curveId) + 
+                     String(" Imin=") + String(Imin) + 
+                     String(" Imax=") + String(Imax) +
+                     String(" Vmin=") + String(Vmin) + 
+                     String(" Vmax=") + String(Vmax) +
+                     String(" Pmin=") + String(Pmin) + 
+                     String(" Pmax=") + String(Pmax));
+
+    if(parsed == 7) {
+        if(!setLimits(curveId, Imin, Imax, Vmin, Vmax, Pmin, Pmax)) {
+            writeSerialComln(String("Error al setear limites en curva: ") + String(curveId));
+        }
+    } else {
+        writeSerialComln(String("Error: Formato invalido. Introduzca: CurveId,Imin,Imax,Vmin,Vmax,Pmin,Pmax"));
+        writeSerialComln(String("Ejemplo: 1,-1,10.0,-1,30.0,-1,100.0 (-1 para ignorar un limite)"));
     }
+}
 
     if(menu->id ==20){
         int curve, tiempo;
@@ -598,7 +623,6 @@ void printSensor(ADCData data){
 }
 
 bool parseStringToInts(String str, int *num1, int *num2) {
-    writeSerialComln(String("Parseando1: ") + str);
 
     // Convertir el String de Arduino a un const char* para sscanf
     if (sscanf(str.c_str(), "%d,%d", num1, num2) == 2) {
@@ -608,7 +632,6 @@ bool parseStringToInts(String str, int *num1, int *num2) {
 }
 
 bool parseStringToFloats(String str, int *index, float *num1, float *num2, float *num3) {
-    writeSerialComln(String("Parseando2: ") + str);
 
     // Convertir el String de Arduino a un const char* para sscanf
     if (sscanf(str.c_str(), "%d,%f,%f,%f", index, num1, num2, num3) == 4) {
@@ -681,7 +704,6 @@ void printSensorData() {
 
 
 bool parseStringToPoint(String str, int *curve, int *tiempo, float *value, aproximation_point_type_t *type) {
-    writeSerialComln(String("Parseando3: ") + str);
 
     int typeInt = 0;
 
@@ -713,6 +735,7 @@ static bool nodeRequiresInput(int id) {
         case 10: // Max current reference
         case 16: // Activar curva -> requiere ID
         case 18: // Crear curva -> requiere pin
+        case 19: // Modificar limites -> requiere CurveId,Imin,Imax,Vmin,Vmax,Pmin,Pmax
         case 20: // Agregar punto [curva,tiempo,valor]
         case 21: // Activar modo 
         case 22: // Guardar curva -> requiere ID
@@ -780,8 +803,8 @@ static void onEnterNode(MenuNode* n) {
         case 16:
             printCurves();
             break;
-        case 19: // Seleccionar curva (al menos mostrar algo útil)
-            printCargaElectronica();
+        case 19: 
+            printAllLimits();
             break;
         case 21: //Imprimir el modo de las curvas
             for(int i=0;i<getCurveArraySize();i++){
@@ -869,6 +892,7 @@ static void onEnterNode(MenuNode* n) {
             case 9:  writeSerialComln("Ingrese frecuencia <0-78125> y presione 'ENTER'"); break;
             case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione 'ENTER'"); break;
             case 18: writeSerialComln("Introduzca el id deseado de la curva y presione 'ENTER'"); break;
+            case 19: writeSerialComln("Ingrese los limites en formato: CurveId,Imin,Imax,Vmin,Vmax,Pmin,Pmax y presione 'ENTER'"); break;
             case 20: writeSerialComln("Formato: [curva,tiempo,valor,tipo] y presione 'ENTER'"); break;
             case 21: writeSerialComln("Presione el numero de curva para cambiar de modo CURVA / MANUAL y luego presione 'ENTER'"); break;
             case 22: writeSerialComln("ID de curva a GUARDAR y presione 'ENTER'"); break;

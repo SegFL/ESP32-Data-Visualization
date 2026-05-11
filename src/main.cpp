@@ -50,7 +50,7 @@ Task2 (Core 1)
 */
 void TaskSensors(void *pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(20);
+    const TickType_t period = pdMS_TO_TICKS(200);
 
     for (;;) {
         leerADC();
@@ -60,7 +60,7 @@ void TaskSensors(void *pvParameters) {
 //Tarea que solo controla el PID
 void TaskControl(void *pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(20); // PID puede correr más seguido
+    const TickType_t period = pdMS_TO_TICKS(100); // PID puede correr más seguido
 
     for (;;) {
         CargaElectronicaUpdate();

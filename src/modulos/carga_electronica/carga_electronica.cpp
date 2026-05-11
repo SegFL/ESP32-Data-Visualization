@@ -151,8 +151,8 @@ void CargaElectronicaInit(){
 
 
         //Inicilizo los pid
-        PID_Init(0,0.05,0.05,0.0,0.2);
-        PID_Init(1,0.05,0.05,0.0,0.2);
+        PID_Init(0,0.020,0.050,0.000,0.1);
+        PID_Init(1,0.020,0.050,0.000,0.1);
 
 
 
@@ -219,6 +219,8 @@ void CargaElectronicaUpdate(){
     float dutyCycleAux = 0.0f;
     float referenceCurrent = 0.0f; // mA
     float aux = 0.0f;
+    char parameter = '0';
+    
     // Selección de referencia
     switch(curveMode[i]){
       // Usar siempre valor manual
@@ -228,7 +230,12 @@ void CargaElectronicaUpdate(){
 
         break;
       case ON_t:        
-        aux = getCurveValue(i);
+        //Primero me fijo si se supero algun valor maximo o minimo de V-I-P. Esto solo lo hago en modo CURVA, porque en modo MANUAL se supone que el usuario sabe lo que hace y no le hace caso a la curva
+
+        if(checkLimits(i,getLastCurrentData(i)/1000,0,0)){ // Por ahora solo chequeo el limite de corriente, pero se pueden agregar los de tension y potencia facilmente
+          
+        }
+          aux = getCurveValue(i);
         //writeSerialComln("GetCurveValue :" +String(aux));
         if(aux != -1){
           //writeSerialComln("Get Curve Value: " + String(aux) + " mA");
@@ -516,3 +523,4 @@ static int calcularMaxDuty(int resolution) {
     // resolution 12 → (1 << 12) - 1 = 4095
     // resolution 8  → (1 << 8)  - 1 = 255
 }
+

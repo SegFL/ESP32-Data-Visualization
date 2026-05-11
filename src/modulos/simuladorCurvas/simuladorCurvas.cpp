@@ -21,7 +21,7 @@ int getAvailableId(int id);
 void startCurve(curve_t* curve,int pin);
 void endCurve(curve_t* curve,int pin);
 curve_t* loadCurveFromNVS(const char* key);
-int getPosWithId(int curveId);
+
 curve_t** newCurveArray(int size){
     curve_t** newArray=(curve_t**)malloc(sizeof(curve_t*)*size);
     if (newArray == NULL) {
@@ -111,12 +111,12 @@ int createCurve(int id) {
         return -1;
     }
     curve->size = 10;
-    curve->Imax = 0;
-    curve->Imin = 0;
-    curve->Vmax = 0;
-    curve->Vmin = 0;
-    curve->Pmax = 0;
-    curve->Pmin = 0;
+    curve->Imax = -1.0f;
+    curve->Imin = -1.0f;
+    curve->Vmax = -1.0f;
+    curve->Vmin = -1.0f;
+    curve->Pmax = -1.0f;
+    curve->Pmin = -1.0f;
     curve->enabled = false;
     curve->pin = -1;
     curve->timestamp =0; // CORRECCIÓN: Inicializar con tiempo actual
@@ -779,13 +779,14 @@ bool printCurveFromNvs(const char* key) {
         return false;
     }
 
-    // Leer metadatos principales
-    nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &tempCurve.Imax);
-    nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &tempCurve.Imin);
-    nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &tempCurve.Vmax);
-    nvs_get_i32(handle, (String(key) + "_Vmin").c_str(), &tempCurve.Vmin);
-    nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &tempCurve.Pmax);
-    nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &tempCurve.Pmin);
+
+    int32_t tmp = 0;
+    nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &tmp); tempCurve.Imax = (float)tmp;
+    nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &tmp); tempCurve.Imin = (float)tmp;
+    nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &tmp); tempCurve.Vmax = (float)tmp;
+    nvs_get_i32(handle, (String(key) + "_Vmin").c_str(), &tmp); tempCurve.Vmin = (float)tmp;
+    nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &tmp); tempCurve.Pmax = (float)tmp;
+    nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &tmp); tempCurve.Pmin = (float)tmp;
     nvs_get_i32(handle, (String(key) + "_contador").c_str(), &tempCurve.contador);
     nvs_get_i32(handle, (String(key) + "_size").c_str(), &tempCurve.size);
     nvs_get_i32(handle, (String(key) + "_pin").c_str(), &tempCurve.pin);
@@ -1016,12 +1017,14 @@ curve_t* loadCurveFromNVS(const char* key)
     }
 
     // ---- Leer otros parámetros ----
-    nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &curve->Imax);
-    nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &curve->Imin);
-    nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &curve->Vmax);
-    nvs_get_i32(handle, (String(key) + "_Vmin").c_str(), &curve->Vmin);
-    nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &curve->Pmax);
-    nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &curve->Pmin);
+// REEMPLAZAR en loadCurveFromNVS:
+    int32_t tmpF = 0;
+    nvs_get_i32(handle, (String(key) + "_Imax").c_str(), &tmpF); curve->Imax = (float)tmpF;
+    nvs_get_i32(handle, (String(key) + "_Imin").c_str(), &tmpF); curve->Imin = (float)tmpF;
+    nvs_get_i32(handle, (String(key) + "_Vmax").c_str(), &tmpF); curve->Vmax = (float)tmpF;
+    nvs_get_i32(handle, (String(key) + "_Vmin").c_str(), &tmpF); curve->Vmin = (float)tmpF;
+    nvs_get_i32(handle, (String(key) + "_Pmax").c_str(), &tmpF); curve->Pmax = (float)tmpF;
+    nvs_get_i32(handle, (String(key) + "_Pmin").c_str(), &tmpF); curve->Pmin = (float)tmpF;
     nvs_get_i32(handle, (String(key) + "_contador").c_str(), &curve->contador);
     nvs_get_i32(handle, (String(key) + "_pin").c_str(), &curve->pin);
     nvs_get_u32(handle, (String(key) + "_timestamp").c_str(), &curve->timestamp);
@@ -1086,4 +1089,186 @@ int getPosWithId(int curveId){
         }
     }
     return -1;
+}
+
+
+
+
+
+
+// ============================================================
+// GETTERS DE PARÁMETROS POR PIN
+// ============================================================
+
+float getImax(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return -1.0f;
+    curve_t* curve = pinToCurve[pin];
+    if (curve == NULL) return -1.0f;
+    return curve->Imax;
+}
+float getImin(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return -1.0f;
+    curve_t* curve = pinToCurve[pin];
+    if (curve == NULL) return -1.0f;
+    return curve->Imin;
+}
+float getVmax(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return -1.0f;
+    curve_t* curve = pinToCurve[pin];
+    if (curve == NULL) return -1.0f;
+    return curve->Vmax;
+}
+float getVmin(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return -1.0f;
+    curve_t* curve = pinToCurve[pin];
+    if (curve == NULL) return -1.0f;
+    return curve->Vmin;
+}
+float getPmax(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return -1.0f;
+    curve_t* curve = pinToCurve[pin];
+    if (curve == NULL) return -1.0f;
+    return curve->Pmax;
+}
+float getPmin(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return -1.0f;
+    curve_t* curve = pinToCurve[pin];
+    if (curve == NULL) return -1.0f;
+    return curve->Pmin;
+}
+
+// ============================================================
+// VERIFICACIÓN DE LÍMITES
+// ============================================================
+bool checkLimits(int pin, float I, float V, float P) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return false;
+
+    //writeSerialComln(String("Pin ") + String(pin) + String("  I=") + String(I,2) + String("A, V=") + String(V,2) + String("V, P=") + String(P,2) + String("W"));
+    curve_t* curve = pinToCurve[pin];
+    if (curve == NULL || !curve->enabled) return false;
+
+    // Si el límite es < 0 se ignora (no se compara)
+    bool iOverMax  = (curve->Imax >= 0) && (I > getImax(pin));
+    bool iUnderMin = (curve->Imin >= 0) && (I < getImin(pin));
+    bool vOverMax  = (curve->Vmax >= 0) && (V > getVmax(pin));
+    bool vUnderMin = (curve->Vmin >= 0) && (V < getVmin(pin));
+    bool pOverMax  = (curve->Pmax >= 0) && (P > getPmax(pin));
+    bool pUnderMin = (curve->Pmin >= 0) && (P < getPmin(pin));
+
+    bool failed = iOverMax || iUnderMin || vOverMax || vUnderMin || pOverMax || pUnderMin;
+
+    if (!failed) return false;
+
+    endCurve(curve, pin);
+
+    writeSerialComln(String("⚠ LIMITE SUPERADO [Pin ") + String(pin) + String("] - Curva detenida"));
+    writeSerialComln(String("  VALORES  : I=") + String(I,2) + String("A | V=") + String(V,2) + String("V | P=") + String(P,2) + String("W"));
+    writeSerialComln(String("  LIMITES  : Imin=") + (curve->Imin >= 0 ? String(curve->Imin,2) + String("A") : String("(ignorado)")) +
+                                        String(" | Imax=") + (curve->Imax >= 0 ? String(curve->Imax,2) + String("A") : String("(ignorado)")));
+    writeSerialComln(String("             Vmin=") + (curve->Vmin >= 0 ? String(curve->Vmin,2) + String("V") : String("(ignorado)")) +
+                                        String(" | Vmax=") + (curve->Vmax >= 0 ? String(curve->Vmax,2) + String("V") : String("(ignorado)")));
+    writeSerialComln(String("             Pmin=") + (curve->Pmin >= 0 ? String(curve->Pmin,2) + String("W") : String("(ignorado)")) +
+                                        String(" | Pmax=") + (curve->Pmax >= 0 ? String(curve->Pmax,2) + String("W") : String("(ignorado)")));
+    writeSerialComln(String("  CAUSA    :") +
+        (iOverMax  ? String(" I supera IMAX")        : String("")) +
+        (iUnderMin ? String(" I por debajo de IMIN")  : String("")) +
+        (vOverMax  ? String(" V supera VMAX")         : String("")) +
+        (vUnderMin ? String(" V por debajo de VMIN")  : String("")) +
+        (pOverMax  ? String(" P supera PMAX")         : String("")) +
+        (pUnderMin ? String(" P por debajo de PMIN")  : String("")));
+
+    return true;
+}
+
+bool setLimits(int curveId, float Imin, float Imax, float Vmin, float Vmax, float Pmin, float Pmax) {
+    int pos = getPosWithId(curveId);
+    if(pos < 0) return false;
+    curve_t* curve = curveArray[pos];
+    if(curve == NULL) return false;
+
+    // Normalizar: cualquier valor negativo se convierte en -1 (ignorado)
+    Imax = (Imax < 0) ? -1.0f : Imax;
+    Imin = (Imin < 0) ? -1.0f : Imin;
+    Vmax = (Vmax < 0) ? -1.0f : Vmax;
+    Vmin = (Vmin < 0) ? -1.0f : Vmin;
+    Pmax = (Pmax < 0) ? -1.0f : Pmax;
+    Pmin = (Pmin < 0) ? -1.0f : Pmin;
+
+    if (Imin >= 0 && Imax >= 0 && Imin >= Imax) {
+        writeSerialComln(String("Error setLimits: Imin debe ser menor a Imax"));
+        return false;
+    }
+    if (Vmin >= 0 && Vmax >= 0 && Vmin >= Vmax) {
+        writeSerialComln(String("Error setLimits: Vmin debe ser menor a Vmax"));
+        return false;
+    }
+    if (Pmin >= 0 && Pmax >= 0 && Pmin >= Pmax) {
+        writeSerialComln(String("Error setLimits: Pmin debe ser menor a Pmax"));
+        return false;
+    }
+
+    curve->Imax = Imax;
+    curve->Imin = Imin;
+    curve->Vmax = Vmax;
+    curve->Vmin = Vmin;
+    curve->Pmax = Pmax;
+    curve->Pmin = Pmin;
+
+    writeSerialComln(String("Limites actualizados [Curva ") + String(curveId) + String("]"));
+    writeSerialComln(String("  Imin=") + (curve->Imin >= 0 ? String(curve->Imin,2) + String("A") : String("(ignorado)")) +
+                     String(" | Imax=") + (curve->Imax >= 0 ? String(curve->Imax,2) + String("A") : String("(ignorado)")));
+    writeSerialComln(String("  Vmin=") + (curve->Vmin >= 0 ? String(curve->Vmin,2) + String("V") : String("(ignorado)")) +
+                     String(" | Vmax=") + (curve->Vmax >= 0 ? String(curve->Vmax,2) + String("V") : String("(ignorado)")));
+    writeSerialComln(String("  Pmin=") + (curve->Pmin >= 0 ? String(curve->Pmin,2) + String("W") : String("(ignorado)")) +
+                     String(" | Pmax=") + (curve->Pmax >= 0 ? String(curve->Pmax,2) + String("W") : String("(ignorado)")));
+
+    return true;
+}
+bool resetLimits(int pin) {
+    return setLimits(pin, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f);
+}
+void printLimits(int curveId) {
+    int pos = getPosWithId(curveId);
+    if(pos < 0) {
+        writeSerialComln(String("Error: No existe curva con id: ") + String(curveId));
+        return;
+    }
+    curve_t* curve = curveArray[pos];
+    if(curve == NULL) {
+        writeSerialComln(String("Error: Curva invalida"));
+        return;
+    }
+
+    writeSerialComln(String("=============================="));
+    writeSerialComln(String("Limites curva ") + String(curveId));
+    writeSerialComln(String("  Imin=") + (curve->Imin >= 0 ? String(curve->Imin,2) + String("A") : String("(ignorado)")) +
+                     String(" | Imax=") + (curve->Imax >= 0 ? String(curve->Imax,2) + String("A") : String("(ignorado)")));
+    writeSerialComln(String("  Vmin=") + (curve->Vmin >= 0 ? String(curve->Vmin,2) + String("V") : String("(ignorado)")) +
+                     String(" | Vmax=") + (curve->Vmax >= 0 ? String(curve->Vmax,2) + String("V") : String("(ignorado)")));
+    writeSerialComln(String("  Pmin=") + (curve->Pmin >= 0 ? String(curve->Pmin,2) + String("W") : String("(ignorado)")) +
+                     String(" | Pmax=") + (curve->Pmax >= 0 ? String(curve->Pmax,2) + String("W") : String("(ignorado)")));
+    writeSerialComln(String("=============================="));
+}
+
+void printAllLimits() {
+    if(curveArray == NULL) {
+        writeSerialComln(String("Error: Array de curvas no inicializado"));
+        return;
+    }
+
+    int count = getCurveCount();
+    if(count == 0) {
+        writeSerialComln(String("No hay curvas cargadas en el sistema"));
+        return;
+    }
+
+    writeSerialComln(String("=============================="));
+    writeSerialComln(String("LIMITES DE TODAS LAS CURVAS (") + String(count) + String(" curvas)"));
+    writeSerialComln(String("=============================="));
+
+    for(int i = 0; i < curveArraySize; i++) {
+        if(curveArray[i] != NULL) {
+            printLimits(curveArray[i]->id);
+        }
+    }
 }

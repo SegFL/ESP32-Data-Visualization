@@ -116,8 +116,16 @@ MenuNode* menuInit() {
             MenuNode* child18 = create_node("Crear curva", '1',18);
             add_child(child14, child18);
 
-            MenuNode* child20 = create_node("Agregar punto a la curva: [Curva,tiempo,valor,tipo] <-[1,10,9.0,0]->", '2',20);
+            MenuNode* child19 = create_node("Settear limites", '2',19);
+            add_child(child14, child19);
+
+            MenuNode* child20 = create_node("Agregar punto a la curva", '3',20);
             add_child(child14, child20);
+
+
+
+
+
 
 
         MenuNode* child15 = create_node("Ver curvas", '2',15);

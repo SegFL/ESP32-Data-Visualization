@@ -31,12 +31,12 @@ typedef struct {
 typedef struct {
     int id;
     point_t *point;   // Puntero al tipo point_t
-    int Imax;
-    int Imin;
-    int Vmax;
-    int Vmin;
-    int Pmax;
-    int Pmin;
+    float Imax;
+    float Imin;
+    float Vmax;
+    float Vmin;
+    float Pmax;
+    float Pmin;
     int contador;
     int currentIndex;  
     int size;
@@ -69,6 +69,10 @@ void printPinToCurve();
 bool asociarCurvaAPin(int curveId, int pin);
 int getCurveArraySize();
 int loadIDsavedNVS(void);
-
+bool checkLimits(int pin, float I, float V, float P);
+bool setLimits(int curveId, float Imax, float Imin, float Vmax, float Vmin, float Pmax, float Pmin);
 void printAllCurvesNvs();
+int getPosWithId(int curveId);
+void printLimits(int curveId);
+void printAllLimits();
 #endif // SIMULADORCURVAS_H

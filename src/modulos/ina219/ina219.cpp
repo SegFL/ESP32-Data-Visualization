@@ -16,23 +16,23 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 // ── Calibracion  ───────────────────────
 //INA219
 const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
-    1.0f / 0.1f,        // 10.0f
+    1.0f / 0.12f,        // 10.0f
     1.0f / 0.0535111f,  // ~18.69f
     1.0f / 0.1f,
     1.0f / 0.1f,
     0.0f
 };
-float shuntVoltageOffset_mV[NUMBER_OF_SENSORS]={0.67f,0.38f,0.67f,0.67f,0.0f}; // Offset de tensión en mV para cada sensor INA219 (se mide con carga cero)
+float shuntVoltageOffset_mV[NUMBER_OF_SENSORS]={0.1f,0.38f,0.67f,0.67f,0.0f}; // Offset de tensión en mV para cada sensor INA219 (se mide con carga cero)
 
 //ADS1115
 float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f,0.0f,  0.0f};
-float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f,0.0f, 0.0f, 13.04f};
+float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f,0.0f, 0.0f, 14.0f};//13.04
 
 float ads_offset_i[NUMBER_OF_SENSORS];   
 float ads_gain_i[NUMBER_OF_SENSORS];
 //ACS712
 
-float acs_offset_V[NUMBER_OF_SENSORS]={0.0f,0.0f,0.0f,0.0f,2.5f + 0.068f};   // ~2.5V + error real medido
+float acs_offset_V[NUMBER_OF_SENSORS]={0.0f,0.0f,0.0f,0.0f,2.5381f};   // ~2.5V + error real medido
 //En realidad la ganancia seria el valor normal, pero se invierte para evitar dividir por 0
 float acs_gain[NUMBER_OF_SENSORS]={1.0f,1.0f,1.0f,1.0f,10000.0f};       // V/A (ej: 0.100 para 100mV/A*1000 para mA/A)
 
