@@ -17,7 +17,7 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 //INA219
 const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
     1.0f / 0.12f,        // 10.0f
-    1.0f / 0.0535111f,  // ~18.69f
+    1.0f / 0.1f,  // ~18.69f
     1.0f / 0.1f,
     1.0f / 0.1f,
     0.0f

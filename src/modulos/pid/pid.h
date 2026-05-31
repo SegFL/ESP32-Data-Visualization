@@ -9,4 +9,5 @@ float getPIDTs(int index) ;
 void PID_Init(int index, float kp, float ki, float kd, float ts);
 void setPIDParams(int index, float kp, float ki, float kd);
 
+float feedforward(float referencia_mA, int index);
 bool resetPID(int index);

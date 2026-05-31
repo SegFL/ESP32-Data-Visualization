@@ -50,7 +50,6 @@ PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
 float DC = 0;  // Duty cycle actual (0-100%)
 
 float max_dc_value[NUMBER_OF_ELECTRONIC_LOADS]={100.0f}; // Valor máximo del duty cycle (0-100%)
-float maxCurrent=1000.0f; // Valor máximo de corriente en mA
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
 float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {0.0f};
 
@@ -151,8 +150,12 @@ void CargaElectronicaInit(){
 
 
         //Inicilizo los pid
-        PID_Init(0,0.020,0.050,0.000,0.1);
-        PID_Init(1,0.020,0.050,0.000,0.1);
+        PID_Init(0,0.080,0.080,0.000,0.1);
+        PID_Init(1,0.080,0.080,0.000,0.1);
+
+        PID_Init(2,0.080,0.080,0.000,0.1);
+        PID_Init(3,0.080,0.080,0.000,0.1);
+        PID_Init(4,0.080,0.080,0.000,0.1);
 
 
 
@@ -216,6 +219,9 @@ void CargaElectronicaUpdate(){
 
   for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
 
+    if(i!=1){ // Por ahora solo hago la prueba con la carga 1 (GPIO17)
+      continue;
+    }
     float dutyCycleAux = 0.0f;
     float referenceCurrent = 0.0f; // mA
     float aux = 0.0f;
@@ -259,7 +265,11 @@ void CargaElectronicaUpdate(){
       case NONE: 
 
       //Todo valor que reciva de referenceCurrent termina siendo un porcentaje de Duty Cycle directo
-        dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
+       //dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
+       //Uso el valor predecido de dutycycle para la referencia dada porelusuario
+        dutyCycleAux = feedforward(referenceCurrent, i) ;
+
+
         //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
         break;
       default:   
@@ -297,8 +307,6 @@ void CargaElectronicaUpdate(){
 
     //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
     //ledcWrite(PWM_CHANNEL, pwmValue);
-
-
 
     ledcWrite(pwmConfig[i].channel,pwmValue); // Inicializar el PWM a 0 (apagado)  
   }
@@ -481,8 +489,7 @@ bool setCurrentReference_mA(float current_mA, int index){
 //Mapea la referencia de corriente directa al duty cycle
 float getDCDirecto(float ref){
   if(ref<0.0f) return 0.0f;
-  if(ref>maxCurrent) return maxCurrent;
-    return 100*ref/maxCurrent; // Convertir mA a %
+    return 10*ref; // Convertir mA a %
 }
 
 

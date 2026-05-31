@@ -21,8 +21,11 @@ typedef struct {
     float duty;
 } PID_t;
 
-#define MAX_CURVES 4
-static PID_t pid[MAX_CURVES];
+#define MAX_CURVES 
+
+
+
+static PID_t pid[NUMBER_OF_SENSORS];
 
 
 float Kp = 1.0f;
@@ -41,7 +44,7 @@ float duty_percent = 0.0f;
 
 
 void PID_Init(int index, float kp, float ki, float kd, float ts) {
-    if (index < 0 || index >= MAX_CURVES) return;
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return;
 
     pid[index].Kp = kp;
     pid[index].Ki = ki;
@@ -56,7 +59,7 @@ void PID_Init(int index, float kp, float ki, float kd, float ts) {
 // ====== Función de control ======
 // Reemplazar la implementación actual de getDCPID por esta
 float getDCPID(float referencia_mA, int index) {
-    if (index < 0 || index >= MAX_CURVES) return 0.0f;
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return 0.0f;
 
     PID_t *p = &pid[index];
 
@@ -78,7 +81,7 @@ float getDCPID(float referencia_mA, int index) {
     // PID
     float u = p->Kp * error + p->Ki * p->integral + p->Kd * derivative;
 
-    p->duty = u;
+    p->duty = u + feedforward(referencia_mA, index); // Agregar término feedforward
 
     // saturación + anti-windup simple
     if (p->duty > 100.0f) {
@@ -89,8 +92,6 @@ float getDCPID(float referencia_mA, int index) {
 
     p->error_prev = error;
 
-
-    char buf[128];
 
     /*
     if(index==0){
@@ -116,7 +117,7 @@ float getDCPID(float referencia_mA, int index) {
 
 // Función para configurar parámetros PID (Kp, Ki y Kd)
 void setPIDParams(int index, float kp, float ki, float kd) {
-    if (index < 0 || index >= MAX_CURVES) return;
+    if (index < 0 || index >= NUMBER_OF_SENSORS ) return;
     pid[index].Kp = kp;
     pid[index].Ki = ki;
     pid[index].Kd = kd;
@@ -135,7 +136,7 @@ void setPIDTs(float ts) {
 
 // Función para resetear el controlador PID
 bool resetPID(int index) {
-    if (index < 0 || index >= MAX_CURVES) return false;
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return false;
     // Establecer parámetros PID transparentes (sin acción de control)
     pid[index].Kp = 1.0f;
     pid[index].Ki = 1.0f;
@@ -151,7 +152,7 @@ bool resetPID(int index) {
 
 // Función para leer los parámetros PID actuales (Kp, Ki y Kd)
 void getPIDParams(int index, float* kp, float* ki, float* kd) {
-    if (index < 0 || index >= MAX_CURVES) return;
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return;
     if (kp != NULL) *kp = pid[index].Kp;
     if (ki != NULL) *ki = pid[index].Ki;
     if (kd != NULL) *kd = pid[index].Kd;
@@ -159,7 +160,60 @@ void getPIDParams(int index, float* kp, float* ki, float* kd) {
 
 // Función para leer el período de muestreo Ts
 float getPIDTs(int index) {
-    if (index < 0 || index >= MAX_CURVES) return 0.0f;
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return 0.0f;
     return pid[index].Ts;
 }
 
+
+
+#define LUT_MAX_CHANNELS 5
+#define LUT_MAX_POINTS   11
+
+typedef struct {
+    float current_mA;
+    float duty_percent;
+} LUT_Point_t;
+
+LUT_Point_t LUT[LUT_MAX_CHANNELS][LUT_MAX_POINTS] = {
+    // Canal 0: sin calibrar
+    { {-1, -1} },
+
+    // Canal 1: calibrado
+    {   {  0.0f,  45.0f },
+        {   7.6f,  50.0f },
+        { 160.0f,  60.0f },
+        { 295.0f,  65.0f },
+        { 443.0f,  70.0f },
+        { 590.0f,  75.0f },
+        { 760.0f,  80.0f },
+        { 920.0f,  85.0f },
+        {1100.0f,  90.0f },
+        {1400.0f,  95.0f },
+        {1800.0f, 100.0f },
+    },
+
+    // Canal 2, 3, 4: sin calibrar
+    { {-1, -1} },
+    { {-1, -1} },
+    { {-1, -1} },
+};
+
+float feedforward(float referencia_mA, int index) {
+    if (index < 0 || index >= LUT_MAX_CHANNELS) return 0.0f;
+
+    // Buscar el punto más cercano por corriente
+    float best_duty = 0.0f;
+    float best_dist = 1e9f;
+
+    for (int i = 0; i < LUT_MAX_POINTS; i++) {
+        if (LUT[index][i].current_mA < 0) break; // fin de datos
+
+        float dist = fabsf(LUT[index][i].current_mA - referencia_mA);
+        if (dist < best_dist) {
+            best_dist = dist;
+            best_duty = LUT[index][i].duty_percent;
+        }
+    }
+
+    return best_duty;
+}
