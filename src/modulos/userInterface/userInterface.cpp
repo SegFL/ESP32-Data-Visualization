@@ -590,16 +590,35 @@ if(menu->id == 19) {
         
     }
 
-    if(menu->id ==35){
-        int value = data.toInt();   // String → int
+    if (menu->id == 34) {
+        int index = -1;
+        int value = -1;
 
-        if (value < 0)   value = 0;
-        if (value > 255) value = 255;
+        if (sscanf(data.c_str(), "%d,%d", &index, &value) != 2) {
+            writeSerialComln("Error: formato invalido. Use <index>,<0/1>");
+            return;
+        }
 
-        setDacValue((uint8_t)value);
+        if (value != 0 && value != 1) {
+            writeSerialComln("Error: valor invalido. Use 0 (deshabilitar) o 1 (habilitar)");
+            return;
+        }
 
-        writeSerialComln("Valor DAC actual: " + String(getDACValue()));
+        if (!setFeedforwardEnabled((bool)value, index)) {
+            writeSerialComln(String("Error al modificar feedforward. Index invalido: ") + String(index));
+            return;
+        }
+
+        bool enabled = false;
+        getFeedforwardEnabled(&enabled, index);
+        writeSerialComln(
+            String("Curva ") + String(index) +
+            String(": Feedforward ") +
+            (enabled ? "HABILITADO" : "DESHABILITADO")
+        );
     }
+
+
 
 
 
@@ -746,7 +765,7 @@ static bool nodeRequiresInput(int id) {
         case 30: // Cambiar modo de control (PID/NONE)
         case 31: // Resetear parámetros PID
         case 32: // Modificar parámetros PID
-        case 35: // Modificar valor DAC
+        case 34: //
             return true;
         default:
             return false;
@@ -862,18 +881,21 @@ static void onEnterNode(MenuNode* n) {
             //Intenta realizar una conexion a wifi sin esperar el tiempo de espera
             connectWiFi();
         }
-        /*
-        case 34:
+
+        case 34: // Feedforward
         {
-            printStructInfo();
-            printStructData();
+            for (int i = 0; i < NUMBER_OF_ELECTRONIC_LOADS; i++) {
+                bool enabled = false;
+                getFeedforwardEnabled(&enabled, i);
+                writeSerialComln(
+                    String("Curva ") + String(i) +
+                    String(": Feedforward ") +
+                    (enabled ? "HABILITADO" : "DESHABILITADO")
+                );
+            }
         }
-        case 35:
-        {
-            writeSerialComln("DAC (0-255): " + String(getDACValue()));
+
             
-        }
-            */
         default:
             break;
     }
@@ -903,8 +925,7 @@ static void onEnterNode(MenuNode* n) {
             case 29: writeSerialComln("Ingrese el ID de la curva a eliminar de la flash y presione 'ENTER");break;
             case 31: writeSerialComln("Para resetear los parametros del PID presione y-"); break;
             case 32: writeSerialComln("Ingrese parámetros PID en formato index,Kp,Ki,Kd y presione 'ENTER'"); break;
-            case 35: writeSerialComln("DAC (0-255): " + String(getDACValue())); break;
-
+            case 34: writeSerialComln("Ingrese <index>,<0/1> para deshabilitar/habilitar feedforward y presione 'ENTER'"); break;
             default: break;
         }
     }

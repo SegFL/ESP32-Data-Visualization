@@ -165,12 +165,11 @@ MenuNode* menuInit() {
 
         MenuNode* child32 = create_node("Modificar parametros del PID", '3',32);
         add_child(child27, child32);
+        
+        MenuNode* child34 = create_node("Habilitar/Desabilitar feedforward", '4',34);
+        add_child(child27, child34);
 
-        //MenuNode* child34 = create_node("Estructura de estados", '0',34);
-        //add_child(root, child34);
 
-        //MenuNode* child35 = create_node("Dacs", '8',35);
-        //add_child(root, child35);
 
     return root;
 }

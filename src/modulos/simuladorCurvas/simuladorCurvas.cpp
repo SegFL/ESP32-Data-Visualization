@@ -182,7 +182,7 @@ bool initCurve(curve_t *curve) {
 //Devuelve el valor del punto actual de la curva
 //Si no hay puntos, devuelve -1
 //Recive comoparametro el pin asociado a la curva, no el id de la curva
-float getCurveValue(int pin) {
+float getCurveValue(int pin, bool* isNewStep) {
     bool punto_nuevo=false;
     if (curveArray == NULL) {
         writeSerialComln("Error: Array de curvas no inicializado");
@@ -215,6 +215,11 @@ float getCurveValue(int pin) {
 
         if (currentTime >= nextPointTime) {
             curve->currentIndex++;
+             if (isNewStep != NULL &&
+                curve->point[curve->currentIndex].type == STEP) {
+                *isNewStep = true;
+            }
+
         }else{
             if(curve->point[curve->currentIndex+1].type==LINEAR){
 

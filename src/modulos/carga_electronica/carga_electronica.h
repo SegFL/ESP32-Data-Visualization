@@ -48,4 +48,6 @@ modoFuncionamiento_t getModoFuncionamiento(int index);
 bool setCurrentReference_mA(float current_mA,int index);
 bool getPWMConfig(char index, int *channel, int *freq, int *resolution);
 float getCurrentReference_mA(int index);
+bool setFeedforwardEnabled(bool enabled, int index);
+bool getFeedforwardEnabled(bool *enabled, int index);
 #endif

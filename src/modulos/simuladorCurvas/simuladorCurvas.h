@@ -53,7 +53,7 @@ int addPointToCurve(int curveId, int tiempo, float value,aproximation_point_type
 void UpdateCurve(curve_t *curve) ;
 curve_t** newCurveArray(int size);
 void printCurves();
-float getCurveValue(int curveId);
+float getCurveValue(int curveId, bool* isNewStep);
 bool validateCurve(curve_t *curve); // NUEVA: Función de validación
 void sendCurves();
 void simuladorCurvasInit(int size);

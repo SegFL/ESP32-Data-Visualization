@@ -7,6 +7,12 @@
 
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
 
+
+
+#define MAX_DUTY 95.0F
+#define MIN_DUTY 10.0f
+
+
 float convertirCorrienteADc(float reference_current);
 void cargarConfiguracionNvs();
 float getDCDirecto(float ref);
@@ -54,6 +60,7 @@ int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
 float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {0.0f};
 
 modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_ELECTRONIC_LOADS]={NONE} ; // Modo de funcionamiento inicial (PID o directo/NONE)
+bool feedforwardEnabled[NUMBER_OF_ELECTRONIC_LOADS] = {false}; // Indica si el feedforward está habilitado para cada canal
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
 
 curve_mode_t curveMode[NUMBER_OF_ELECTRONIC_LOADS] ={OFF_t}; // Decide si le hace caso a los datos de la curva o a los del usuario
@@ -150,12 +157,12 @@ void CargaElectronicaInit(){
 
 
         //Inicilizo los pid
-        PID_Init(0,0.080,0.080,0.000,0.1);
-        PID_Init(1,0.080,0.080,0.000,0.1);
+        PID_Init(0,0.10,0.10,0.000,0.1);
+        PID_Init(1,0.10,0.10,0.000,0.1);
 
-        PID_Init(2,0.080,0.080,0.000,0.1);
-        PID_Init(3,0.080,0.080,0.000,0.1);
-        PID_Init(4,0.080,0.080,0.000,0.1);
+        PID_Init(2,0.10,0.10,0.000,0.1);
+        PID_Init(3,0.10,0.10,0.000,0.1);
+        PID_Init(4,0.10 ,0.10,0.000,0.1);
 
 
 
@@ -235,20 +242,31 @@ void CargaElectronicaUpdate(){
         referenceCurrent = getCurrentReference_mA(i);
 
         break;
-      case ON_t:        
-        //Primero me fijo si se supero algun valor maximo o minimo de V-I-P. Esto solo lo hago en modo CURVA, porque en modo MANUAL se supone que el usuario sabe lo que hace y no le hace caso a la curva
+        case ON_t: {
+          if (checkLimits(i, getLastCurrentData(i) / 1000, 0, 0)) {
+              // límite superado
+          }
 
-        if(checkLimits(i,getLastCurrentData(i)/1000,0,0)){ // Por ahora solo chequeo el limite de corriente, pero se pueden agregar los de tension y potencia facilmente
-          
-        }
-          aux = getCurveValue(i);
-        //writeSerialComln("GetCurveValue :" +String(aux));
-        if(aux != -1){
-          //writeSerialComln("Get Curve Value: " + String(aux) + " mA");
-          referenceCurrent = aux; // Usar valor de la curva si es válido
-        } else {
-          referenceCurrent = 0.0f;
-        } break;
+
+          //Esta variable solo cambia cuando el nuevo punto de la curva es del tipo step
+          bool isNewStep = false;
+          float curveVal = getCurveValue(i, &isNewStep);  // float, nombre distinto a aux
+          if(feedforwardEnabled[i] && isNewStep){
+              PID_EnableFeedforward(i);
+              if(i==1){ // Solo imprimo para la carga 1 (GPIO17)
+                  writeSerialComln(String("Nuevo paso  ") + String(i) + 
+                                  String(": referencia = ") + String(curveVal) + String(" mA"));
+              }
+          }
+
+
+          if (curveVal != -1) {
+              referenceCurrent = curveVal;
+          } else {
+              referenceCurrent = 0.0f;
+          }
+          break;
+      }
       default:
         referenceCurrent = 0.0f;
         break;
@@ -259,6 +277,7 @@ void CargaElectronicaUpdate(){
       case PID:  
       //El segundo argumento es el indice del pid que se quiere usar
         dutyCycleAux = getDCPID(referenceCurrent,i);
+
         //writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
         //                String(" -> Duty Cycle: ") + String(dutyCycleAux));
         break;
@@ -267,47 +286,34 @@ void CargaElectronicaUpdate(){
       //Todo valor que reciva de referenceCurrent termina siendo un porcentaje de Duty Cycle directo
        //dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
        //Uso el valor predecido de dutycycle para la referencia dada porelusuario
-        dutyCycleAux = feedforward(referenceCurrent, i) ;
+        if (feedforwardEnabled[i]) {
+            dutyCycleAux = feedforward(referenceCurrent, i);
+        } else {
+            dutyCycleAux = getDCDirecto(referenceCurrent); // o la lógica que corresponda
+        }
 
 
         //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
         break;
       default:   
-        dutyCycleAux = 0.0f; 
+        dutyCycleAux = MIN_DUTY; 
         //writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
         break;
     }
 
 
-/*
-    // Aplicar recorte por max_dc_value
-    if (max_dc_value[i] >= 0.0f && max_dc_value[i] <= 100.0f) {
-        if (dutyCycleAux > max_dc_value[i]) {
-            dutyCycleAux = max_dc_value[i];
-            writeSerialComln(String("DC recortado a max_dc_value: ") + String(dutyCycleAux) + " %");
-        }
-    }*/
-  /*
-    if(modoFuncionamiento==PID){
-      writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
-                      String(" -> Duty Cycle PID: ") + String(dutyCycleAux));
-    }else{
-      writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
-    }
-    if(curveMode==ON_t){
-      writeSerialComln(String("Modo CURVA - Referencia de corriente usada: ") + String(referenceCurrent) + String(" mA"));
-    }else{
-      writeSerialComln(String("Modo MANUAL - Referencia de corriente usada: ") + String(referenceCurrent) + String(" mA"));
-    }
-    */
+    //Clamp del duty para asegurar que esté dentro de los límites permitidos 
+    if (dutyCycleAux > MAX_DUTY) dutyCycleAux = MAX_DUTY;
+    if (dutyCycleAux < MIN_DUTY) dutyCycleAux = MIN_DUTY;
+
+
+
     // Aplicar el duty cycle actual (invertido)
     int pwmValue = (int)((100.0f - dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);
-        
-    //writeSerialComln(String( "Duty[") + String(i) + String("]: ") + String(dutyCycleAux)+ String("% -> PWM Value: ") + String(pwmValue));
 
-    //writeSerialComln(String("Aplicando Duty Cycle: ") + String(dutyCycleAux) + String("% -> PWM Value: ") + String(pwmValue));
-    //ledcWrite(PWM_CHANNEL, pwmValue);
-
+    writeSerialComln(String("Canal ") + String(i) + 
+                    String(": Ref = ") + String(referenceCurrent) + String(" mA, Duty = ") + String(dutyCycleAux) + 
+                    String("%, PWM Value = ") + String(pwmValue));
     ledcWrite(pwmConfig[i].channel,pwmValue); // Inicializar el PWM a 0 (apagado)  
   }
 }
@@ -480,7 +486,11 @@ bool setCurrentReference_mA(float current_mA, int index){
         return false;
     }
     
-    
+    // Si el setpoint cambió y el modo es PID, activar feedforward
+    if (current_mA != currentReference_mA[index]) {
+        PID_EnableFeedforward(index);
+    }
+
     currentReference_mA[index] = current_mA;
     return true;
 }
@@ -531,3 +541,15 @@ static int calcularMaxDuty(int resolution) {
     // resolution 8  → (1 << 8)  - 1 = 255
 }
 
+
+bool setFeedforwardEnabled(bool enabled, int index) {
+    if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return false;
+    feedforwardEnabled[index] = enabled;
+    return true;
+}
+
+bool getFeedforwardEnabled(bool *enabled, int index) {
+    if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return false;
+    *enabled = feedforwardEnabled[index];
+    return true;
+}

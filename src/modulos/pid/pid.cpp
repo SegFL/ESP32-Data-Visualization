@@ -1,6 +1,10 @@
 
 
 #include "pid.h"
+
+#define MAX_DUTY 95.0F
+#define MIN_DUTY 10.0f
+
 #define MAX_SAFE_CURRENT 2000.0f
 
 
@@ -19,6 +23,8 @@ typedef struct {
     float integral;
     float error_prev;
     float duty;
+    bool  use_feedforward;  
+
 } PID_t;
 
 #define MAX_CURVES 
@@ -54,6 +60,8 @@ void PID_Init(int index, float kp, float ki, float kd, float ts) {
     pid[index].integral = 0.0f;
     pid[index].error_prev = 0.0f;
     pid[index].duty = 0.0f;
+    pid[index].use_feedforward = false;
+
 }
 
 // ====== Función de control ======
@@ -64,53 +72,57 @@ float getDCPID(float referencia_mA, int index) {
     PID_t *p = &pid[index];
 
     float denom = (MAX_SAFE_CURRENT > 0.0f) ? MAX_SAFE_CURRENT : 1.0f;
-
-    float ref_percent = (referencia_mA * 100.0f) / denom;
-
-    float meas_mA = getLastCurrentData(index);
-    float meas_percent = (meas_mA * 100.0f) / denom;
-
+    float ref_percent  = (referencia_mA            * 100.0f) / denom;
+    float meas_percent = (getLastCurrentData(index) * 100.0f) / denom;
     float error = ref_percent - meas_percent;
 
-    // integral
+    if (referencia_mA <= 0.0f) {
+        p->integral   = 0.0f;
+        p->error_prev = 0.0f;
+        p->duty       = MIN_DUTY;
+        return MIN_DUTY;  // 10% = 0 mA, apagado funcional
+    }
+
+    // ── Ciclo de STEP: aplicar feedforward y salir ──
+    if (p->use_feedforward) {
+        p->use_feedforward = false;
+        p->duty = feedforward(referencia_mA, index);
+        if (p->duty > MAX_DUTY) p->duty = MAX_DUTY;
+        else if (p->duty < MIN_DUTY) p->duty = MIN_DUTY;
+
+        // Inicializar integral en el punto de operación del ff, con límite
+        float integral_max = (p->Ki > 0.0f) ? (100.0f / p->Ki) : 1000.0f;
+        p->integral = p->duty / p->Ki;
+        if (p->integral >  integral_max) p->integral =  integral_max;
+        if (p->integral < -integral_max) p->integral = -integral_max;
+
+        p->error_prev = 0.0f;
+        return p->duty;
+    }
+
+    // ── Ciclos normales: PID completo ──
     p->integral += error * p->Ts;
 
-    // derivada
-    float derivative = (error - p->error_prev) / p->Ts;
+    // Anti-windup: límite absoluto del integrador
+    float integral_max = (p->Ki > 0.0f) ? (100.0f / p->Ki) : 1000.0f;
+    if (p->integral >  integral_max) p->integral =  integral_max;
+    if (p->integral < -integral_max) p->integral = -integral_max;
 
-    // PID
+    float derivative = (error - p->error_prev) / p->Ts;
     float u = p->Kp * error + p->Ki * p->integral + p->Kd * derivative;
 
-    p->duty = u + feedforward(referencia_mA, index); // Agregar término feedforward
-
-    // saturación + anti-windup simple
-    if (p->duty > 100.0f) {
-        p->duty = 100.0f;
-    } else if (p->duty < 0.0f) {
-        p->duty = 0.0f;
+    // Anti-windup: clamping — si saturado, deshacer integración
+    bool saturado_alto = (u > MAX_DUTY) && (error > 0.0f);
+    bool saturado_bajo = (u < MIN_DUTY)   && (error < 0.0f);
+    if (saturado_alto || saturado_bajo) {
+        p->integral -= error * p->Ts;
     }
+
+    p->duty = u;
+    if (p->duty >MAX_DUTY) p->duty = MAX_DUTY;
+    else if (p->duty < MIN_DUTY) p->duty = MIN_DUTY;
 
     p->error_prev = error;
-
-
-    /*
-    if(index==0){
-                float term_p = p->Kp * error;
-        float term_i = p->Ki * p->integral;
-        float term_d = p->Kd * derivative;
-
-        snprintf(buf, sizeof(buf),
-            "[PID %d] ref=%.2f meas=%.2f err=%.3f",
-            index, ref_percent, meas_percent, error);
-        writeSerialComln(buf);
-
-        snprintf(buf, sizeof(buf),
-            "[PID %d]  P=%.3f  I=%.3f  D=%.3f  u=%.3f  duty=%.2f",
-            index, term_p, term_i, term_d, u, p->duty);
-        writeSerialComln(buf);
-    }
-
-*/
     return p->duty;
 }
 
@@ -216,4 +228,11 @@ float feedforward(float referencia_mA, int index) {
     }
 
     return best_duty;
+}
+
+
+void PID_EnableFeedforward(int index) {
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return;
+    pid[index].use_feedforward = true;
+    pid[index].error_prev      = 0.0f;
 }
