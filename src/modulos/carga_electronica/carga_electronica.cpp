@@ -158,7 +158,7 @@ void CargaElectronicaInit(){
 
         //Inicilizo los pid
         PID_Init(0,0.10,0.10,0.000,0.1);
-        PID_Init(1,0.10,0.10,0.000,0.1);
+        PID_Init(1,0.10,0.80,0.000,0.1);
 
         PID_Init(2,0.10,0.10,0.000,0.1);
         PID_Init(3,0.10,0.10,0.000,0.1);
@@ -251,11 +251,9 @@ void CargaElectronicaUpdate(){
           float curveVal = getCurveValue(i, &isNewStep);  // float, nombre distinto a aux
           if(feedforwardEnabled[i] && isNewStep){
               PID_EnableFeedforward(i);
-              if(i==3){ // Solo imprimo para la carga 1 (GPIO17)
-                  writeSerialComln(String("Nuevo paso  ") + String(i) + 
-                                  String(": referencia = ") + String(curveVal) + String(" mA"));
-              }
           }
+
+
 
 
           if (curveVal != -1) {
@@ -303,6 +301,7 @@ void CargaElectronicaUpdate(){
     //Clamp del duty para asegurar que esté dentro de los límites permitidos 
     if (dutyCycleAux > MAX_DUTY) dutyCycleAux = MAX_DUTY;
     if (dutyCycleAux < MIN_DUTY) dutyCycleAux = MIN_DUTY;
+
 
 
 
@@ -468,7 +467,7 @@ bool setCurrentReference_mA(float current_mA, int index){
 //Mapea la referencia de corriente directa al duty cycle
 float getDCDirecto(float ref){
   if(ref<0.0f) return 0.0f;
-    return 10*ref; // Convertir mA a %
+    return ref; // Convertir mA a %
 }
 
 

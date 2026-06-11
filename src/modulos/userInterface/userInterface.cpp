@@ -866,7 +866,7 @@ static void onEnterNode(MenuNode* n) {
             break;
         case 32: // Modificar parámetros PID
             {
-                for(int i=0;i<2;i++){
+                for(int i=0;i<NUMBER_OF_SENSORS;i++){
                     float kp, ki, kd;
                     getPIDParams(i, &kp, &ki, &kd);
                     writeSerialComln(String("Parámetros PID actuales del index ") + String(i) + String(":"));
