@@ -206,7 +206,7 @@ LUT_Point_t LUT[LUT_MAX_CHANNELS][LUT_MAX_POINTS] = {
 
     // Canal 2, 3, 4: sin calibrar
     { {-1, -1} },
-    { {-1, -1} },
+    { {10.0f, 17.0f} },
     { {-1, -1} },
 };
 

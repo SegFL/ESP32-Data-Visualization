@@ -226,9 +226,7 @@ void CargaElectronicaUpdate(){
 
   for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
 
-    if(i!=1){ // Por ahora solo hago la prueba con la carga 1 (GPIO17)
-      continue;
-    }
+
     float dutyCycleAux = 0.0f;
     float referenceCurrent = 0.0f; // mA
     float aux = 0.0f;
@@ -253,7 +251,7 @@ void CargaElectronicaUpdate(){
           float curveVal = getCurveValue(i, &isNewStep);  // float, nombre distinto a aux
           if(feedforwardEnabled[i] && isNewStep){
               PID_EnableFeedforward(i);
-              if(i==1){ // Solo imprimo para la carga 1 (GPIO17)
+              if(i==3){ // Solo imprimo para la carga 1 (GPIO17)
                   writeSerialComln(String("Nuevo paso  ") + String(i) + 
                                   String(": referencia = ") + String(curveVal) + String(" mA"));
               }
@@ -311,9 +309,6 @@ void CargaElectronicaUpdate(){
     // Aplicar el duty cycle actual (invertido)
     int pwmValue = (int)((100.0f - dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);
 
-    writeSerialComln(String("Canal ") + String(i) + 
-                    String(": Ref = ") + String(referenceCurrent) + String(" mA, Duty = ") + String(dutyCycleAux) + 
-                    String("%, PWM Value = ") + String(pwmValue));
     ledcWrite(pwmConfig[i].channel,pwmValue); // Inicializar el PWM a 0 (apagado)  
   }
 }
@@ -439,33 +434,6 @@ float PWMGetMaxDC(int index){
 }
 
 
-// Convertir referencia de corriente (mA) a duty %
-// - reference_current: mA
-// - usa maxCurrent para normalizar (mA -> 0..100%)
-// - respeta max_dc_value (tope %) y clampa 0..100
-/*
-float convertirCorrienteADc(float reference_current){
-  // Si referencia viene en % por error, proteger
-  // but expected unit is mA
-  if (reference_current < 0.0f) reference_current = 0.0f;
-
-  // Evitar división por cero
-  float denom = (maxCurrent > 0.0f) ? maxCurrent : 1.0f;
-  float percent = (reference_current * 100.0f) / denom;
-
-  // Clamp 0..100
-  if (percent < 0.0f) percent = 0.0f;
-  if (percent > 100.0f) percent = 100.0f;
-
-  // Aplicar máximo configurado en porcentaje
-  if (max_dc_value >= 0.0f && max_dc_value <= 100.0f && percent > max_dc_value) {
-      percent = max_dc_value;
-  }
-
-  return percent;
-}
-*/
-
 
 
 
@@ -487,7 +455,8 @@ bool setCurrentReference_mA(float current_mA, int index){
     }
     
     // Si el setpoint cambió y el modo es PID, activar feedforward
-    if (current_mA != currentReference_mA[index]) {
+    // Solo activar feedforward si está habilitado para este canal
+    if (current_mA != currentReference_mA[index] && feedforwardEnabled[index]) {
         PID_EnableFeedforward(index);
     }
 

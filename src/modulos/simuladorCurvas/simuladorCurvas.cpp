@@ -5,8 +5,8 @@
 curve_t** curveArray=NULL;
 int curveArraySize=0;
 
-#define NUMERO_PASOS_XSEG 5//Cantidad de veces que se llamaa getcurvevalue por segundo t=200ms==>5 veces por segundo
-#define PERIODO_INTERRUPCION 0.2f // segundos (200ms)
+#define NUMERO_PASOS_XSEG 10//Cantidad de veces que se llamaa getcurvevalue por segundo t=200ms==>5 veces por segundo
+#define PERIODO_INTERRUPCION 0.1f // segundos (200ms)
 
 
 //Numeros de ID guardados en NVS
@@ -219,29 +219,35 @@ float getCurveValue(int pin, bool* isNewStep) {
                 curve->point[curve->currentIndex].type == STEP) {
                 *isNewStep = true;
             }
+            if (curve->currentIndex < curve->contador - 1 &&
+                curve->point[curve->currentIndex + 1].type == LINEAR) {
+                calcular_incrementos(curve); // resetea index_pasos a 0
+            }
 
         }else{
-            if(curve->point[curve->currentIndex+1].type==LINEAR){
-
-                //writeSerialComln("Incremtando numero de pasos"+String(curve->linear_parameters.index_pasos));
+            // Ciclo normal: NO recalcular, solo incrementar y devolver
+            if (curve->point[curve->currentIndex + 1].type == LINEAR) {
                 curve->linear_parameters.index_pasos++;
-                //Devuelvo el valor anterior + el incremento*#incrementos
-                return curve->point[curve->currentIndex].value +
-                                    curve->linear_parameters.index_pasos *
-                                    curve->linear_parameters.incremento;
-            }else{
+                float returnVal = curve->point[curve->currentIndex].value +
+                                curve->linear_parameters.index_pasos *
+                                curve->linear_parameters.incremento;
+
+                return returnVal;
+            } else {
                 return curve->point[curve->currentIndex].value;
             }
         }
-        //Si estoy aca es porque incremente el index o sea avance de punto
-        if(curve->point[curve->currentIndex+1].type==LINEAR){
-//            writeSerialComln("Calulando incrementos");
-            calcular_incrementos(curve);
-            return curve->point[curve->currentIndex].value +
-                                    curve->linear_parameters.index_pasos *
-                                    curve->linear_parameters.incremento;
-        }else{
-             return curve->point[curve->currentIndex].value;
+        // Si llegué acá es porque avancé de índice
+        if (curve->currentIndex < curve->contador - 1 &&
+            curve->point[curve->currentIndex + 1].type == LINEAR) {
+            curve->linear_parameters.index_pasos++;
+            float returnVal = curve->point[curve->currentIndex].value +
+                            curve->linear_parameters.index_pasos *
+                            curve->linear_parameters.incremento;
+
+            return returnVal;
+        } else {
+            return curve->point[curve->currentIndex].value;
         }
     }else{
 
@@ -272,6 +278,16 @@ void calcular_incrementos(curve_t *curve) {
                     curve->linear_parameters.pendiente=0;
                 }
                 curve->linear_parameters.incremento=curve->linear_parameters.pendiente*PERIODO_INTERRUPCION; //Valor a incrementar en cada ciclo
+                      writeSerialComln(String("[LIN-INIT] idx=") + String(curve->currentIndex) +
+                         String(" | v0=") + String(curve->point[curve->currentIndex].value, 2) +
+                         String(" -> v1=") + String(curve->point[curve->currentIndex+1].value, 2) +
+                         String(" | dt=") + String(curve->linear_parameters.delta_t) +
+                         String("s | dv=") + String(curve->linear_parameters.delta_v, 2) +
+                         String(" | pend=") + String(curve->linear_parameters.pendiente, 4) +
+                         String(" | inc=") + String(curve->linear_parameters.incremento, 4) +
+                         String(" | pasos=") + String(curve->linear_parameters.numero_pasos));
+
+
             }else{
                 //Si es STEP no hay incrementos
                 curve->linear_parameters.incremento=0;
