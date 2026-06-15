@@ -169,6 +169,11 @@ MenuNode* menuInit() {
         MenuNode* child34 = create_node("Habilitar/Desabilitar feedforward", '4',34);
         add_child(child27, child34);
 
+        MenuNode* child35 = create_node("Cambiar variable a establizar", '5',35);
+        add_child(child27, child35);
+
+
+
 
 
     return root;

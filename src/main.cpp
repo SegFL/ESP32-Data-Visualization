@@ -26,7 +26,9 @@ void Task1(void *pvParameters) {
       }
     }
 
-    userInterfaceUpdate(); // Mantenerla si no bloquea más de unos ms
+    while (Serial.available() > 0) {
+        userInterfaceUpdate();
+    }
     TimeUpdate();
     vTaskDelay(pdMS_TO_TICKS(200)); // Cede CPU al resto de tareas
   }
@@ -50,7 +52,7 @@ Task2 (Core 1)
 */
 void TaskSensors(void *pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(200);
+    const TickType_t period = pdMS_TO_TICKS(100);
 
     for (;;) {
         leerADC();

@@ -20,7 +20,7 @@
 #define NOT_SEND_DATA false
 #define MAX_SENSORS 3   //Cantidad de sensores a imprimir en el menu se sensores analogicos
 
-#define MAX_APP_BUFFER 128
+#define MAX_APP_BUFFER 1024
 char app_buffer[MAX_APP_BUFFER];
 int app_index = 0;
 
@@ -34,6 +34,21 @@ bool aceptandoDatos=false;
 bool updateScreen=false;
 
 static int lastMenuId = -1;
+
+
+// Estado de transferencia de curva por chunks
+bool curvaEnProgreso = false;
+int curvaIdEnProgreso = -1;
+int puntosEsperadosTotal = 0;
+int puntosRecibidos = 0;
+unsigned long ultimoChunkMillis = 0;
+
+const unsigned long CURVE_CHUNK_TIMEOUT_MS = 10000;
+const int MAX_PUNTOS_POR_CHUNK = 10;
+
+TimerHandle_t curveTimeoutTimer;
+
+
 
 
 
@@ -56,7 +71,33 @@ bool parseStringToFloats(String str, int *index, float *num1, float *num2, float
 void printSavedCurves();
 void printSensorInfo();
 
+// --- Transferencia de curvas por chunks (CURVE / CURVEC) ---
 
+// Callback del timer de timeout (10s sin recibir el siguiente chunk)
+void curveTimeoutCallback(TimerHandle_t xTimer);
+
+// Aborta la transferencia en curso: detiene el timer, borra la curva parcial
+// y notifica el error por serial. motivo se incluye en el mensaje ERROR,ABORT,<motivo>
+void abortarTransferenciaCurva(const char* motivo);
+
+// Limpia el estado de transferencia tras una finalización exitosa
+// (NO borra la curva, solo detiene el timer y resetea las variables de estado)
+void resetEstadoTransferencia();
+
+// Parsea una lista de puntos "t,v,tipo;t,v,tipo;..." y los agrega a la curva curveId.
+// Retorna: cantidad de puntos agregados (>=0), -1 si hay error de formato
+// o se excede maxPuntos, -2 si falla addPointToCurve (error estructural)
+int parsearYAgregarPuntos(String puntos, int curveId, int maxPuntos);
+
+// Procesa el primer chunk: "CURVE,<id>,<total>,<puntos...>,<checksum>"
+// Crea la curva, valida checksum/formato, carga los primeros puntos
+// e inicia el timer de timeout
+bool procesarChunkInicial(String cmd);
+
+// Procesa chunks de continuación: "CURVEC,<id>,<puntos...>,<checksum>"
+// Valida checksum/id/formato, agrega los puntos restantes
+// y resetea el timer de timeout
+bool procesarChunkContinuacion(String cmd);
 
 void userInterfaceInit(){
     serialComInit();
@@ -77,15 +118,31 @@ void userInterfaceInit(){
     // Ya se inicializa en CargaElectronicaInit() y causar heap corruption
     // simuladorCurvasInit(ARRAY_SIZE); // DESHABILITADO - CAUSABA HEAP CORRUPTION
 
+    //Timer de timeout para cuando se estan enviandos curvas desde la APP
+    curveTimeoutTimer = xTimerCreate(
+    "CurveTimeout",                  // nombre (debug)
+    pdMS_TO_TICKS(10000),            // periodo: 10 segundos
+    pdFALSE,                         // pdFALSE = one-shot (no se repite)
+    NULL,                            // parametro extra (no usamos)
+    curveTimeoutCallback             // funcion a ejecutar
+);
 }
 
 
 
 void userInterfaceUpdate() {
+    static bool ignorarPrimerNewline = false;
+
+
     if (menu == nullptr) return;
 
     char charReceived = readSerialChar();
+    if (charReceived == '\0') return; 
+
+
     if (charReceived == '@') {
+        if (curvaEnProgreso) abortarTransferenciaCurva("CANCELADO_POR_USUARIO");
+
         APP_MODE = true;
 
         app_index = 0;
@@ -97,6 +154,8 @@ void userInterfaceUpdate() {
     }
 
     if (charReceived == '#') {
+        if (curvaEnProgreso) abortarTransferenciaCurva("CANCELADO_POR_USUARIO");
+
         APP_MODE = false;
         writeSerialComlnAPP("APP_MODE_OFF");
         cleanBufferApp();
@@ -132,6 +191,10 @@ void userInterfaceUpdate() {
   
 
     if (charReceived == '\n') {
+        if (ignorarPrimerNewline) {
+            ignorarPrimerNewline = false; //El primer /n luego de una cambio de menu lo ignoro
+            return;
+        }
         if (aceptandoDatos) {
             // Terminamos de recibir datos
             data_buffer[buffer_index] = '\0';  // Terminador nulo
@@ -139,6 +202,7 @@ void userInterfaceUpdate() {
             memset(data_buffer, 0, sizeof(data_buffer));
             buffer_index = 0;
             aceptandoDatos = false;
+
         } 
         return;
     }
@@ -158,6 +222,10 @@ void userInterfaceUpdate() {
         //Si no es nuevo pero aun asi requiere datos(porque ya se enviaron datos previamente
         //y se quiere seguir enviando datos) tambien preparo el buffer
         aceptandoDatos = nodeRequiresInput(menu->id);
+        if (aceptandoDatos) {
+            ignorarPrimerNewline = true;  // ← ignorar el \n de navegación
+        }
+
 
     } else {
         // Captura de caracteres
@@ -618,6 +686,21 @@ if(menu->id == 19) {
         );
     }
 
+    if (menu->id == 35) {
+        int index;
+        char mode;
+        if (sscanf(data.c_str(), "%d,%c", &index, &mode) == 2) {
+            mode = tolower(mode);
+            if(setPIDMode(index, mode)) {
+                writeSerialComln(String("Modo PID para pin ") + String(index) + String(" cambiado a ") + mode);
+            } else {
+                writeSerialComln(String("Error al cambiar el modo PID. Index invalido: ") + String(index));
+            }
+        } else {
+            writeSerialComln("Formato invalido. Use: <index>,<letra> (ej: <3,c>, <3,v> o <3,p>)");
+        }
+    }
+
 
 
 
@@ -766,6 +849,7 @@ static bool nodeRequiresInput(int id) {
         case 31: // Resetear parámetros PID
         case 32: // Modificar parámetros PID
         case 34: //
+        case 35: // Cambiar variable a estabilizar (ej: voltaje, corriente)
             return true;
         default:
             return false;
@@ -894,6 +978,20 @@ static void onEnterNode(MenuNode* n) {
                 );
             }
         }
+        case 35: // Variable a estabilizar
+        {
+            for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
+                char var = getPIDMode(i);
+                String varStr;
+                switch(var){
+                    case 'v': varStr = "Voltaje"; break;
+                    case 'i': varStr = "Corriente"; break;
+                    case 'p': varStr = "Potencia"; break;
+                    default: varStr = "Desconocida"; break;
+                }
+                writeSerialComln(String("Curva ") + String(i) + String(": Variable estabilizada: ") + varStr);
+            }
+        }
 
             
         default:
@@ -926,6 +1024,7 @@ static void onEnterNode(MenuNode* n) {
             case 31: writeSerialComln("Para resetear los parametros del PID presione y-"); break;
             case 32: writeSerialComln("Ingrese parámetros PID en formato index,Kp,Ki,Kd y presione 'ENTER'"); break;
             case 34: writeSerialComln("Ingrese <index>,<0/1> para deshabilitar/habilitar feedforward y presione 'ENTER'"); break;
+            case 35: writeSerialComln("Ingrese el numero de curva y la variable a estabilizar (V para voltaje, I para corriente) en formato index,variable y presione 'ENTER'"); break;
             default: break;
         }
     }
@@ -1014,67 +1113,10 @@ bool procesarComandoApp(String cmd)
     // ==============================
     // Detecta el comando batch
     if (cmd.startsWith("CURVE,")) {
-        // Parsear: CURVE,id,n,t1,v1,tipo1;t2,v2,tipo2;...,checksum
-        int lastComma = cmd.lastIndexOf(',');
-        String checksumStr = cmd.substring(lastComma + 1);
-        String payload     = cmd.substring(0, lastComma);
-        
-        // Verificar checksum
-        uint8_t cs = 0;
-        for (int i = 0; i < payload.length(); i++) cs ^= payload[i];
-        if (strtoul(checksumStr.c_str(), nullptr, 16) != cs) {
-            writeSerialComlnAPP("ERROR,CHECKSUM");
-            return false;
-        }
-        
-        // Extraer id y n
-        // payload = "CURVE,id,n,puntos"
-        int c1 = payload.indexOf(',');
-        int c2 = payload.indexOf(',', c1+1);
-        int c3 = payload.indexOf(',', c2+1);
-        int id = payload.substring(c1+1, c2).toInt();
-        int n  = payload.substring(c2+1, c3).toInt();
-        
-        // Crear la curva
-        int idElejido = createCurve(id);
-        if (idElejido   < 0) {
-            writeSerialComlnAPP("ERROR,CREATE"); 
-            return false; 
-        }
-        //Para limitar posibles errores nole permito al usuario elegir un id diferente al que se le asigno a la curva
-        if(idElejido != id){
-            if(deleteCurve(idElejido) != 0){
-                writeSerialComlnAPP("ERROR,DELETE(id ocupado:" + String(id) + ")");
-                return false;
-            }
-            writeSerialComlnAPP("ERROR,ID_ASIGNADO_" + String(idElejido));
-            return false;
-        }
-
-        
-        // Parsear puntos separados por ';'
-        String puntos = payload.substring(c3+1);
-        int parsed = 0;
-        while (puntos.length() > 0 && parsed < n) {
-            int sep = puntos.indexOf(';');
-            String pt = (sep >= 0) ? puntos.substring(0, sep) : puntos;
-            puntos   = (sep >= 0) ? puntos.substring(sep+1) : "";
-            
-            int a = pt.indexOf(','), b = pt.lastIndexOf(',');
-            int t    = pt.substring(0, a).toInt();
-            float v  = pt.substring(a+1, b).toFloat();
-            int tipo = pt.substring(b+1).toInt();
-            
-            aproximation_point_type_t type = (tipo == 1) ? LINEAR : STEP;
-            if (addPointToCurve(id, t, v, type) != 0) {
-                writeSerialComlnAPP("ERROR,POINT_" + String(parsed));
-                return false;
-            }
-            parsed++;
-        }
-        
-        writeSerialComlnAPP("OK," + String(id));
-        return true;
+        return procesarChunkInicial(cmd);
+    }
+    if (cmd.startsWith("CURVEC,")) {
+        return procesarChunkContinuacion(cmd);
     }
     writeSerialComlnAPP(String(cmd)+" no reconocido");
     return false;
@@ -1083,4 +1125,203 @@ bool procesarComandoApp(String cmd)
 void cleanBufferApp(){
    memset(app_buffer, 0, sizeof(app_buffer));
     app_index = 0;
+}
+
+
+
+
+void curveTimeoutCallback(TimerHandle_t xTimer) {
+    // Esto se ejecuta cuando el timer expira
+    abortarTransferenciaCurva("TIMEOUT");
+}
+
+void abortarTransferenciaCurva(const char* motivo) {
+    xTimerStop(curveTimeoutTimer, 0);   
+
+    if (curvaEnProgreso) {
+        deleteCurve(curvaIdEnProgreso);
+        writeSerialComlnAPP(String("ERROR,ABORT,") + motivo);
+    }
+    curvaEnProgreso = false;
+    curvaIdEnProgreso = -1;
+    puntosEsperadosTotal = 0;
+    puntosRecibidos = 0;
+}
+
+
+
+int parsearYAgregarPuntos(String puntos, int curveId, int maxPuntos) {
+    int tArr[MAX_PUNTOS_POR_CHUNK];
+    float vArr[MAX_PUNTOS_POR_CHUNK];
+    aproximation_point_type_t typeArr[MAX_PUNTOS_POR_CHUNK];
+    int count = 0;
+
+    while (puntos.length() > 0) {
+        if (count >= maxPuntos) return -1; // mas puntos de los esperados
+
+        int sep = puntos.indexOf(';');
+        String pt = (sep >= 0) ? puntos.substring(0, sep) : puntos;
+        puntos    = (sep >= 0) ? puntos.substring(sep + 1) : "";
+
+        int a = pt.indexOf(','), b = pt.lastIndexOf(',');
+        if (a < 0 || b < 0 || a == b) return -1; // formato invalido
+
+        int t    = pt.substring(0, a).toInt();
+        float v  = pt.substring(a + 1, b).toFloat();
+        int tipo = pt.substring(b + 1).toInt();
+
+        if (tipo != 0 && tipo != 1 && tipo != 2) return -1;
+
+        tArr[count] = t;
+        vArr[count] = v;
+        typeArr[count] = (tipo == 1) ? LINEAR : (tipo == 2 ? S_CURVE : STEP);
+        count++;
+    }
+
+    if (count == 0) return -1;
+
+    for (int i = 0; i < count; i++) {
+        if (addPointToCurve(curveId, tArr[i], vArr[i], typeArr[i]) != 0) {
+            return -2;
+        }
+    }
+    return count;
+}
+
+
+bool procesarChunkInicial(String cmd) {
+    if (curvaEnProgreso) {
+        abortarTransferenciaCurva("NUEVA_CURVA");
+    }
+
+    int lastComma = cmd.lastIndexOf(',');
+    String checksumStr = cmd.substring(lastComma + 1);
+    String payload     = cmd.substring(0, lastComma);
+
+    uint8_t cs = 0;
+    for (int i = 0; i < payload.length(); i++) cs ^= payload[i];
+    if (strtoul(checksumStr.c_str(), nullptr, 16) != cs) {
+        writeSerialComlnAPP("ERROR,CHECKSUM");
+        return false;
+    }
+
+    // payload = "CURVE,id,total,puntos"
+    int c1 = payload.indexOf(',');
+    int c2 = payload.indexOf(',', c1 + 1);
+    int c3 = payload.indexOf(',', c2 + 1);
+    int id        = payload.substring(c1 + 1, c2).toInt();
+    int total     = payload.substring(c2 + 1, c3).toInt();
+    String puntos = payload.substring(c3 + 1);
+
+    if (total <= 0) {
+        writeSerialComlnAPP("ERROR,TOTAL_INVALIDO");
+        return false;
+    }
+
+    int idElejido = createCurve(id);
+    if (idElejido < 0) {
+        writeSerialComlnAPP("ERROR,CREATE");
+        return false;
+    }
+    if (idElejido != id) {
+        deleteCurve(idElejido);
+        writeSerialComlnAPP("ERROR,ID_ASIGNADO_" + String(idElejido));
+        return false;
+    }
+
+    int maxEsperados = min(total, MAX_PUNTOS_POR_CHUNK);
+    int agregados = parsearYAgregarPuntos(puntos, id, maxEsperados);
+
+    if (agregados == -1) {
+        deleteCurve(id);
+        writeSerialComlnAPP("ERROR,FORMATO");
+        return false;
+    }
+    if (agregados == -2) {
+        deleteCurve(id);
+        writeSerialComlnAPP("ERROR,ADD_POINT");
+        return false;
+    }
+
+    curvaEnProgreso      = true;
+    curvaIdEnProgreso    = id;
+    puntosEsperadosTotal = total;
+    puntosRecibidos      = agregados;
+
+    xTimerStart(curveTimeoutTimer, 0);   
+
+    writeSerialComlnAPP("ACK," + String(puntosRecibidos) + "," + String(puntosEsperadosTotal));
+
+    if (puntosRecibidos == puntosEsperadosTotal) {
+        writeSerialComlnAPP("OK," + String(id));
+        resetEstadoTransferencia(); // reset silencioso (curvaEnProgreso=false sin borrar la curva)
+    }
+
+    return true;
+}
+void resetEstadoTransferencia() {
+    xTimerStop(curveTimeoutTimer, 0);   // ← ACA
+
+    curvaEnProgreso = false;
+    curvaIdEnProgreso = -1;
+    puntosEsperadosTotal = 0;
+    puntosRecibidos = 0;
+}
+
+bool procesarChunkContinuacion(String cmd) {
+    if (!curvaEnProgreso) {
+        writeSerialComlnAPP("ERROR,SIN_TRANSFERENCIA");
+        return false;
+    }
+
+    int lastComma = cmd.lastIndexOf(',');
+    String checksumStr = cmd.substring(lastComma + 1);
+    String payload     = cmd.substring(0, lastComma);
+
+    uint8_t cs = 0;
+    for (int i = 0; i < payload.length(); i++) cs ^= payload[i];
+    if (strtoul(checksumStr.c_str(), nullptr, 16) != cs) {
+        writeSerialComlnAPP("ERROR,CHECKSUM");
+        writeSerialComlnAPP("ACK," + String(puntosRecibidos) + "," + String(puntosEsperadosTotal));
+        return false;
+    }
+
+    // payload = "CURVEC,id,puntos"
+    int c1 = payload.indexOf(',');
+    int c2 = payload.indexOf(',', c1 + 1);
+    int id = payload.substring(c1 + 1, c2).toInt();
+    String puntos = payload.substring(c2 + 1);
+
+    if (id != curvaIdEnProgreso) {
+        writeSerialComlnAPP("ERROR,ID_INESPERADO");
+        writeSerialComlnAPP("ACK," + String(puntosRecibidos) + "," + String(puntosEsperadosTotal));
+        return false;
+    }
+
+    int restantes    = puntosEsperadosTotal - puntosRecibidos;
+    int maxEsperados = min(restantes, MAX_PUNTOS_POR_CHUNK);
+
+    int agregados = parsearYAgregarPuntos(puntos, id, maxEsperados);
+
+    if (agregados == -1) {
+        writeSerialComlnAPP("ERROR,FORMATO");
+        writeSerialComlnAPP("ACK," + String(puntosRecibidos) + "," + String(puntosEsperadosTotal));
+        return false;
+    }
+    if (agregados == -2) {
+        abortarTransferenciaCurva("ADD_POINT");
+        return false;
+    }
+
+    puntosRecibidos += agregados;
+    xTimerReset(curveTimeoutTimer, 0);  
+
+    writeSerialComlnAPP("ACK," + String(puntosRecibidos) + "," + String(puntosEsperadosTotal));
+
+    if (puntosRecibidos == puntosEsperadosTotal) {
+        writeSerialComlnAPP("OK," + String(curvaIdEnProgreso));
+        resetEstadoTransferencia();
+    }
+
+    return true;
 }

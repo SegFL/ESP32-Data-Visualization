@@ -12,6 +12,8 @@
 void adcInit() ;
 void  leerADC();
 float getLastCurrentData(int index);
+float getLastBusVoltage(int index);
+float getLastPowerData(int index);
 bool ADCEmpty();
 
 #endif // ADC_H

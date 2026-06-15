@@ -161,7 +161,7 @@ void CargaElectronicaInit(){
         PID_Init(1,0.10,0.80,0.000,0.1);
 
         PID_Init(2,0.10,0.10,0.000,0.1);
-        PID_Init(3,0.10,0.10,0.000,0.1);
+        PID_Init(3,0.20,0.40,0.000,0.1);
         PID_Init(4,0.10 ,0.10,0.000,0.1);
 
 
@@ -443,23 +443,23 @@ modoFuncionamiento_t getModoFuncionamiento(int index){
 
 
 // Nuevo: setter para referencia manual de corriente (mA) usada por PID y curva en modo OFF
-bool setCurrentReference_mA(float current_mA, int index){
+bool setCurrentReference_mA(float reference, int index){
     if(index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) {
         writeSerialComln(String("ERROR: Index fuera de rango: ") + String(index));
         return false;
     }
-    if(current_mA < 0.0f) {
-        writeSerialComln(String("ERROR: Corriente negativa: ") + String(current_mA));
+    if(reference < 0.0f) {
+        writeSerialComln(String("ERROR: Corriente negativa: ") + String(reference) + String(" mA"));
         return false;
     }
     
     // Si el setpoint cambió y el modo es PID, activar feedforward
-    // Solo activar feedforward si está habilitado para este canal
-    if (current_mA != currentReference_mA[index] && feedforwardEnabled[index]) {
+    // Solo activar feedforward si está habilitado para este canal y estoy en modocorriente
+    if (reference != currentReference_mA[index] && feedforwardEnabled[index] && getPIDMode(index) == 'i') {
         PID_EnableFeedforward(index);
     }
 
-    currentReference_mA[index] = current_mA;
+    currentReference_mA[index] = reference;
     return true;
 }
 

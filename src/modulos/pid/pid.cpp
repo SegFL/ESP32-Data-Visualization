@@ -27,6 +27,13 @@ typedef struct {
 
 } PID_t;
 
+typedef enum {
+    CURRENT,
+    VOLTAGE,
+    POWER
+} PID_mode_t;
+
+static PID_mode_t PID_MODE[NUMBER_OF_SENSORS] = {CURRENT, CURRENT, CURRENT}; // Modo de control para cada sensor (corriente o voltaje)
 #define MAX_CURVES 
 
 
@@ -40,7 +47,7 @@ float Kd = 0.0f;
 
 //período de muestreo real (200ms) Tiene que coincidir con el periodo del task2 
 //que se encarga de leer el ADC y actualizar la carga electronica
-float Ts = 0.2f;
+float Ts = 0.1f;
 float integral = 0.0f;
 float error_anterior = 0.0f;
 
@@ -66,17 +73,69 @@ void PID_Init(int index, float kp, float ki, float kd, float ts) {
 
 // ====== Función de control ======
 // Reemplazar la implementación actual de getDCPID por esta
-float getDCPID(float referencia_mA, int index) {
+float getDCPID(float setPoint, int index) {
+    static float meas_filtered[NUMBER_OF_SENSORS] = {0.0f};
+
+
+    //writeSerialComln(String("Ejecutando PID para referencia ") + String(setPoint) + String(" mA en index ") + String(index));
     if (index < 0 || index >= NUMBER_OF_SENSORS) return 0.0f;
 
     PID_t *p = &pid[index];
 
-    float denom = (MAX_SAFE_CURRENT > 0.0f) ? MAX_SAFE_CURRENT : 1.0f;
-    float ref_percent  = (referencia_mA            * 100.0f) / denom;
-    float meas_percent = (getLastCurrentData(index) * 100.0f) / denom;
+    float denom;
+    float ref_percent;
+    float meas_percent;
+    float meas;
+
+    switch(PID_MODE[index]){
+        case VOLTAGE: {
+            #define MAX_SAFE_VOLTAGE 30.0f  // ajustá según tu hardware
+            denom       = MAX_SAFE_VOLTAGE;
+            ref_percent = (setPoint * 100.0f) / denom;  // acá "setPoint" es en realidad voltios
+            meas  = getLastBusVoltage(index);
+
+            break;
+        }
+        case CURRENT:{
+            denom       = MAX_SAFE_CURRENT;
+            ref_percent = (setPoint * 100.0f) / denom;
+            meas  = getLastCurrentData(index);
+
+            break;
+        }
+        case POWER:{
+            #define MAX_SAFE_POWER 60000.0f // ajustá según tu hardware (ej: 60W = 12V * 5A)
+            denom       = MAX_SAFE_POWER;
+            ref_percent = (setPoint * 100.0f) / denom;  // acá "setPoint" es en realidad potencia en mW
+            meas = getLastPowerData(index);
+
+            break;            
+        }
+        default: {
+            denom       = MAX_SAFE_CURRENT;
+            ref_percent = (setPoint * 100.0f) / denom;
+            meas  = getLastCurrentData(index);
+
+            break;
+        }
+    }
+
+    //Aplico un filtro a los valores medidos. Por ahora voy a hacer un simple promedio 
+    //Esto es un movieng average exponencial con alpha=0.5, que es un buen compromiso entre suavizado y respuesta rápida
+
+    meas_filtered[index] = 0.2f * meas + 0.8f * meas_filtered[index];
+    meas_percent = (meas_filtered[index] * 100.0f) / denom;
+
+
+
     float error = ref_percent - meas_percent;
 
-    if (referencia_mA <= 0.0f) {
+    // En modo voltaje la planta tiene ganancia negativa: más duty = menos tensión
+    if (PID_MODE[index] == VOLTAGE) {
+        error = -error;
+    }
+
+    if (setPoint < 0.0f) {
         p->integral   = 0.0f;
         p->error_prev = 0.0f;
         p->duty       = MIN_DUTY;
@@ -86,7 +145,7 @@ float getDCPID(float referencia_mA, int index) {
     // ── Ciclo de STEP: aplicar feedforward y salir ──
     if (p->use_feedforward) {
         p->use_feedforward = false;
-        p->duty = feedforward(referencia_mA, index);
+        p->duty = feedforward(setPoint, index);
         if (p->duty > MAX_DUTY) p->duty = MAX_DUTY;
         else if (p->duty < MIN_DUTY) p->duty = MIN_DUTY;
 
@@ -123,6 +182,22 @@ float getDCPID(float referencia_mA, int index) {
     else if (p->duty < MIN_DUTY) p->duty = MIN_DUTY;
 
     p->error_prev = error;
+
+    
+    if(index==3){
+        static int cont=0;
+        cont++;
+           if(cont >20){
+
+            writeSerialComln(String("PID index ") + String(index) + String(": ref=") + String(ref_percent, 2) + 
+                    String("% meas=") + String(meas_percent, 2) + String("% error=") + String(error, 2) +
+                    String("P=") + String(p->Kp * error, 2) + String(" I=") + String(p->Ki * p->integral, 2) +
+                    String(" -> duty=") + String(p->duty, 2));
+            cont=0;
+        }
+    }
+
+    
     return p->duty;
 }
 
@@ -235,4 +310,46 @@ void PID_EnableFeedforward(int index) {
     if (index < 0 || index >= NUMBER_OF_SENSORS) return;
     pid[index].use_feedforward = true;
     pid[index].error_prev      = 0.0f;
+}
+
+
+char getPIDMode(int index){
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return CURRENT;
+    char mode;
+
+    switch(PID_MODE[index]){
+        case CURRENT:
+            mode = 'i';
+            break;
+        case VOLTAGE:
+            mode = 'v';
+            break;
+        case POWER:
+            mode = 'p';
+            break;
+        default:
+            mode = 'i';
+            break;
+    }
+    return mode;
+}
+
+bool setPIDMode(int index, char mode){
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return false;
+
+    switch(mode){
+        case 'i':
+            PID_MODE[index] = CURRENT;
+            return true;
+        case 'v':
+            PID_MODE[index] = VOLTAGE;
+            return true;
+        case 'p':
+            PID_MODE[index] = POWER;
+            return true;
+        default:
+            return false;  
+        }
+
+        return false;
 }

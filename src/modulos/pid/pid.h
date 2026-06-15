@@ -16,3 +16,6 @@ void setPIDParams(int index, float kp, float ki, float kd);
 float feedforward(float referencia_mA, int index);
 bool resetPID(int index);
 void PID_EnableFeedforward(int index);
+
+bool setPIDMode(int index, char mode);
+char getPIDMode(int index);

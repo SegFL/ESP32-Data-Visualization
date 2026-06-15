@@ -9,6 +9,8 @@
 #include <modulos/carga_electronica/carga_electronica.h>
 #include <config.h>
 float lastCurrent_mA[NUMBER_OF_SENSORS] = {0.0f}; // Variable para almacenar la última corriente medida
+float lastBusVoltage_V[NUMBER_OF_SENSORS] = {0.0f}; // Variable para almacenar la última tensión medida
+float lastPower_mW[NUMBER_OF_SENSORS] = {0.0f}; // Variable para almacenar la última potencia medida
 static SemaphoreHandle_t currentMutex = nullptr;
 
 
@@ -59,6 +61,8 @@ void  leerADC(){
 
        if (xSemaphoreTake(currentMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
             lastCurrent_mA[i] = temp.current_mA;
+            lastBusVoltage_V[i] = temp.busVoltage_V;
+            lastPower_mW[i] = temp.power_mW;
             xSemaphoreGive(currentMutex);
         }
 
@@ -73,6 +77,28 @@ float getLastCurrentData(int index) {
     float val = 0.0f;
     if (xSemaphoreTake(currentMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
         val = lastCurrent_mA[index];
+        xSemaphoreGive(currentMutex);
+    }
+    return val;
+}
+
+float getLastBusVoltage(int index) {
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return 0.0f;
+    
+    float val = 0.0f;
+    if (xSemaphoreTake(currentMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+        val = lastBusVoltage_V[index];
+        xSemaphoreGive(currentMutex);
+    }
+    return val;
+}
+
+float getLastPowerData(int index){
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return 0.0f;
+    
+    float val = 0.0f;
+    if (xSemaphoreTake(currentMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+        val = lastPower_mW[index];
         xSemaphoreGive(currentMutex);
     }
     return val;
