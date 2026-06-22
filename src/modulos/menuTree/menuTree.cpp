@@ -157,22 +157,26 @@ MenuNode* menuInit() {
         MenuNode* child27 = create_node("Configuracion del PID", '7',27);
         add_child(root, child27);
 
-        MenuNode* child30 = create_node("Cambiar modo de control(PID/NONE)", '1',30);
-        add_child(child27, child30);
+            MenuNode* child30 = create_node("Cambiar modo de control(PID/NONE)", '1',30);
+            add_child(child27, child30);
 
-        MenuNode* child31 = create_node("Resetear parametros del PID", '2',31);
-        add_child(child27, child31);
+            MenuNode* child31 = create_node("Resetear parametros del PID", '2',31);
+            add_child(child27, child31);
 
-        MenuNode* child32 = create_node("Modificar parametros del PID", '3',32);
-        add_child(child27, child32);
-        
-        MenuNode* child34 = create_node("Habilitar/Desabilitar feedforward", '4',34);
-        add_child(child27, child34);
+            MenuNode* child32 = create_node("Modificar parametros del PID", '3',32);
+            add_child(child27, child32);
+            
+            MenuNode* child34 = create_node("Habilitar/Desabilitar feedforward", '4',34);
+            add_child(child27, child34);
 
-        MenuNode* child35 = create_node("Cambiar variable a establizar", '5',35);
-        add_child(child27, child35);
+            MenuNode* child35 = create_node("Cambiar variable a establizar", '5',35);
+            add_child(child27, child35);
 
+        MenuNode* child36 = create_node("Identificar canal", '8',36);
+        add_child(root, child36);
 
+            MenuNode* child38 = create_node("Identificar canal", '1',38);
+            add_child(child36, child38);
 
 
 

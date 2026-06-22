@@ -492,7 +492,7 @@ if(menu->id == 19) {
         }
     }
     
-    if(menu)
+
 
     if(menu->id ==15){
         int curveId = data.toInt();
@@ -701,6 +701,31 @@ if(menu->id == 19) {
         }
     }
 
+    if (menu->id == 37) {
+        // Ver identificacion guardada en NVS de un canal
+        int pin = -1;
+        if (sscanf(data.c_str(), "%d", &pin) != 1) {
+            writeSerialComln("Error: formato esperado: <pin>");
+            return;
+        }
+        cargarEImprimirIdentificacionNVS(pin);
+    }
+
+    if (menu->id == 38) {
+        // Iniciar identificacion: pin,numPuntos,tiempo_por_punto_s
+        int pin = -1, numPuntos = -1, tiempo = -1;
+        if (sscanf(data.c_str(), "%d,%d,%d", &pin, &numPuntos, &tiempo) != 3) {
+            writeSerialComln("Error: formato esperado: <pin>,<numPuntos>,<tiempo_por_punto_s>");
+            return;
+        }
+        if (identificacionInit(pin, numPuntos, tiempo)) {
+            writeSerialComln(String("Identificacion iniciada en canal ") + String(pin));
+        } else {
+            writeSerialComln(String("Error al iniciar identificacion en canal ") + String(pin));
+        }
+    }
+
+
 
 
 
@@ -850,6 +875,7 @@ static bool nodeRequiresInput(int id) {
         case 32: // Modificar parámetros PID
         case 34: //
         case 35: // Cambiar variable a estabilizar (ej: voltaje, corriente)
+        case 38: // Iniciar identificación -> requiere pin,numPuntos,tiempo_por_punto_s
             return true;
         default:
             return false;
@@ -991,7 +1017,21 @@ static void onEnterNode(MenuNode* n) {
                 }
                 writeSerialComln(String("Curva ") + String(i) + String(": Variable estabilizada: ") + varStr);
             }
+  
         }
+        case 38: // Identificación
+        {
+
+            for(int i=0;i<NUMBER_OF_SENSORS;i++){
+                if(isIdentificacionRunning(i)){
+                    writeSerialComln(String("Identificación en curso en canal ") + String(i));
+                }else{
+                    cargarEImprimirIdentificacionNVS(i);
+                }
+            }
+            
+        }
+
 
             
         default:
@@ -1025,6 +1065,7 @@ static void onEnterNode(MenuNode* n) {
             case 32: writeSerialComln("Ingrese parámetros PID en formato index,Kp,Ki,Kd y presione 'ENTER'"); break;
             case 34: writeSerialComln("Ingrese <index>,<0/1> para deshabilitar/habilitar feedforward y presione 'ENTER'"); break;
             case 35: writeSerialComln("Ingrese el numero de curva y la variable a estabilizar (V para voltaje, I para corriente) en formato index,variable y presione 'ENTER'"); break;
+            case 38: writeSerialComln("Ingrese <pin>,<numPuntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
             default: break;
         }
     }

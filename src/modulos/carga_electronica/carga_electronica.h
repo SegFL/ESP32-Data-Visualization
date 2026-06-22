@@ -50,4 +50,7 @@ bool getPWMConfig(char index, int *channel, int *freq, int *resolution);
 float getCurrentReference_mA(int index);
 bool setFeedforwardEnabled(bool enabled, int index);
 bool getFeedforwardEnabled(bool *enabled, int index);
+bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s);
+void cargarEImprimirIdentificacionNVS(int pin);
+bool isIdentificacionRunning(int pin);
 #endif
