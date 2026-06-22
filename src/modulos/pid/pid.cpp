@@ -184,18 +184,7 @@ float getDCPID(float setPoint, int index) {
     p->error_prev = error;
 
     
-    if(index==3){
-        static int cont=0;
-        cont++;
-           if(cont >20){
 
-            writeSerialComln(String("PID index ") + String(index) + String(": ref=") + String(ref_percent, 2) + 
-                    String("% meas=") + String(meas_percent, 2) + String("% error=") + String(error, 2) +
-                    String("P=") + String(p->Kp * error, 2) + String(" I=") + String(p->Ki * p->integral, 2) +
-                    String(" -> duty=") + String(p->duty, 2));
-            cont=0;
-        }
-    }
 
     
     return p->duty;

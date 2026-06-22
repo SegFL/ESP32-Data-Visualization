@@ -203,11 +203,18 @@ float getCurveValue(int pin, bool* isNewStep) {
         return -1; // curva deshabilitada
     }
 
+    
     unsigned long currentTime = getCurrentEpoch();
     //writeSerialComln(String("Current Time: ") + String(currentTime) +
    //                  ", Curve Timestamp: " + String(curve->timestamp));
 
-
+   if(pin==3){
+writeSerialComln(String("DBG idx=") + String(curve->currentIndex) +
+                 " cont=" + String(curve->contador) +
+                 " tipoSig=" + String((int)curve->point[curve->currentIndex+1].type) +
+                 " now=" + String(currentTime) +
+                 " next=" + String(curve->timestamp + curve->point[curve->currentIndex+1].tiempo));
+   }
  // Avanzar solo si no llegamos al último punto
     if (curve->currentIndex < curve->contador -1) {
         //writeSerialComln("Index:" + String(curve->currentIndex)+" , Contador : " + String(curve->contador-1));
@@ -221,6 +228,7 @@ float getCurveValue(int pin, bool* isNewStep) {
             }
             if (curve->currentIndex < curve->contador - 1 &&
                 curve->point[curve->currentIndex + 1].type == LINEAR) {
+                    writeSerialComln(String("MODO LINEAL"));
                 calcular_incrementos(curve); // resetea index_pasos a 0
             }
 

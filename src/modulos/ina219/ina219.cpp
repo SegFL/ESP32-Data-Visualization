@@ -19,7 +19,7 @@ const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
     1.0f / 0.12f,        // 10.0f
     1.0f / 0.1f,  // ~18.69f
     1.0f / 0.1f,
-    1.0f / 0.1f,
+    1.0f / 0.05f,
     0.0f
 };
 float shuntVoltageOffset_mV[NUMBER_OF_SENSORS]={0.1f,0.38f,0.67f,0.67f,0.0f}; // Offset de tensión en mV para cada sensor INA219 (se mide con carga cero)
