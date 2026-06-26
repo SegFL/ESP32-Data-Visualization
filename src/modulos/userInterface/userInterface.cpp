@@ -202,6 +202,8 @@ void userInterfaceUpdate() {
             memset(data_buffer, 0, sizeof(data_buffer));
             buffer_index = 0;
             aceptandoDatos = false;
+            // Reactivar si el nodo sigue requiriendo input
+            aceptandoDatos = nodeRequiresInput(menu->id);
 
         } 
         return;
@@ -916,6 +918,8 @@ static void onEnterNode(MenuNode* n) {
                         "  Resolucion: " + res + " bits"
                     );
                 }
+                break;
+
             }
 
             break;
@@ -990,7 +994,9 @@ static void onEnterNode(MenuNode* n) {
         {
             //Intenta realizar una conexion a wifi sin esperar el tiempo de espera
             connectWiFi();
+            
         }
+        break;
 
         case 34: // Feedforward
         {
@@ -1004,6 +1010,7 @@ static void onEnterNode(MenuNode* n) {
                 );
             }
         }
+        break;
         case 35: // Variable a estabilizar
         {
             for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
@@ -1019,6 +1026,8 @@ static void onEnterNode(MenuNode* n) {
             }
   
         }
+        break;
+
         case 38: // Identificación
         {
 
@@ -1031,6 +1040,8 @@ static void onEnterNode(MenuNode* n) {
             }
             
         }
+        break;
+
 
 
             

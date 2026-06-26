@@ -33,6 +33,12 @@ typedef enum {
     OFF_t
 } curve_mode_t;
 
+// Resultado procesado de un punto del barrido
+typedef struct {
+    float duty_percent;   // duty aplicado en este punto
+    float corriente_mA;   // promedio calculado al procesar (se llena en procesarYGuardar)
+} PuntoIdentificado_t;
+
 void CargaElectronicaInit();
 void CargaElectronicaUpdate();
 float PWMSetDC(float dc);
@@ -53,4 +59,6 @@ bool getFeedforwardEnabled(bool *enabled, int index);
 bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s);
 void cargarEImprimirIdentificacionNVS(int pin);
 bool isIdentificacionRunning(int pin);
+PuntoIdentificado_t* getIdentificacionNVS(int pin, int* numPuntos);
+
 #endif

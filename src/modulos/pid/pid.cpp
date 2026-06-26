@@ -1,12 +1,14 @@
 
 
 #include "pid.h"
+#include <modulos/carga_electronica/carga_electronica.h>
 
 #define MAX_DUTY 95.0F
 #define MIN_DUTY 10.0f
 
 #define MAX_SAFE_CURRENT 2000.0f
 
+#define LUT_MAX_POINTS 25
 
 // ====== Parámetros PID ======
 //float Kp = 0.1f;
@@ -54,7 +56,7 @@ float error_anterior = 0.0f;
 // ====== DutyCycle actual (0..100%) ======
 float duty_percent = 0.0f;
 
-
+static void cargarLUTFeedforward(int index);
 
 void PID_Init(int index, float kp, float ki, float kd, float ts) {
     if (index < 0 || index >= NUMBER_OF_SENSORS) return;
@@ -68,6 +70,7 @@ void PID_Init(int index, float kp, float ki, float kd, float ts) {
     pid[index].error_prev = 0.0f;
     pid[index].duty = 0.0f;
     pid[index].use_feedforward = false;
+    cargarLUTFeedforward(index);
 
 }
 
@@ -184,8 +187,6 @@ float getDCPID(float setPoint, int index) {
     p->error_prev = error;
 
     
-
-
     
     return p->duty;
 }
@@ -243,7 +244,7 @@ float getPIDTs(int index) {
 
 
 #define LUT_MAX_CHANNELS 5
-#define LUT_MAX_POINTS   11
+
 
 typedef struct {
     float current_mA;
@@ -282,7 +283,7 @@ float feedforward(float referencia_mA, int index) {
     float best_dist = 1e9f;
 
     for (int i = 0; i < LUT_MAX_POINTS; i++) {
-        if (LUT[index][i].current_mA < 0) break; // fin de datos
+        if (LUT[index][i].current_mA < 0) continue; // fin de datos
 
         float dist = fabsf(LUT[index][i].current_mA - referencia_mA);
         if (dist < best_dist) {
@@ -291,6 +292,7 @@ float feedforward(float referencia_mA, int index) {
         }
     }
 
+    //writeSerialComln(String("Feedforward canal ") + String(index) + String(": referencia ") + String(referencia_mA) + String(" mA -> duty ") + String(best_duty) + String("%"));
     return best_duty;
 }
 
@@ -341,4 +343,29 @@ bool setPIDMode(int index, char mode){
         }
 
         return false;
+}
+
+
+static void cargarLUTFeedforward(int index) {
+    int numPuntos = 0;
+    PuntoIdentificado_t* datos = getIdentificacionNVS(index, &numPuntos);
+    if (datos == nullptr) {
+        writeSerialComln(String("LUT canal ") + String(index) + String(": sin identificacion guardada"));
+        return;
+    }
+
+    int maxPuntos = min(numPuntos, LUT_MAX_POINTS);
+    for (int i = 0; i < maxPuntos; i++) {
+        LUT[index][i].current_mA   = datos[i].corriente_mA;
+        LUT[index][i].duty_percent = datos[i].duty_percent;
+        writeSerialComln(String("  LUT[") + String(index) + String("][") + String(i) + String("]: ") 
+            + String(datos[i].corriente_mA) + String(" mA -> ") + String(datos[i].duty_percent) + String("%"));
+    }
+    if (maxPuntos < LUT_MAX_POINTS) {
+        LUT[index][maxPuntos].current_mA   = -1;
+        LUT[index][maxPuntos].duty_percent = -1;
+    }
+
+    free(datos);
+    writeSerialComln(String("LUT canal ") + String(index) + String(": ") + String(maxPuntos) + String(" puntos cargados"));
 }

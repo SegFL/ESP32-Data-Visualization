@@ -32,11 +32,7 @@ static int calcularMaxDuty(int resolution);
 #define IDENT_MUESTRAS_POR_SEGUNDO  10      // coincide con la frecuencia de leerADC()
 #define IDENT_NVS_NAMESPACE         "ident" // namespace NVS dedicado a identificaciones
 
-// Resultado procesado de un punto del barrido
-typedef struct {
-    float duty_percent;   // duty aplicado en este punto
-    float corriente_mA;   // promedio calculado al procesar (se llena en procesarYGuardar)
-} PuntoIdentificado_t;
+
 
 // Estado completo de una identificación en curso para un canal
 typedef struct {
@@ -114,6 +110,10 @@ static void abortarIdentificacion(int pin);
 static void procesarYGuardar(int pin);
 static float promediarSegundaMitad(float* muestras, int total);
 static void liberarIdentificacion(int pin);
+void PWMSetCurveMode(curve_mode_t state, int index);
+static float calcularPromedio(float* muestras, int total);
+
+
 void CargaElectronicaInit(){
 
   // Configuración del canal PWM con frecuencia y resolución
@@ -281,7 +281,7 @@ void CargaElectronicaUpdate(){
       case OFF_t:
         // En modo OFF la referencia de corriente viene de la referencia manual (mA)
         referenceCurrent = getCurrentReference_mA(i);
-
+        //if(i==3) writeSerialComln(String("Modo OFF - Referencia manual: ") + String(referenceCurrent) + String(" mA"));
         break;
         case ON_t: {
           if (checkLimits(i, getLastCurrentData(i) / 1000, 0, 0)) {
@@ -292,6 +292,7 @@ void CargaElectronicaUpdate(){
           //Esta variable solo cambia cuando el nuevo punto de la curva es del tipo step
           bool isNewStep = false;
           float curveVal = getCurveValue(i, &isNewStep);  // float, nombre distinto a aux
+          //(i==3   )writeSerialComln(String("Canal ") + String(i) + String(" - Valor de curva: ") + String(curveVal) + String(" mA ") );
           if(feedforwardEnabled[i] && isNewStep){
               PID_EnableFeedforward(i);
           }
@@ -327,10 +328,13 @@ void CargaElectronicaUpdate(){
        //Uso el valor predecido de dutycycle para la referencia dada porelusuario
         if (feedforwardEnabled[i]) {
             dutyCycleAux = feedforward(referenceCurrent, i);
+
         } else {
-            dutyCycleAux = getDCDirecto(referenceCurrent); // o la lógica que corresponda
+            dutyCycleAux = getDCDirecto(referenceCurrent)*10.0f; // o la lógica que corresponda
+             
         }
 
+       
 
         //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
         break;
@@ -351,10 +355,14 @@ void CargaElectronicaUpdate(){
     // Aplicar el duty cycle actual (invertido)
     int pwmValue = (int)((100.0f - dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);
 
+    //if(i==3)writeSerialComln(String("Canal ") + String(i) + String(" - Duty Cycle aplicado: ") + String(dutyCycleAux) + String("%, PWM Value: ") + String(pwmValue));
     ledcWrite(pwmConfig[i].channel,pwmValue); // Inicializar el PWM a 0 (apagado)  
 
 
   }
+
+
+  
 
 //Luego de actualizar el PWM, hago elprocesamiento pesado para evitar un posible delay
 
@@ -507,7 +515,7 @@ bool setCurrentReference_mA(float reference, int index){
     }
     
     // Si el setpoint cambió y el modo es PID, activar feedforward
-    // Solo activar feedforward si está habilitado para este canal y estoy en modocorriente
+    // Solo activar feedforward si está habilitado para este canal y estoa en modocorriente
     if (reference != currentReference_mA[index] && feedforwardEnabled[index] && getPIDMode(index) == 'i') {
         PID_EnableFeedforward(index);
     }
@@ -572,7 +580,7 @@ bool setFeedforwardEnabled(bool enabled, int index) {
 bool getFeedforwardEnabled(bool *enabled, int index) {
     if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return false;
     *enabled = feedforwardEnabled[index];
-    return true;
+    return feedforwardEnabled[index];
 }
 
 
@@ -582,8 +590,18 @@ bool getFeedforwardEnabled(bool *enabled, int index) {
 // IDENTIFICACIÓN DE PLANTA — FUNCIONES PRIVADAS
 // ============================================================
 
+
+curve_mode_t  prev_curve_mode ;
+modoFuncionamiento_t prev_control_mode ;
+bool prev_feedforward_enabled ;
+
 // Libera toda la memoria dinámica de una identificación y anula el puntero global
 static void liberarIdentificacion(int pin) {
+    if(pin < 0 || pin >= NUMBER_OF_SENSORS) {
+        writeSerialComln(String("Error: pin inválido en procesarYGuardar: ") + String(pin));
+        return;
+    }
+
     Identificacion_t* id = identificaciones[pin];
     if (id == nullptr) return;
 
@@ -591,7 +609,8 @@ static void liberarIdentificacion(int pin) {
         free(id->dutyValues);
         id->dutyValues = nullptr;
     }
-
+    
+writeSerialComln(String("Liberando identificacion del canal ") + String(pin));
     if (id->mediciones != nullptr) {
         for (int i = 0; i < id->numPuntos; i++) {
             if (id->mediciones[i] != nullptr) {
@@ -615,59 +634,70 @@ static void liberarIdentificacion(int pin) {
 // Procesa las mediciones crudas, guarda en NVS e imprime por consola.
 // Por ahora los promedios se dejan en 0 — el cálculo se implementará después.
 static void procesarYGuardar(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return;
+
     Identificacion_t* id = identificaciones[pin];
     if (id == nullptr) return;
 
-    writeSerialComln(String("=== IDENTIFICACION CANAL ") + String(pin) + String(" ==="));
-    writeSerialComln(String("Procesando ") + String(id->numPuntos) + String(" puntos..."));
-
-    // TODO: calcular promedios de id->mediciones[i] y almacenar en id->resultados[i].corriente_mA
-    // Por ahora se copian los duties y se deja corriente en 0
+    // Calcular promedios
     for (int i = 0; i < id->numPuntos; i++) {
         id->resultados[i].duty_percent = id->dutyValues[i];
-        id->resultados[i].corriente_mA = 0.0f; // placeholder hasta implementar promedio
-        writeSerialComln(
-            String("  Punto ") + String(i) +
-            String(": duty=") + String(id->dutyValues[i], 1) + String("%") +
-            String(" | muestras capturadas=") + String(id->muestras_por_punto)
-        );
+        id->resultados[i].corriente_mA = calcularPromedio(id->mediciones[i], id->muestras_por_punto);
     }
 
-    // Guardar en NVS
+    // Guardar en NVS con char[] para no fragmentar heap
     nvs_handle_t handle;
-    char nsKey[32];
-    snprintf(nsKey, sizeof(nsKey), "ident_%d", pin);
+    char key[48];
 
     esp_err_t err = nvs_open(IDENT_NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
-        writeSerialComln(String("Error al abrir NVS para identificacion del canal ") + String(pin));
+        writeSerialComln(String("Error NVS identificacion canal ") + String(pin));
         liberarIdentificacion(pin);
         return;
     }
 
-    // Metadatos
-    nvs_set_i32(handle, (String(nsKey) + "_pin").c_str(),   pin);
-    nvs_set_i32(handle, (String(nsKey) + "_npts").c_str(),  id->numPuntos);
-    nvs_set_u32(handle, (String(nsKey) + "_ts").c_str(),    (uint32_t)id->timestampInicio);
-    nvs_set_i32(handle, (String(nsKey) + "_mxpt").c_str(),  id->muestras_por_punto);
-
-    // Tabla de resultados como blob
-    size_t blobSize = sizeof(PuntoIdentificado_t) * id->numPuntos;
-    nvs_set_blob(handle, (String(nsKey) + "_data").c_str(), id->resultados, blobSize);
-
-    err = nvs_commit(handle);
-    if (err != ESP_OK) {
-        writeSerialComln(String("Error al hacer commit NVS identificacion canal ") + String(pin));
-    } else {
-        writeSerialComln(String("Identificacion canal ") + String(pin) + String(" guardada en NVS"));
-    }
+    snprintf(key, sizeof(key), "ident_%d_pin",  pin); nvs_set_i32(handle, key, pin);
+    snprintf(key, sizeof(key), "ident_%d_npts", pin); nvs_set_i32(handle, key, id->numPuntos);
+    snprintf(key, sizeof(key), "ident_%d_ts",   pin); nvs_set_u32(handle, key, (uint32_t)id->timestampInicio);
+    snprintf(key, sizeof(key), "ident_%d_mxpt", pin); nvs_set_i32(handle, key, id->muestras_por_punto);
+    snprintf(key, sizeof(key), "ident_%d_data", pin);
+    nvs_set_blob(handle, key, id->resultados, sizeof(PuntoIdentificado_t) * id->numPuntos);
+    nvs_commit(handle);
     nvs_close(handle);
 
-    writeSerialComln(String("=== FIN IDENTIFICACION CANAL ") + String(pin) + String(" ==="));
+    // Restaurar modo antes de liberar
+    PWMSetCurveMode(prev_curve_mode, pin);
+    setControlMode(prev_control_mode, pin);
+    setFeedforwardEnabled(prev_feedforward_enabled, pin);
+
+    // Copiar resultados antes de liberar heap
+    int numPuntos = id->numPuntos;
+    float* dutyCopy      = (float*)malloc(sizeof(float) * numPuntos);
+    float* resultadosCopy = (float*)malloc(sizeof(float) * numPuntos);
+    if (dutyCopy && resultadosCopy) {
+        for (int i = 0; i < numPuntos; i++) {
+            dutyCopy[i]       = id->resultados[i].duty_percent;
+            resultadosCopy[i] = id->resultados[i].corriente_mA;
+        }
+    }
 
     liberarIdentificacion(pin);
-}
 
+    // Imprimir con heap ya liberado
+    writeSerialComln(String("=== IDENTIFICACION CANAL ") + String(pin) + String(" ==="));
+    writeSerialComln(String("Puntos: ") + String(numPuntos));
+    if (dutyCopy && resultadosCopy) {
+        for (int i = 0; i < numPuntos; i++) {
+            char buf[48];
+            snprintf(buf, sizeof(buf), "  duty=%.1f%% -> %.2f mA", dutyCopy[i], resultadosCopy[i]);
+            writeSerialComln(String(buf));
+        }
+    }
+    writeSerialComln(String("=== FIN IDENTIFICACION CANAL ") + String(pin) + String(" ==="));
+
+    if (dutyCopy)        free(dutyCopy);
+    if (resultadosCopy)  free(resultadosCopy);
+}
 // Recibe una muestra de corriente, la almacena en el vector del punto actual
 // e ignora las llamadas correspondientes al standby inicial.
 static void guardarPuntoIdentificado(int pin, float corriente_mA) {
@@ -700,6 +730,7 @@ static void guardarPuntoIdentificado(int pin, float corriente_mA) {
         if (id->puntoActual >= id->numPuntos) {
             writeSerialComln(String("Todas las muestras capturadas en canal ") + String(pin) + String(". Procesando..."));
             procesarYGuardar(pin);
+            return;
             // procesarYGuardar llama a liberarIdentificacion al final
         }
     }
@@ -711,6 +742,8 @@ static void guardarPuntoIdentificado(int pin, float corriente_mA) {
 // ============================================================
 
 bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s) {
+
+
 
     // Validaciones
     if (pin < 0 || pin >= NUMBER_OF_SENSORS) {
@@ -732,11 +765,21 @@ bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s) {
         liberarIdentificacion(pin);
     }
 
+
+    prev_curve_mode = getCurveMode(pin);
+    prev_control_mode = getModoFuncionamiento(pin);
+    bool estado;
+     if(getFeedforwardEnabled(&estado,pin)==true){
+        prev_feedforward_enabled = estado;
+     } else {
+        prev_feedforward_enabled = false;
+     }
+
     // ── 1. Preparar el canal: apagar PID, feedforward y curva ────────────
-    PWMSetCurveMode(OFF_t, pin);
+    PWMSetCurveMode(ON_t, pin);
     setControlMode(NONE, pin);
     setFeedforwardEnabled(false, pin);
-    writeSerialComln(String("Canal ") + String(pin) + String(": PID off, FF off, curva off"));
+    writeSerialComln(String("Canal ") + String(pin) + String(": PID off, FF off, curva on"));
 
     // ── 2. Crear y poblar la estructura de identificación ─────────────────
     Identificacion_t* id = (Identificacion_t*)malloc(sizeof(Identificacion_t));
@@ -932,4 +975,52 @@ void cargarEImprimirIdentificacionNVS(int pin) {
     if (pin < 0 || pin >= NUMBER_OF_SENSORS) return false;
     Identificacion_t* id = identificaciones[pin];
     return (id != nullptr && id->activa);
+}
+
+static float calcularPromedio(float* muestras, int total) {
+    if (muestras == nullptr || total <= 0) return 0.0f;
+    int inicio = total / 2;
+    float suma = 0.0f;
+    for (int i = inicio; i < total; i++) {
+        suma += muestras[i];
+    }
+    return suma / (float)(total - inicio);
+}
+
+
+
+
+PuntoIdentificado_t* getIdentificacionNVS(int pin, int* numPuntos) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS || numPuntos == nullptr) return nullptr;
+
+    nvs_handle_t handle;
+    char key[48];
+
+    esp_err_t err = nvs_open(IDENT_NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (err != ESP_OK) return nullptr;
+
+    int32_t npts = 0;
+    snprintf(key, sizeof(key), "ident_%d_npts", pin);
+    if (nvs_get_i32(handle, key, &npts) != ESP_OK || npts <= 0 || npts > 100) {
+        nvs_close(handle);
+        return nullptr;
+    }
+
+    PuntoIdentificado_t* datos = (PuntoIdentificado_t*)malloc(sizeof(PuntoIdentificado_t) * npts);
+    if (datos == nullptr) {
+        nvs_close(handle);
+        return nullptr;
+    }
+
+    size_t blobSize = sizeof(PuntoIdentificado_t) * npts;
+    snprintf(key, sizeof(key), "ident_%d_data", pin);
+    if (nvs_get_blob(handle, key, datos, &blobSize) != ESP_OK) {
+        free(datos);
+        nvs_close(handle);
+        return nullptr;
+    }
+
+    nvs_close(handle);
+    *numPuntos = npts;
+    return datos;
 }

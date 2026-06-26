@@ -208,13 +208,7 @@ float getCurveValue(int pin, bool* isNewStep) {
     //writeSerialComln(String("Current Time: ") + String(currentTime) +
    //                  ", Curve Timestamp: " + String(curve->timestamp));
 
-   if(pin==3){
-writeSerialComln(String("DBG idx=") + String(curve->currentIndex) +
-                 " cont=" + String(curve->contador) +
-                 " tipoSig=" + String((int)curve->point[curve->currentIndex+1].type) +
-                 " now=" + String(currentTime) +
-                 " next=" + String(curve->timestamp + curve->point[curve->currentIndex+1].tiempo));
-   }
+
  // Avanzar solo si no llegamos al último punto
     if (curve->currentIndex < curve->contador -1) {
         //writeSerialComln("Index:" + String(curve->currentIndex)+" , Contador : " + String(curve->contador-1));
