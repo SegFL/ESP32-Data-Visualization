@@ -36,7 +36,6 @@ typedef enum {
 } PID_mode_t;
 
 static PID_mode_t PID_MODE[NUMBER_OF_SENSORS] = {CURRENT, CURRENT, CURRENT}; // Modo de control para cada sensor (corriente o voltaje)
-#define MAX_CURVES 
 
 
 
@@ -75,7 +74,6 @@ void PID_Init(int index, float kp, float ki, float kd, float ts) {
 }
 
 // ====== Función de control ======
-// Reemplazar la implementación actual de getDCPID por esta
 float getDCPID(float setPoint, int index) {
     static float meas_filtered[NUMBER_OF_SENSORS] = {0.0f};
 
@@ -292,7 +290,7 @@ float feedforward(float referencia_mA, int index) {
         }
     }
 
-    //writeSerialComln(String("Feedforward canal ") + String(index) + String(": referencia ") + String(referencia_mA) + String(" mA -> duty ") + String(best_duty) + String("%"));
+
     return best_duty;
 }
 
@@ -340,7 +338,7 @@ bool setPIDMode(int index, char mode){
             return true;
         default:
             return false;  
-        }
+    }
 
         return false;
 }
