@@ -4,7 +4,7 @@
 #include "carga_electronica.h"
 //#define PRUEBA_CURVAS 0 //Si se define como 1 se habilita la prueba de curvas, si no se deja como 0
 #include "driver/ledc.h"
-
+#include <modulos/calibration_manager/calibrationManager.h>
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
 
 
@@ -197,7 +197,7 @@ void CargaElectronicaInit(){
         }
 
         cargarConfiguracionNvs();
-
+        calibrationManagerInit();
 
         //Inicilizo los pid
         PID_Init(0,0.10,0.10,0.000,0.1);
@@ -355,7 +355,10 @@ void CargaElectronicaUpdate(){
     // Aplicar el duty cycle actual (invertido)
     int pwmValue = (int)((100.0f - dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);
 
-    //if(i==3)writeSerialComln(String("Canal ") + String(i) + String(" - Duty Cycle aplicado: ") + String(dutyCycleAux) + String("%, PWM Value: ") + String(pwmValue));
+    
+
+    
+    
     ledcWrite(pwmConfig[i].channel,pwmValue); // Inicializar el PWM a 0 (apagado)  
 
 
@@ -369,6 +372,12 @@ void CargaElectronicaUpdate(){
     for(int i = 0; i < NUMBER_OF_SENSORS; i++){
         if(identificaciones[i] != nullptr && identificaciones[i]->activa){
             guardarPuntoIdentificado(i, getLastCurrentData(i));
+        }
+    }
+
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
+        if (calibracionActiva(i)) {
+            calibracionUpdate(i, getLastCurrentData(i));
         }
     }
 }

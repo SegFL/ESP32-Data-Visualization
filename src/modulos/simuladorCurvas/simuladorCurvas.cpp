@@ -549,8 +549,17 @@ void startCurve(curve_t* curve,int pin){
     curve->enabled = true;
     curve->timestamp = t0;
     curve->currentIndex = 0;
-    writeSerialComlnCOMMAND("START_CURVE," + String((int)(curve->id)) + "," + String(pin));
 
+
+
+    // TODO: por ahora hardcodeado, el sensor de entrada es siempre el 4
+    const int SENSOR_ENTRADA = 4;
+
+    // Formato: START_CURVE,<curvaId>,<cantidadSensores>,<sensor1>,<sensor2>,...
+    writeSerialComlnCOMMAND(
+        "START_CURVE," + String((int)(curve->id)) +
+        ",2," + String(pin) + "," + String(SENSOR_ENTRADA)
+    );
 }
 
 void endCurve(curve_t* curve,int pin){

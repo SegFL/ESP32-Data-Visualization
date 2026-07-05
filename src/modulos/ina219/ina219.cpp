@@ -3,7 +3,7 @@
 #include <ADCData.h>
 #include "ADS1X15.h"
 #include <Wire.h>
-
+#include <modulos/calibration_manager/calibrationManager.h>
 
 
 typedef enum {
@@ -40,7 +40,7 @@ float shuntVoltageOffset_mV[NUMBER_OF_SENSORS] = {
 //   Sensor 2: 0.10Ω → 160mV/0.10 = 1.60A  → usamos 1.5A
 //   Sensor 3: 0.05Ω → 160mV/0.05 = 3.20A  → usamos 3.0A
 //   Sensor 4: ADS1115, no aplica
-static const float INA219_MAX_CURRENT_A[NUMBER_OF_SENSORS] = {1.5f, 1.5f, 1.5f, 3.0f, 0.0f};
+static const float INA219_MAX_CURRENT_A[NUMBER_OF_SENSORS] = {1.5f, 1.5f, 5.0f, 5.0f, 0.0f};
 
 // Valores calculados en ina219Init() y reutilizados en cada lectura
 static uint16_t ina219_cal_value[NUMBER_OF_SENSORS]  = {0};
@@ -69,8 +69,9 @@ float ads_offset_i[NUMBER_OF_SENSORS];
 float ads_gain_i[NUMBER_OF_SENSORS];
 
 //ACS712
-float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.5381f};
-float acs_gain[NUMBER_OF_SENSORS]     = {1.0f, 1.0f, 1.0f, 1.0f, 10000.0f};
+float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f,  1.6255f}; //Si l alimentacion es de 3.3V, el offset es 1.65V. Si la alimentacion es de 5V, el offset es 2.5V
+float acs_gain[NUMBER_OF_SENSORS]     = {1.0f, 1.0f, 1.0f, 1.0f, (5/3.3)*(1.0f+0.0101+2.50/100.0f)*10000.0f};//La sensibilidad tambien depende de VCC
+
 
 
 // ── Variables globales ────────────────────────────────────────────────────
@@ -130,10 +131,13 @@ void ina219Init() {
             uint16_t cal = (uint16_t)(0.04096f / (lsb_A * (1.0f / R_SHUNT_INV[i])));
             cal &= 0xFFFE;  // bit D0 es void (datasheet sección 8.6), siempre 0
             ina219_cal_value[i] = cal;
+            uint16_t pga = (i == 3 ||i==4) ? ((uint16_t)(0b11 << 11))   // PGA_8 → ±320mV → 6.4A máx
+                                    : ((uint16_t)(0b10 << 11));   // PGA_4 → ±160mV → resto
+
 
             // Registro de configuración
             ina219_config_reg[i] = INA219_CONFIG_BRNG_32V
-                                 | INA219_CONFIG_PGA_4_160MV
+                                 | pga
                                  | INA219_CONFIG_BADC_12BIT
                                  | INA219_CONFIG_SADC_12BIT
                                  | INA219_CONFIG_MODE_CONT;
@@ -184,22 +188,30 @@ bool getData(ADCData& data, int const sensor) {
         const int16_t raw_current = ina219_readReg(sensorAddresses[sensor], INA219_REG_CURRENT);
 
         const float shuntV = (raw_shunt * 10.0f / 1000.0f) - shuntVoltageOffset_mV[sensor]; // 10µV/bit → mV
-        const float busV   = (float)(raw_bus >> 3) * 4.0f / 1000.0f;                        // 4mV/bit → V
-        const float cur    = (float)raw_current * ina219_lsb_mA[sensor];
-
+        const float cur  = applyCurrentCalib(sensor, (float)raw_current * ina219_lsb_mA[sensor]);
+        const float busV = applyVoltageCalib(sensor, (float)(raw_bus >> 3) * 4.0f / 1000.0f);
         data.shuntVoltage_mV = shuntV;
         data.busVoltage_V    = busV;
         data.current_mA      = cur;
         data.power_mW        = cur * busV;
 
     } else { // ADS1115_
-        const float cur  = getCalibratedCurrentADS1115(sensor);
-        const float busV = getCalibratedVoltageADS1115(sensor);
+    const float rawCur     = getCalibratedCurrentADS1115(sensor);
+    const float afterAbs   = applyCurrentCalibAbsOnly(sensor, rawCur);
+    const float cur        = applyCurrentCalib(sensor, rawCur);
+    const float busV       = applyVoltageCalib(sensor, getCalibratedVoltageADS1115(sensor));
 
-        data.shuntVoltage_mV = 0.0f;
-        data.busVoltage_V    = busV;
-        data.current_mA      = cur;
-        data.power_mW        = cur * busV;
+    char buf[128];
+    snprintf(buf, sizeof(buf),
+        "[S4] raw=%.2f  +absoluta=%.2f  +relativa=%.2f mA",
+        rawCur, afterAbs, cur);
+    //writeSerialComln(String(buf));
+
+    data.shuntVoltage_mV = 0.0f;
+    data.busVoltage_V    = busV;
+    data.current_mA      = cur;
+    data.power_mW        = cur * busV;
+
     }
 
     data.pin             = sensor;
@@ -222,6 +234,8 @@ float getCalibratedCurrentADS1115(int sensor) {
     float voltage = ads1115[sensor]->toVoltage(raw);
     float deltaV  = voltage - acs_offset_V[sensor];
     float current = deltaV * acs_gain[sensor];
+
+
     return current;
 }
 

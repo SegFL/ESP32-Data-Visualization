@@ -5,7 +5,7 @@
 #include "userInterface.h"
 #include <ADCData.h>
 #include "modulos/queueCom/queueCom.h"
-
+#include <modulos/calibration_manager/calibrationManager.h>
 #include <modulos/carga_electronica/carga_electronica.h>
 #include <modulos/time/time.h>
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
@@ -728,6 +728,86 @@ if(menu->id == 19) {
     }
 
 
+    if (menu->id == 40) {
+        bool esperandoAlguno = false;
+        for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
+            if (getCalibEstado(i) == CALIB_ESPERANDO_USUARIO) {
+                float valorReal;
+                if (sscanf(data.c_str(), "%f", &valorReal) == 1) {
+                    calibracionRecibirValorReal(i, valorReal);
+                } else {
+                    writeSerialComln("Formato invalido. Ingresa el valor en mA (ej: 487.3)");
+                }
+                esperandoAlguno = true;
+                break;
+            }
+        }
+
+        if (!esperandoAlguno) {
+            int sensor, numPuntos, segundosPorPunto;
+            if (sscanf(data.c_str(), "%d,%d,%d", &sensor, &numPuntos, &segundosPorPunto) == 3) {
+                if (!calibracionAbsolutaInit(sensor, numPuntos, segundosPorPunto)) {
+                    writeSerialComln(String("Error al iniciar calibracion. Verifica: sensor(0-") +
+                                    String(NUMBER_OF_SENSORS - 1) + String("), puntos(2-") +
+                                    String(CALIB_MAX_POINTS) + String("), seg/punto(1-60)"));
+                }
+            } else {
+                writeSerialComln("Formato invalido. Use: <sensor>,<puntos>,<seg_por_punto> (ej: 0,6,10)");
+            }
+        }
+    }
+
+
+    if (menu->id == 41) {
+        int sensorCarga, numPuntos, segundosPorPunto;
+        if (sscanf(data.c_str(), "%d,%d,%d", &sensorCarga, &numPuntos, &segundosPorPunto) == 3) {
+            if (!calibracionRelativaInit(4, sensorCarga, numPuntos, segundosPorPunto)) {
+                writeSerialComln(String("Error al iniciar calibracion relativa. Verifica:"));
+                writeSerialComln(String("  sensor_carga(0-") + String(NUMBER_OF_SENSORS - 1) + String(")"));
+                writeSerialComln(String("  puntos(2-")       + String(CALIB_MAX_POINTS)       + String(")"));
+                writeSerialComln(String("  seg/punto(1-60)"));
+            }
+        } else {
+            writeSerialComln("Formato invalido. Use: <sensor_carga>,<puntos>,<seg_por_punto>");
+            writeSerialComln("Ejemplo: 1,6,10  (carga=sensor1, 6 puntos, 10seg c/u)");
+        }
+    }
+
+
+    if (menu->id == 43) {
+    int sensor;
+        char tipo;
+        if (sscanf(data.c_str(), "%d,%c", &sensor, &tipo) == 2) {
+            tipo = tolower(tipo);
+            if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) {
+                writeSerialComln(String("Sensor invalido. Use 0-") + String(NUMBER_OF_SENSORS - 1));
+                return;
+            }
+            if (tipo == 'a') {
+                bool nuevo = !getAbsoluteCalibFlag(sensor);
+                setAbsoluteCalibFlag(sensor, nuevo);
+                writeSerialComln(String("Calibracion absoluta sensor ") + String(sensor) +
+                                String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
+            } else if (tipo == 'r') {
+                bool nuevo = !getRelativeCalibFlag(sensor);
+                setRelativeCalibFlag(sensor, nuevo);
+                writeSerialComln(String("Calibracion relativa sensor ") + String(sensor) +
+                                String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
+            } else {
+                writeSerialComln("Tipo invalido. Use 'a' para absoluta o 'r' para relativa");
+            }
+        } else {
+            writeSerialComln("Formato invalido. Use: <sensor>,<tipo> (ej: 3,r o 4,a)");
+        }
+    }
+
+
+    
+
+
+
+
+
 
 
 
@@ -878,7 +958,10 @@ static bool nodeRequiresInput(int id) {
         case 34: //
         case 35: // Cambiar variable a estabilizar (ej: voltaje, corriente)
         case 38: // Iniciar identificación -> requiere pin,numPuntos,tiempo_por_punto_s
-            return true;
+        case 40: // Iniciar calibración -> requiere pin,numPuntos,tiempo_por_punto_s
+        case 41: // Iniciar calibración relativa -> requiere pin,numPuntos,tiempo_por_punto_s
+        case 43: // Activar/desactivar calibración absoluta/relativa -> requiere pin,tipo(a/r)
+        return true;
         default:
             return false;
     }
@@ -1041,6 +1124,24 @@ static void onEnterNode(MenuNode* n) {
             
         }
         break;
+        
+        case 40:{
+            for(int i=0;i<NUMBER_OF_SENSORS;i++){
+                imprimirCalibracionAbsoluta(i);
+            }
+        }break;
+        case 41:{
+            for(int i=0;i<NUMBER_OF_SENSORS;i++){
+                imprimirCalibracionRelativa(i);
+            }
+        }break;
+        case 43:{
+            for(int i=0;i<NUMBER_OF_SENSORS;i++){
+                writeSerialComln(String("Sensor ") + String(i) + String(": Calibracion absoluta: ") + (getAbsoluteCalibFlag(i) ? "ACTIVADA" : "DESACTIVADA") + String(", Calibracion relativa: ") + (getRelativeCalibFlag(i) ? "ACTIVADA" : "DESACTIVADA"));
+            }
+        }break;
+
+        
 
 
 
@@ -1077,6 +1178,9 @@ static void onEnterNode(MenuNode* n) {
             case 34: writeSerialComln("Ingrese <index>,<0/1> para deshabilitar/habilitar feedforward y presione 'ENTER'"); break;
             case 35: writeSerialComln("Ingrese el numero de curva y la variable a estabilizar (V para voltaje, I para corriente) en formato index,variable y presione 'ENTER'"); break;
             case 38: writeSerialComln("Ingrese <pin>,<numPuntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
+            case 40: writeSerialComln("Ingrese <pin>,<#puntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
+            case 41: writeSerialComln("Ingrese <sensor_carga>,<#puntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
+            case 43: writeSerialComln("Ingrese <sensor>,<tipo> (ej: 3,r o 4,a) y presione 'ENTER'"); break;
             default: break;
         }
     }
