@@ -52,6 +52,8 @@ static void enqueueMsg(const String &data) {
     data.substring(0, SERIAL_MSG_MAX_LEN - 1).toCharArray(buf, SERIAL_MSG_MAX_LEN);
     // timeout 0: si la cola esta llena, descarta en vez de bloquear
     xQueueSend(serialQueue, buf, 0);
+
+    
 }
 
 char readSerialChar() {
@@ -123,7 +125,10 @@ void writeSerialComWithChecksum(const String &payload) {
 
 // Estas no se tocan, siguen igual que las tenías
 void writeSerialComlnDATA(String data) {
+
     writeSerialComWithChecksum(String(DATA) + "," + data);
+
+
 }
 
 void writeSerialComlnCOMMAND(String data) {
@@ -151,4 +156,8 @@ void writeSerialComlnDATA(const char* data) {
     
     if (serialQueue != nullptr)
         xQueueSend(serialQueue, final, 0);
+
+    led_write_state(LED_STATE_SENDING_DATA, true);  
+
+
 }

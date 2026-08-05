@@ -5,6 +5,10 @@
 #include <Wire.h>
 #include <modulos/calibration_manager/calibrationManager.h>
 
+#define I2C_SDA_PIN 33
+#define I2C_SCL_PIN 32
+
+
 
 typedef enum {
     INA219_,
@@ -12,6 +16,8 @@ typedef enum {
 } sensor_type_t;
 
 sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_, ADS1115_};
+
+
 
 
 // ── Calibracion  ───────────────────────
@@ -106,8 +112,8 @@ static int16_t ina219_readReg(uint8_t addr, uint8_t reg) {
 void ina219Init() {
     writeSerialComln(String("Inicializando sensores INA219 y ADS1115..."));
 
-    Wire.begin();
-    Wire.setClock(400000);
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+    Wire.setClock(200000);
 
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
 

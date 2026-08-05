@@ -4,7 +4,7 @@
 #include <modulos/carga_electronica/carga_electronica.h>
 
 #define MAX_DUTY 95.0F
-#define MIN_DUTY 10.0f
+#define MIN_DUTY 0.0f
 
 #define MAX_SAFE_CURRENT 2000.0f
 
@@ -184,7 +184,7 @@ float getDCPID(float setPoint, int index) {
 
     p->error_prev = error;
 
-    
+    if(index == 1) writeSerialComln(String("PID: ref=") + String(setPoint) + String(" mA, meas=") + String(meas) + String(", duty=") + String(p->duty));
     
     return p->duty;
 }

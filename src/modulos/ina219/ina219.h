@@ -7,9 +7,10 @@
 
 
 /*
-Las comunicaciones i2c con el sensor se cargan automaticamente pero 
-SDA=D21
-SCL=D22
+Las comunicaciones i2c con el sensor se cargan automaticamente(SDA=D21-SCL=D22) pero manualmente las cambio a 
+SDA=D32
+SCL=D33
+
 */
 
 void ina219Init();

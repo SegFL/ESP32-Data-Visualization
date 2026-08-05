@@ -7,6 +7,7 @@
 #include "modulos/ina219/ina219.h"
 #include "modulos/time/time.h"
 #include "modulos/dac/dac.h"
+#include "modulos/led_dirver/led_driver.h"
 
 #define QUEUE_LENGTH 100
 #define ITEM_SIZE sizeof(char)
@@ -50,6 +51,28 @@ Task2 (Core 1)
 
 
 */
+
+
+
+
+
+
+void TaskLed(void *pvParameters)
+{
+
+
+
+    TickType_t lastWake = xTaskGetTickCount();
+    const TickType_t period = pdMS_TO_TICKS(UPDATE_PERIOD_MS); // debe matchear el define del driver (100ms)
+    led_write_state(LED_STATE_RUN,true);
+    for (;;) {
+        led_write_state(LED_STATE_RUN, true); // kick constante
+
+        led_driver_update();
+        vTaskDelayUntil(&lastWake, period);
+    }
+}
+
 void TaskSensors(void *pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
     const TickType_t period = pdMS_TO_TICKS(100);
@@ -86,6 +109,9 @@ void setup() {
   CargaElectronicaInit();
   dacInit();
 
+  led_driver_init();
+
+
 
   xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
   timeRequestQueue = xQueueCreate(10, sizeof(int));
@@ -95,6 +121,8 @@ void setup() {
 
   xTaskCreatePinnedToCore(TaskSensors, "Sensors", 2*4096, NULL, 4, NULL, 1);
   xTaskCreatePinnedToCore(TaskControl, "Control", 2*4096, NULL, 5, NULL, 1); 
+  xTaskCreatePinnedToCore(TaskLed, "Led", 2*4096, NULL, 3, NULL, 1);
+
   writeSerialComln("Tareas inicializadas");
 }
 

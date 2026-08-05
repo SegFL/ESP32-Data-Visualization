@@ -62,20 +62,13 @@ typedef struct {
     int pin;
     int max_duty;  
 } PWM_Config_t;
-/*
-Pin 6 ESP32 = PIN0 TERMINAL = EL0 = GPIO 16 (TIMER 0)
-Pin 7 ESP32 = PIN1 TERMINAL = EL1 = GPIO 17 (TIMER 1)
-Pin 24 ESP32 = PIN2  TERMINAL = EL2_HV = GPIO 26 (TIMER 2)
-Pin 25 ESP32 = PIN3  TERMINAL = EL3_HV = GPIO 27 (TIMER 2) (comparte timer con GPIO 26)
-Pin 22 ESP32 = PIN4  TERMINAL = AUXILIAR = GPIO 33 (TIMER 3)
-*/
 
 PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
-    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = 16, .max_duty = 0},  // GPIO 16 → Timer 0
-    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = 17, .max_duty = 0},  // GPIO 17 → Timer 1
-    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = 26, .max_duty = 0},  // GPIO 26 → Timer 2
-    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = 27, .max_duty = 0},  // GPIO 27 → Timer 2 (comparte timer con GPIO 26)
-    { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = 33, .max_duty = 0}   // GPIO 33 → Timer 3
+    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = 27, .max_duty = 0},  
+    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = 26, .max_duty = 0},  
+    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = 25, .max_duty = 0},  
+    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = 33, .max_duty = 0}, 
+    { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = 32, .max_duty = 0}   
 };
 
 
@@ -346,14 +339,14 @@ void CargaElectronicaUpdate(){
 
 
     //Clamp del duty para asegurar que esté dentro de los límites permitidos 
-    if (dutyCycleAux > MAX_DUTY) dutyCycleAux = MAX_DUTY;
-    if (dutyCycleAux < MIN_DUTY) dutyCycleAux = MIN_DUTY;
+    //if (dutyCycleAux > MAX_DUTY) dutyCycleAux = MAX_DUTY;
+    //if (dutyCycleAux < MIN_DUTY) dutyCycleAux = MIN_DUTY;
 
 
 
 
     // Aplicar el duty cycle actual (invertido)
-    int pwmValue = (int)((100.0f - dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);
+    int pwmValue = (int)((dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);
 
     
 
