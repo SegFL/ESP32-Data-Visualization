@@ -64,10 +64,10 @@ typedef struct {
 } PWM_Config_t;
 
 PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
-    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = 27, .max_duty = 0},  
-    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = 26, .max_duty = 0},  
-    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = 25, .max_duty = 0},  
-    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = 33, .max_duty = 0}, 
+    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = 4, .max_duty = 0},  
+    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = 19, .max_duty = 0},  
+    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = 21, .max_duty = 0},  
+    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = 22, .max_duty = 0}, 
     { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = 32, .max_duty = 0}   
 };
 

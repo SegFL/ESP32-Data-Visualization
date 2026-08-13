@@ -5,8 +5,8 @@
 #include <Wire.h>
 #include <modulos/calibration_manager/calibrationManager.h>
 
-#define I2C_SDA_PIN 33
-#define I2C_SCL_PIN 32
+#define I2C_SDA_PIN 13
+#define I2C_SCL_PIN 14
 
 
 
