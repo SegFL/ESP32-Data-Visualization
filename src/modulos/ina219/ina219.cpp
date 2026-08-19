@@ -4,9 +4,8 @@
 #include "ADS1X15.h"
 #include <Wire.h>
 #include <modulos/calibration_manager/calibrationManager.h>
+#include <config.h>
 
-#define I2C_SDA_PIN 13
-#define I2C_SCL_PIN 14
 
 
 
@@ -23,7 +22,7 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 // ── Calibracion  ───────────────────────
 //INA219
 const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
-    9.463566f,       // ← era 1.0f/0.12f = 8.333. Corrige ganancia (slope=1.1356)
+    1.0f / 0.1f,       // ← era 1.0f/0.12f = 8.333. Corrige ganancia (slope=1.1356)
     1.0f / 0.1f,
     1.0f / 0.1f,
     1.0f / 0.05f,
@@ -113,7 +112,7 @@ void ina219Init() {
     writeSerialComln(String("Inicializando sensores INA219 y ADS1115..."));
 
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-    Wire.setClock(200000);
+    Wire.setClock(100000);
 
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
 

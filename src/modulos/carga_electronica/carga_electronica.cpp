@@ -64,11 +64,11 @@ typedef struct {
 } PWM_Config_t;
 
 PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
-    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = 4, .max_duty = 0},  
-    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = 19, .max_duty = 0},  
-    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = 21, .max_duty = 0},  
-    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = 22, .max_duty = 0}, 
-    { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = 32, .max_duty = 0}   
+    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = PWM_0_PIN, .max_duty = 0},  //En laplaca nueva deberia ser el 4
+    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = PWM_1_PIN, .max_duty = 0},  
+    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = PWM_2_PIN, .max_duty = 0},  
+    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = PWM_3_PIN, .max_duty = 0}, 
+    { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = PWM_4_PIN, .max_duty = 0}   
 };
 
 
@@ -339,20 +339,20 @@ void CargaElectronicaUpdate(){
 
 
     //Clamp del duty para asegurar que esté dentro de los límites permitidos 
-    //if (dutyCycleAux > MAX_DUTY) dutyCycleAux = MAX_DUTY;
-    //if (dutyCycleAux < MIN_DUTY) dutyCycleAux = MIN_DUTY;
+    if (dutyCycleAux > MAX_DUTY) dutyCycleAux = MAX_DUTY;
+    if (dutyCycleAux < MIN_DUTY) dutyCycleAux = 0;
 
 
 
 
     // Aplicar el duty cycle actual (invertido)
-    int pwmValue = (int)((dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);
+    int pwmValue = (int)((dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);  //max_duty es el valor maximo de duty para la frecuencia del pwm
 
     
 
     
     
-    ledcWrite(pwmConfig[i].channel,pwmValue); // Inicializar el PWM a 0 (apagado)  
+    ledcWrite(pwmConfig[i].channel,pwmValue); 
 
 
   }
