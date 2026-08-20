@@ -8,9 +8,24 @@
 #include "modulos/time/time.h"
 #include "modulos/dac/dac.h"
 #include "modulos/led_dirver/led_driver.h"
+#include "esp_timer.h"
+#include "config.h"
+
 
 #define QUEUE_LENGTH 100
 #define ITEM_SIZE sizeof(char)
+
+
+
+void run_led_init(uint64_t period_us);
+static void run_led_toggle_cb(void* arg);
+void run_led_set_period(uint64_t period_us);
+static esp_timer_handle_t run_led_timer;
+#define BLINK_FAST_US 50000   // 100ms → 5 Hz mientras inicializa
+#define BLINK_SLOW_US 250000   // 250ms → 2 Hz en operación normal
+
+static bool run_led_state = false;
+
 
 QueueHandle_t xQueueComSerial;
 QueueHandle_t timeRequestQueue;
@@ -96,6 +111,11 @@ void TaskControl(void *pvParameters) {
 
 
 void setup() {
+
+  //Pongo el led de RUN a parpadear rápido mientras inicializa
+  run_led_init(BLINK_FAST_US);   
+
+
   userInterfaceInit();
   writeSerialComln("=== INICIO DEL SISTEMA ===");
   writeSerialComln(String("Memoria inicial: ") + ESP.getFreeHeap());
@@ -111,6 +131,8 @@ void setup() {
 
   led_driver_init();
 
+  //Pongo el led de RUN a parpadear lento
+  run_led_set_period(BLINK_SLOW_US); 
 
 
   xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
@@ -131,3 +153,22 @@ void loop() {
 }
 
 
+static void run_led_toggle_cb(void* arg) {
+    run_led_state = !run_led_state;
+    digitalWrite(LED_RUN_PIN, run_led_state);
+}
+
+void run_led_init(uint64_t period_us) {
+    pinMode(LED_RUN_PIN, OUTPUT);
+    const esp_timer_create_args_t args = {
+        .callback = &run_led_toggle_cb,
+        .name = "run_led"
+    };
+    esp_timer_create(&args, &run_led_timer);
+    esp_timer_start_periodic(run_led_timer, period_us);
+}
+
+void run_led_set_period(uint64_t period_us) {
+    esp_timer_stop(run_led_timer);
+    esp_timer_start_periodic(run_led_timer, period_us);
+}

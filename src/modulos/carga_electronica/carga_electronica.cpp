@@ -53,6 +53,9 @@ typedef struct {
 // Array global de identificaciones, una por canal
 static Identificacion_t* identificaciones[NUMBER_OF_SENSORS] = {nullptr};
 bool identificacionEnCurso[NUMBER_OF_SENSORS] = {false};
+//Arreglo de corrientes maximas permitidas por carga. Solo se usa para mostrar el esto en los leds
+float maxCurrent_mA[NUMBER_OF_ELECTRONIC_LOADS] = {1500.0f, 1500.0f, 5000.0f, 5000.0f, 6000.0f}; // AJUSTAR por canal
+
 
 typedef struct {
     int channel;
@@ -360,8 +363,9 @@ void CargaElectronicaUpdate(){
 
   
 
-//Luego de actualizar el PWM, hago elprocesamiento pesado para evitar un posible delay
 
+//Luego de actualizar el PWM, hago elprocesamiento pesado para evitar un posible delay
+    //Seccion de calibracion y de identificacion de planta
     for(int i = 0; i < NUMBER_OF_SENSORS; i++){
         if(identificaciones[i] != nullptr && identificaciones[i]->activa){
             guardarPuntoIdentificado(i, getLastCurrentData(i));
@@ -373,6 +377,20 @@ void CargaElectronicaUpdate(){
             calibracionUpdate(i, getLastCurrentData(i));
         }
     }
+
+    //Seccion de manejo de leds
+
+
+
+    for (int i = 0; i < NUMBER_OF_ELECTRONIC_LOADS; i++) {
+        float medida_mA = getLastCurrentData(i);
+        float pct = (medida_mA / maxCurrent_mA[i]) * 100.0f;
+        if (pct < 0.0f) pct = 0.0f;
+        if (pct > 100.0f) pct = 100.0f;
+
+        led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), (uint8_t)pct);
+    }
+
 }
 
 

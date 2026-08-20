@@ -6,16 +6,21 @@
 #define UPDATE_PERIOD_MS 100
 
 // Estados logicos del sistema, cada uno mapeado a un LED fisico
+
+// Agregar antes de LED_STATE_COUNT, uno por carga
 typedef enum {
     LED_STATE_RUN=0,
     LED_STATE_SENDING_DATA,
-    LED_STATE_ERROR,
-    LED_STATE_COUNT   // debe quedar siempre al final
+    LED_STATE_LOAD_0,
+    LED_STATE_LOAD_1,
+    LED_STATE_LOAD_2,
+    LED_STATE_LOAD_3,
+    LED_STATE_LOAD_4,
+    LED_STATE_COUNT
 } led_state_t;
-
 // Inicializa GPIOs, mutex y apaga todos los LEDs
 void led_driver_init(void);
-
+void led_set_duty(led_state_t state, uint8_t duty_percent); // 0-100
 // Marca un estado como activo/inactivo. Si el estado tiene timeout
 // configurado, cada llamada con active=true reinicia el contador (heartbeat).
 void led_write_state(led_state_t state, bool active);

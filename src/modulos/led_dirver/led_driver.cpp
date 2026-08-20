@@ -3,17 +3,16 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include <modulos/serialCom/serialCom.h>
+#include "config.h"
 
-// ---- Pines del 74HC595 ----
-#define PIN_RCLK   GPIO_NUM_17
-#define PIN_SCLK  GPIO_NUM_4
-#define PIN_SER  GPIO_NUM_18
 
+#define LOAD_LED_PWM_PERIOD_MS 100  // múltiplo de UPDATE_PERIOD_MS, rápido para evitar parpadeo visible
 
 
 typedef enum {
     LED_MODE_FIXED,
     LED_MODE_BLINK,
+    LED_MODE_PWM        
 } led_mode_t;
 
 typedef struct {
@@ -29,9 +28,14 @@ typedef struct {
     [LED_STATE_ERROR]          = { .bit = 2, .mode = LED_MODE_BLINK, .blink_period_ms = 500, .timeout_ms = 0    },
 */
 static const led_config_t led_config[LED_STATE_COUNT] = {
-    [LED_STATE_RUN]            = { .bit = 2, .mode = LED_MODE_BLINK, .blink_period_ms = 500,   .timeout_ms = 500    },
-    [LED_STATE_SENDING_DATA]   = { .bit = 4, .mode = LED_MODE_BLINK, .blink_period_ms = 200, .timeout_ms = 1000  }
-
+    [LED_STATE_RUN]            = { .bit = 2, .mode = LED_MODE_BLINK, .blink_period_ms = 500,               .timeout_ms = 500  },
+    [LED_STATE_SENDING_DATA]   = { .bit = 4, .mode = LED_MODE_BLINK, .blink_period_ms = 200,               .timeout_ms = 1000 },
+    [LED_STATE_LOAD_0]         = { .bit = 0, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_LOAD_1]         = { .bit = 1, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_LOAD_2]         = { .bit = 3, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_LOAD_3]         = { .bit = 5, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_LOAD_4]         = { .bit = 6, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    // bit 7 queda libre
 };
 
 static uint8_t  led_active_flags = 0;
@@ -40,8 +44,11 @@ static uint16_t blink_counters[LED_STATE_COUNT] = {0};
 static uint8_t  led_shadow_register = 0;
 static uint8_t  led_last_sent = 0xFF;
 static SemaphoreHandle_t led_mutex;
+static uint8_t led_duty[LED_STATE_COUNT] = {0}; // duty runtime, solo usado en modo PWM
+
 
 static void led_hc595_shift_out(uint8_t data);
+void led_set_duty(led_state_t state, uint8_t duty_percent);
 
 void led_driver_init(void)
 {
@@ -89,7 +96,6 @@ void led_write_state(led_state_t state, bool active)
     }
     xSemaphoreGive(led_mutex);
 }
-
 void led_driver_update(void)
 {
     uint8_t active_snapshot;
@@ -118,15 +124,32 @@ void led_driver_update(void)
         bool is_active = (active_snapshot >> bit) & 0x01;
         if (!is_active) continue;
 
-        if (led_config[s].mode == LED_MODE_FIXED) {
-            output |= (1 << bit);
-        } else {
-            blink_counters[s] += UPDATE_PERIOD_MS;
-            if (blink_counters[s] >= led_config[s].blink_period_ms) {
-                blink_counters[s] = 0;
-            }
-            if (blink_counters[s] < (led_config[s].blink_period_ms / 2)) {
+        switch (led_config[s].mode) {
+
+            case LED_MODE_FIXED:
                 output |= (1 << bit);
+                break;
+
+            case LED_MODE_BLINK:
+                blink_counters[s] += UPDATE_PERIOD_MS;
+                if (blink_counters[s] >= led_config[s].blink_period_ms) {
+                    blink_counters[s] = 0;
+                }
+                if (blink_counters[s] < (led_config[s].blink_period_ms / 2)) {
+                    output |= (1 << bit);
+                }
+                break;
+
+            case LED_MODE_PWM: {
+                blink_counters[s] += UPDATE_PERIOD_MS;
+                if (blink_counters[s] >= led_config[s].blink_period_ms) {
+                    blink_counters[s] = 0;
+                }
+                uint16_t on_time = (uint16_t)((uint32_t)led_config[s].blink_period_ms * led_duty[s] / 100);
+                if (blink_counters[s] < on_time) {
+                    output |= (1 << bit);
+                }
+                break;
             }
         }
     }
@@ -138,6 +161,7 @@ void led_driver_update(void)
         led_last_sent = led_shadow_register;
     }
 }
+
 
 static void led_hc595_shift_out(uint8_t data)
 {
@@ -163,4 +187,18 @@ void led_driver_blink_all(void)
         led_hc595_shift_out(state ? 0xFF : 0x00);
         vTaskDelay(half_period);
     }
+}
+
+void led_set_duty(led_state_t state, uint8_t duty_percent) {
+    if (state >= LED_STATE_COUNT) return;
+    if (duty_percent > 100) duty_percent = 100;
+
+    xSemaphoreTake(led_mutex, portMAX_DELAY);
+    led_duty[state] = duty_percent;
+    if (duty_percent > 0) {
+        led_active_flags |= (1 << led_config[state].bit); // activa el bit para que el loop lo procese
+    } else {
+        led_active_flags &= ~(1 << led_config[state].bit);
+    }
+    xSemaphoreGive(led_mutex);
 }
