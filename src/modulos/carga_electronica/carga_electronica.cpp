@@ -350,11 +350,6 @@ void CargaElectronicaUpdate(){
 
     // Aplicar el duty cycle actual (invertido)
     int pwmValue = (int)((dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);  //max_duty es el valor maximo de duty para la frecuencia del pwm
-
-    
-
-    
-    
     ledcWrite(pwmConfig[i].channel,pwmValue); 
 
 
@@ -502,7 +497,10 @@ bool setControlMode(modoFuncionamiento_t mode, int index){
   char key[32];
   makeKey(key, MODO_FUNCIONAMIENTO_NVS_KEY, index);
   if(saveValueNVS(key, (char)mode) == 0){  // ← Verificar que sea 0 (éxito)
-      modoFuncionamiento[index] = mode;     // Actualizar solo si fue exitoso
+        modoFuncionamiento[index] = mode;     // Actualizar solo si fue exitoso
+        setCurrentReference_mA(0.0f,index);
+        // Establecer duty cycle a 0 para evitar picos de corriente al cambiar de modo
+        ledcWrite(pwmConfig[index].channel, 0);
       return true;
   }
   return false;  // Error al guardar

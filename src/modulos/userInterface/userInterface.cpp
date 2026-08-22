@@ -132,125 +132,96 @@ void userInterfaceInit(){
 
 void userInterfaceUpdate() {
     static bool ignorarPrimerNewline = false;
-
+    //Variables para contar cuanto tiempo tengo disponible para procesar datos de la terminal
+    //Con esto evito que si llegan muchos datos de golpe se bloquee la tarea y salte el WTD
+    TickType_t inicio = xTaskGetTickCount();
+    const TickType_t timeout = pdMS_TO_TICKS(30);//Luego de 30ms salgo del while para ceder CPU a otras tareas
 
     if (menu == nullptr) return;
 
-    char charReceived = readSerialChar();
-    if (charReceived == '\0') return; 
+    char charReceived;
+    while ((charReceived = readSerialChar()) != '\0') {
 
-
-    if (charReceived == '@') {
-        if (curvaEnProgreso) abortarTransferenciaCurva("CANCELADO_POR_USUARIO");
-
-        APP_MODE = true;
-
-        app_index = 0;
-        memset(app_buffer, 0, sizeof(app_buffer));
-        while(Serial.available()) Serial.read();  // Descarto todos los datos pendientes antes de pasar almodoapp
-
-        writeSerialComlnAPP("APP_MODE_ON");
-        return;
-    }
-
-    if (charReceived == '#') {
-        if (curvaEnProgreso) abortarTransferenciaCurva("CANCELADO_POR_USUARIO");
-
-        APP_MODE = false;
-        writeSerialComlnAPP("APP_MODE_OFF");
-        cleanBufferApp();
-        clearScreen();
-        printNode(menu);
-        onEnterNode(menu);
-        return;
-    }
-
-    if (APP_MODE) {
-        if (charReceived == '\0') return;  // ← AGREGAR ESTO
-        handleAppMode(charReceived);
-        return;
-    }
-
-    if(charReceived== GO_BACK || charReceived == '<'){ // ESCAPE
-        charReceived = GO_BACK; // Normalizamos ambos casos a GO_BACK
-        menuUpdate(charReceived, &menu);
-        
-        clearScreen();
-        printNode(menu);
-        onEnterNode(menu);
-        lastMenuId = menu->id;
-        
-        //Si el nodo es nuevo y requiere datos, preparo el buffer para recibirlos
-        //Si no es nuevo pero aun asi requiere datos(porque ya se enviaron datos previamente
-        //y se quiere seguir enviando datos) tambien preparo el buffer
-        aceptandoDatos = nodeRequiresInput(menu->id);
-
-        
-        return ;
-    }
-  
-
-    if (charReceived == '\n') {
-        if (ignorarPrimerNewline) {
-            ignorarPrimerNewline = false; //El primer /n luego de una cambio de menu lo ignoro
-            return;
+        if (charReceived == '@') {
+            if (curvaEnProgreso) abortarTransferenciaCurva("CANCELADO_POR_USUARIO");
+            APP_MODE = true;
+            app_index = 0;
+            memset(app_buffer, 0, sizeof(app_buffer));
+            while(Serial.available()) Serial.read();
+            writeSerialComlnAPP("APP_MODE_ON");
+            continue;   // <- antes era return, ahora seguimos vaciando el while
         }
-        if (aceptandoDatos) {
-            // Terminamos de recibir datos
-            data_buffer[buffer_index] = '\0';  // Terminador nulo
-            procesarDatos(data_buffer);
-            memset(data_buffer, 0, sizeof(data_buffer));
-            buffer_index = 0;
-            aceptandoDatos = false;
-            // Reactivar si el nodo sigue requiriendo input
-            aceptandoDatos = nodeRequiresInput(menu->id);
 
-        } 
-        return;
-    }
+        if (charReceived == '#') {
+            if (curvaEnProgreso) abortarTransferenciaCurva("CANCELADO_POR_USUARIO");
+            APP_MODE = false;
+            writeSerialComlnAPP("APP_MODE_OFF");
+            cleanBufferApp();
+            clearScreen();
+            printNode(menu);
+            onEnterNode(menu);
+            continue;
+        }
 
-   if (!aceptandoDatos) {
+        if (APP_MODE) {
+            handleAppMode(charReceived);
+            continue;
+        }
 
-        
-        menuUpdate(charReceived, &menu);
-
-        if (lastMenuId != menu->id) {
+        if (charReceived == GO_BACK || charReceived == '<') {
+            charReceived = GO_BACK;
+            menuUpdate(charReceived, &menu);
             clearScreen();
             printNode(menu);
             onEnterNode(menu);
             lastMenuId = menu->id;
-        }
-        //Si el nodo es nuevo y requiere datos, preparo el buffer para recibirlos
-        //Si no es nuevo pero aun asi requiere datos(porque ya se enviaron datos previamente
-        //y se quiere seguir enviando datos) tambien preparo el buffer
-        aceptandoDatos = nodeRequiresInput(menu->id);
-        if (aceptandoDatos) {
-            ignorarPrimerNewline = true;  // ← ignorar el \n de navegación
+            aceptandoDatos = nodeRequiresInput(menu->id);
+            continue;
         }
 
+        if (charReceived == '\n') {
+            if (ignorarPrimerNewline) {
+                ignorarPrimerNewline = false;
+                continue;
+            }
+            if (aceptandoDatos) {
+                data_buffer[buffer_index] = '\0';
+                procesarDatos(data_buffer);
+                memset(data_buffer, 0, sizeof(data_buffer));
+                buffer_index = 0;
+                aceptandoDatos = nodeRequiresInput(menu->id);
+            }
+            continue;
+        }
 
-    } else {
-        // Captura de caracteres
-        if(buffer_index < MAX_DATA_BUFFER - 1) {
-            // Aceptamos solo números,caracteres , coma y espacios y puntos para los floats
-            if (isdigit(charReceived) || isalpha(charReceived) || 
-                charReceived == ',' || charReceived == '.' || 
-                charReceived == '-' || isspace(charReceived)) {
-                data_buffer[buffer_index++] = charReceived;
+        if (!aceptandoDatos) {
+            menuUpdate(charReceived, &menu);
+            if (lastMenuId != menu->id) {
+                clearScreen();
+                printNode(menu);
+                onEnterNode(menu);
+                lastMenuId = menu->id;
+            }
+            aceptandoDatos = nodeRequiresInput(menu->id);
+            if (aceptandoDatos) ignorarPrimerNewline = true;
+        } else {
+            if (buffer_index < MAX_DATA_BUFFER - 1) {
+                if (isdigit(charReceived) || isalpha(charReceived) ||
+                    charReceived == ',' || charReceived == '.' ||
+                    charReceived == '-' || isspace(charReceived)) {
+                    data_buffer[buffer_index++] = charReceived;
+                }
             }
         }
+        
+        //Si procese muchos datos y se acerca al timeout, salgo del while para ceder CPU a otras tareas
+        if ((xTaskGetTickCount() - inicio) >= timeout) break;
+
     }
 
-
-
-
-    // 🔹 Ejecutar siempre la lógica de actualización periódica
+    // Se ejecuta siempre, una vez por llamada, haya o no habido datos
     onUpdateNode(menu);
-
-    return;
 }
-
-
 bool loadConfiguration() {
 
     char mode = 0;

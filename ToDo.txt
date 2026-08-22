@@ -67,15 +67,12 @@ Verificar que el datalogger funcion bien en segundo plano, fijarse si fucniona c
 Cuando leo todos los datos de la colaentre las task de adc y send data receiveSensorDataToUserInterface() no deberia quedarmesolo con el ultimo, o si?
 Estos datos se envian a la app o solo se muestran en pantalla?(creo que solo son los que se muestra en lainterfaz)
 
-Intentar si puedo cambiar el modo de funcionamiento de la cara CC-CP-CV-CR Cambiando el valor con el cual se realimenta.
+Intentar si puedo cambiar el modo de funcionamiento de la carga CC-CP-CV-CR Cambiando el valor con el cual se realimenta.
 
 Ver si puedo desactivar cargas y valores sensados para medir mas rapido con una cierta carga
 
 Guardar otros valores de  V y P en el modulo de adc para luego suarlos en cargaelectronica y mandarselos a checkLimits()
 
-
-
-
-
+Corregir para que se actualize el menu 1, los valores de los sensores autoamticamente
 
 

@@ -30,10 +30,10 @@ static bool run_led_state = false;
 QueueHandle_t xQueueComSerial;
 QueueHandle_t timeRequestQueue;
 
-TaskHandle_t Task1Handle = NULL;
+TaskHandle_t TaskUserIntHandle = NULL;
 TaskHandle_t Task2Handle = NULL;
 
-void Task1(void *pvParameters) {
+void TaskUserInt(void *pvParameters) {
   int received;
   for (;;) {
     if (xQueueReceive(timeRequestQueue, &received, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -42,9 +42,7 @@ void Task1(void *pvParameters) {
       }
     }
 
-    while (Serial.available() > 0) {
-        userInterfaceUpdate();
-    }
+    userInterfaceUpdate();
     TimeUpdate();
     vTaskDelay(pdMS_TO_TICKS(200)); // Cede CPU al resto de tareas
   }
@@ -138,7 +136,7 @@ void setup() {
   xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
   timeRequestQueue = xQueueCreate(10, sizeof(int));
 
-  xTaskCreatePinnedToCore(Task1, "Task1", 2*4096, NULL, 1, &Task1Handle, 0);
+  xTaskCreatePinnedToCore(TaskUserInt, "TaskUserInt", 2*4096, NULL, 1, &TaskUserIntHandle, 0);
   //Task2 tendra la priordad maxima ya que se encarga se leer y escribir entradas/salidas
 
   xTaskCreatePinnedToCore(TaskSensors, "Sensors", 2*4096, NULL, 4, NULL, 1);
