@@ -73,6 +73,6 @@ Ver si puedo desactivar cargas y valores sensados para medir mas rapido con una 
 
 Guardar otros valores de  V y P en el modulo de adc para luego suarlos en cargaelectronica y mandarselos a checkLimits()
 
-Corregir para que se actualize el menu 1, los valores de los sensores autoamticamente
-
-
+Para eviat el corto al apagar la terminal es necesario
+"""""cortar el trace DTR→EN (o RTS→EN, según la placa) en la board, o agregar un capacitor de ~1µF entre 
+EN y GND para filtrar el pulso corto sin afectar un reset manual (que dura más tiempo)."""""

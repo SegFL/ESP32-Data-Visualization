@@ -131,7 +131,7 @@ void userInterfaceInit(){
 
 
 void userInterfaceUpdate() {
-    static bool ignorarPrimerNewline = false;
+  
     //Variables para contar cuanto tiempo tengo disponible para procesar datos de la terminal
     //Con esto evito que si llegan muchos datos de golpe se bloquee la tarea y salte el WTD
     TickType_t inicio = xTaskGetTickCount();
@@ -178,13 +178,21 @@ void userInterfaceUpdate() {
             aceptandoDatos = nodeRequiresInput(menu->id);
             continue;
         }
+        if (charReceived == '\r') {
+            continue;
+        }
+        //Con este if manejo el backspace y el delete, para borrar caracteres del buffer de datos
+        if (charReceived == '\b' || charReceived == 127) {
+            if (aceptandoDatos && buffer_index > 0) {
+                buffer_index--;
+                data_buffer[buffer_index] = '\0';
+                writeSerialCom("\b \b");
+            }
+            continue;
+        }
 
         if (charReceived == '\n') {
-            if (ignorarPrimerNewline) {
-                ignorarPrimerNewline = false;
-                continue;
-            }
-            if (aceptandoDatos) {
+            if (aceptandoDatos && buffer_index > 0) {
                 data_buffer[buffer_index] = '\0';
                 procesarDatos(data_buffer);
                 memset(data_buffer, 0, sizeof(data_buffer));
@@ -203,13 +211,14 @@ void userInterfaceUpdate() {
                 lastMenuId = menu->id;
             }
             aceptandoDatos = nodeRequiresInput(menu->id);
-            if (aceptandoDatos) ignorarPrimerNewline = true;
+
         } else {
             if (buffer_index < MAX_DATA_BUFFER - 1) {
                 if (isdigit(charReceived) || isalpha(charReceived) ||
                     charReceived == ',' || charReceived == '.' ||
                     charReceived == '-' || isspace(charReceived)) {
                     data_buffer[buffer_index++] = charReceived;
+                    writeSerialCom(String(charReceived)); // loopback
                 }
             }
         }
@@ -316,6 +325,10 @@ void procesarDatos(String data) {
 
             // OK
             if(setCurrentReference_mA(current, index)){
+                //aca
+                clearScreen();
+                printNode(menu);
+                onEnterNode(menu);
                 getCurrentReference_mA(index); // Para imprimir el valor actualizado en consola
                 writeSerialComln(
                     String("Corriente de referencia cambiada: Curva ")
