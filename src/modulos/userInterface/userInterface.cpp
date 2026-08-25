@@ -70,7 +70,7 @@ bool parseStringToInts(String str, int *num1, int *num2);
 bool parseStringToFloats(String str, int *index, float *num1, float *num2, float *num3);
 void printSavedCurves();
 void printSensorInfo();
-
+void refrescarMenuActual();
 // --- Transferencia de curvas por chunks (CURVE / CURVEC) ---
 
 // Callback del timer de timeout (10s sin recibir el siguiente chunk)
@@ -224,8 +224,8 @@ void userInterfaceUpdate() {
         }
         
         //Si procese muchos datos y se acerca al timeout, salgo del while para ceder CPU a otras tareas
-        if ((xTaskGetTickCount() - inicio) >= timeout) break;
-
+        //if ((xTaskGetTickCount() - inicio) >= timeout) break;
+        break;
     }
 
     // Se ejecuta siempre, una vez por llamada, haya o no habido datos
@@ -291,14 +291,16 @@ void procesarDatos(String data) {
     if (menu->id == 6) {
         if (data.equalsIgnoreCase("y")) { // Comparación más eficiente
             changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
-            writeSerialComln(String("Modo SEND DATA activado"));
             saveValueNVS("mode", SEND_DATA); // Guardar el modo en NVS
+            refrescarMenuActual();
+            writeSerialComln(String("Modo SEND DATA activado"));
         }
         
         if (data.equalsIgnoreCase("n")) { 
             changeMode(NOT_SEND_DATA); 
-            writeSerialComln(String("Modo SEND DATA desactivado"));
             saveValueNVS("mode", NOT_SEND_DATA); 
+            refrescarMenuActual();
+            writeSerialComln(String("Modo SEND DATA desactivado"));
         }
 
     }
@@ -325,10 +327,8 @@ void procesarDatos(String data) {
 
             // OK
             if(setCurrentReference_mA(current, index)){
-                //aca
-                clearScreen();
-                printNode(menu);
-                onEnterNode(menu);
+                refrescarMenuActual();
+
                 getCurrentReference_mA(index); // Para imprimir el valor actualizado en consola
                 writeSerialComln(
                     String("Corriente de referencia cambiada: Curva ")
@@ -367,6 +367,7 @@ void procesarDatos(String data) {
 
         // Aplicar cambio
         if (PWMSetFrequency(frequency,index)) {
+            refrescarMenuActual();
             writeSerialComln(
                 String("PWM ") + index +
                 String(" -> Frecuencia cambiada a: ") +
@@ -398,6 +399,7 @@ void procesarDatos(String data) {
         // Aplicar
         if (PWMSetMaxDC( duty,index)) {
             float maxDC = PWMGetMaxDC(index); // Para imprimir el valor actualizado en consola
+            refrescarMenuActual();
             writeSerialComln(
                 String("Curva ") + String(index) +
                 String(" -> Max duty cycle: ") + String(maxDC) + "%"
@@ -458,6 +460,16 @@ if(menu->id == 19) {
     if(parsed == 7) {
         if(!setLimits(curveId, Imin, Imax, Vmin, Vmax, Pmin, Pmax)) {
             writeSerialComln(String("Error al setear limites en curva: ") + String(curveId));
+        }else{
+
+            refrescarMenuActual();
+            writeSerialComln(String("Limites seteados en curva: ") + String(curveId) + 
+                           String(" Imin=") + String(Imin) + 
+                           String(" Imax=") + String(Imax) +
+                           String(" Vmin=") + String(Vmin) + 
+                           String(" Vmax=") + String(Vmax) +
+                           String(" Pmin=") + String(Pmin) + 
+                           String(" Pmax=") + String(Pmax));
         }
     } else {
         writeSerialComln(String("Error: Formato invalido. Introduzca: CurveId,Imin,Imax,Vmin,Vmax,Pmin,Pmax"));
@@ -471,6 +483,7 @@ if(menu->id == 19) {
         aproximation_point_type_t type=STEP; //Por defecto es STEP
         if (parseStringToPoint(data.c_str(), &curve, &tiempo, &value,&type)) {
             if (addPointToCurve(curve, tiempo, value,type) == 0) {
+                refrescarMenuActual();
                 writeSerialComln(String("Punto agregado a la curva ") + String(curve) + String(": [Tiempo: ") + String(tiempo) + String(", Valor: ") + String(value) + String(", Tipo: ") + (type == LINEAR ? "LINEAR" : (type == STEP ? "STEP" : "S_CURVE")) + String("]"));
             }
         } else {
@@ -486,7 +499,7 @@ if(menu->id == 19) {
         printCargaElectronica();
     }
 
-    if(menu->id ==16){
+    if(menu->id == 16){
 
         int curveId = -1;
         int pin = -1;
@@ -514,6 +527,7 @@ if(menu->id == 19) {
         }else{
             PWMSetCurveMode(ON_t, index);
         }
+        refrescarMenuActual();
         writeSerialComln(String("Modo de curva para indice ") + String(index) + String(" cambiado a ") + (getCurveMode(index) == ON_t ? "ON" : "OFF"));
     }
 
@@ -529,11 +543,12 @@ if(menu->id == 19) {
 
     }
 
-    if(menu->id ==25){
+    if(menu->id == 25){
         // Formato esperado: "DD/MM/AAAA HH:MM"
         int day, month, year, hour, minute;
         if (sscanf(data.c_str(), "%d/%d/%d %d:%d", &day, &month, &year, &hour, &minute) == 5) {
             if (setDateTime(day, month, year, hour, minute)) {
+                refrescarMenuActual();
                 writeSerialComln(String("Fecha y hora actualizadas a: ") + data);
             } else {
                 writeSerialComln(String("Error: Fecha u hora inválida."));
@@ -558,6 +573,7 @@ if(menu->id == 19) {
                 writeSerialComln(String("Error al cambiar el modo de control. Index invalido: ") + String(index));
                 return;
             }
+            refrescarMenuActual();
             writeSerialComln(String("Curva ") + index + " -> Modo de control PID");
         }
         else if (strcasecmp(modeStr, "NONE") == 0) {
@@ -565,6 +581,7 @@ if(menu->id == 19) {
                 writeSerialComln(String("Error al cambiar el modo de control. Index invalido: ") + String(index));
                 return;
             }
+            refrescarMenuActual();
             writeSerialComln(String("Curva ") + index + " -> Modo de control NONE");
         }else {
             writeSerialComln("Error: modo invalido ( < index > , < PID / NONE> )");
@@ -602,6 +619,7 @@ if(menu->id == 19) {
                 );
                 return;
             }
+            refrescarMenuActual();
             writeSerialComln(
                 String("PID reseteado correctamente. Index: ") + String(index)
             );
@@ -626,6 +644,7 @@ if(menu->id == 19) {
                 return;
             }
             setPIDParams(index,kp, ki, kd);
+            refrescarMenuActual();
             writeSerialComln("Parámetros PID actualizados:");
             writeSerialComln(String("Index: ") + String(index));
             writeSerialComln(String("Kp: ") + String(kp, 3));
@@ -665,6 +684,7 @@ if(menu->id == 19) {
 
         bool enabled = false;
         getFeedforwardEnabled(&enabled, index);
+        refrescarMenuActual();
         writeSerialComln(
             String("Curva ") + String(index) +
             String(": Feedforward ") +
@@ -678,6 +698,7 @@ if(menu->id == 19) {
         if (sscanf(data.c_str(), "%d,%c", &index, &mode) == 2) {
             mode = tolower(mode);
             if(setPIDMode(index, mode)) {
+                refrescarMenuActual();
                 writeSerialComln(String("Modo PID para pin ") + String(index) + String(" cambiado a ") + mode);
             } else {
                 writeSerialComln(String("Error al cambiar el modo PID. Index invalido: ") + String(index));
@@ -734,6 +755,8 @@ if(menu->id == 19) {
                     writeSerialComln(String("Error al iniciar calibracion. Verifica: sensor(0-") +
                                     String(NUMBER_OF_SENSORS - 1) + String("), puntos(2-") +
                                     String(CALIB_MAX_POINTS) + String("), seg/punto(1-60)"));
+                }else{
+                    refrescarMenuActual();
                 }
             } else {
                 writeSerialComln("Formato invalido. Use: <sensor>,<puntos>,<seg_por_punto> (ej: 0,6,10)");
@@ -750,6 +773,8 @@ if(menu->id == 19) {
                 writeSerialComln(String("  sensor_carga(0-") + String(NUMBER_OF_SENSORS - 1) + String(")"));
                 writeSerialComln(String("  puntos(2-")       + String(CALIB_MAX_POINTS)       + String(")"));
                 writeSerialComln(String("  seg/punto(1-60)"));
+            }else{
+                refrescarMenuActual();
             }
         } else {
             writeSerialComln("Formato invalido. Use: <sensor_carga>,<puntos>,<seg_por_punto>");
@@ -757,34 +782,34 @@ if(menu->id == 19) {
         }
     }
 
-
-    if (menu->id == 43) {
+if (menu->id == 43) {
     int sensor;
-        char tipo;
-        if (sscanf(data.c_str(), "%d,%c", &sensor, &tipo) == 2) {
-            tipo = tolower(tipo);
-            if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) {
-                writeSerialComln(String("Sensor invalido. Use 0-") + String(NUMBER_OF_SENSORS - 1));
-                return;
-            }
-            if (tipo == 'a') {
-                bool nuevo = !getAbsoluteCalibFlag(sensor);
-                setAbsoluteCalibFlag(sensor, nuevo);
-                writeSerialComln(String("Calibracion absoluta sensor ") + String(sensor) +
-                                String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
-            } else if (tipo == 'r') {
-                bool nuevo = !getRelativeCalibFlag(sensor);
-                setRelativeCalibFlag(sensor, nuevo);
-                writeSerialComln(String("Calibracion relativa sensor ") + String(sensor) +
-                                String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
-            } else {
-                writeSerialComln("Tipo invalido. Use 'a' para absoluta o 'r' para relativa");
-            }
-        } else {
-            writeSerialComln("Formato invalido. Use: <sensor>,<tipo> (ej: 3,r o 4,a)");
+    char tipo;
+    if (sscanf(data.c_str(), "%d,%c", &sensor, &tipo) == 2) {
+        tipo = tolower(tipo);
+        if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) {
+            writeSerialComln(String("Sensor invalido. Use 0-") + String(NUMBER_OF_SENSORS - 1));
+            return;
         }
+        if (tipo == 'a') {
+            bool nuevo = !getAbsoluteCalibFlag(sensor);
+            setAbsoluteCalibFlag(sensor, nuevo);
+            refrescarMenuActual();
+            writeSerialComln(String("Calibracion absoluta sensor ") + String(sensor) +
+                            String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
+        } else if (tipo == 'r') {
+            bool nuevo = !getRelativeCalibFlag(sensor);
+            setRelativeCalibFlag(sensor, nuevo);
+            refrescarMenuActual();
+            writeSerialComln(String("Calibracion relativa sensor ") + String(sensor) +
+                            String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
+        } else {
+            writeSerialComln("Tipo invalido. Use 'a' para absoluta o 'r' para relativa");
+        }
+    } else {
+        writeSerialComln("Formato invalido. Use: <sensor>,<tipo> (ej: 3,r o 4,a)");
     }
-
+}
 
     
 
@@ -1464,4 +1489,11 @@ bool procesarChunkContinuacion(String cmd) {
     }
 
     return true;
+}
+
+//Vuelve a impimir elmenu actual
+void refrescarMenuActual() {
+    clearScreen();
+    printNode(menu);
+    onEnterNode(menu);
 }

@@ -110,6 +110,8 @@ void TaskControl(void *pvParameters) {
 
 void setup() {
 
+/*
+
   //Pongo el led de RUN a parpadear rápido mientras inicializa
   run_led_init(BLINK_FAST_US);   
 
@@ -136,14 +138,15 @@ void setup() {
   xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
   timeRequestQueue = xQueueCreate(10, sizeof(int));
 
-  xTaskCreatePinnedToCore(TaskUserInt, "TaskUserInt", 2*4096, NULL, 1, &TaskUserIntHandle, 0);
+  //xTaskCreatePinnedToCore(TaskUserInt, "TaskUserInt", 2*4096, NULL, 1, &TaskUserIntHandle, 0);
   //Task2 tendra la priordad maxima ya que se encarga se leer y escribir entradas/salidas
 
-  xTaskCreatePinnedToCore(TaskSensors, "Sensors", 2*4096, NULL, 4, NULL, 1);
-  xTaskCreatePinnedToCore(TaskControl, "Control", 2*4096, NULL, 5, NULL, 1); 
-  xTaskCreatePinnedToCore(TaskLed, "Led", 2*4096, NULL, 3, NULL, 1);
+  //xTaskCreatePinnedToCore(TaskSensors, "Sensors", 2*4096, NULL, 4, NULL, 1);
+  //xTaskCreatePinnedToCore(TaskControl, "Control", 2*4096, NULL, 5, NULL, 1); 
+  //xTaskCreatePinnedToCore(TaskLed, "Led", 2*4096, NULL, 3, NULL, 1);
 
   writeSerialComln("Tareas inicializadas");
+*/
 }
 
 void loop() {
