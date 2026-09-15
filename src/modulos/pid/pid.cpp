@@ -184,7 +184,7 @@ float getDCPID(float setPoint, int index) {
 
     p->error_prev = error;
 
-    if(index == 1) writeSerialComln(String("PID: ref=") + String(setPoint) + String(" mA, meas=") + String(meas) + String(", duty=") + String(p->duty));
+    //if(index == 1) writeSerialComln(String("PID: ref=") + String(setPoint) + String(" mA, meas=") + String(meas) + String(", duty=") + String(p->duty));
     
     return p->duty;
 }

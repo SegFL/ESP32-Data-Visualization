@@ -15,5 +15,6 @@ float getLastCurrentData(int index);
 float getLastBusVoltage(int index);
 float getLastPowerData(int index);
 bool ADCEmpty();
-
+bool setSensorState(uint8_t index, bool state);
+bool getSensorState(uint8_t index);
 #endif // ADC_H

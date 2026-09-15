@@ -71,6 +71,7 @@ bool parseStringToFloats(String str, int *index, float *num1, float *num2, float
 void printSavedCurves();
 void printSensorInfo();
 void refrescarMenuActual();
+static float filterCurrentS4(float newSample);
 // --- Transferencia de curvas por chunks (CURVE / CURVEC) ---
 
 // Callback del timer de timeout (10s sin recibir el siguiente chunk)
@@ -288,7 +289,7 @@ void procesarDatos(String data) {
         setPassWord(data); // Cambiar el PASSWORD
         writeSerialComln(String("SSID cambiado a *** "));
     }
-    if (menu->id == 6) {
+    if (menu->id == 7) {
         if (data.equalsIgnoreCase("y")) { // Comparación más eficiente
             changeMode(SEND_DATA); // Cambiar el modo a SEND_DATA
             saveValueNVS("mode", SEND_DATA); // Guardar el modo en NVS
@@ -811,6 +812,29 @@ if (menu->id == 43) {
     }
 }
 
+if(menu->id==44){
+
+        uint8_t index;
+        bool state;
+        if (sscanf(data.c_str(), "%d,%d", &index, &state) != 2) {
+            writeSerialComln("Error: formato invalido. Use <index>,<0/1>");
+            return;
+        }
+    
+
+
+        state=setSensorState(index,state);
+
+        refrescarMenuActual();
+
+        writeSerialComln(
+            String("\n\rSensor") + String(index) +
+            
+            (state ? "HABILITADO" : "DESHABILITADO")
+        );
+        
+}
+
     
 
 
@@ -871,36 +895,47 @@ void printSensorInfo(){
     writeSerialComln(String("\tPower: ") + String("      ") + String(" mW"));
 
 }
+// ── Filtro de media móvil SOLO para mostrar la corriente del sensor 4 ─────
+#define CURRENT_FILTER_SIZE 100
+static float currentBuffer_S4[CURRENT_FILTER_SIZE] = {0};
+static uint8_t currentBufferIdx_S4 = 0;
+
+static float filterCurrentS4(float newSample) {
+    currentBuffer_S4[currentBufferIdx_S4] = newSample;
+    currentBufferIdx_S4 = (currentBufferIdx_S4 + 1) % CURRENT_FILTER_SIZE;
+
+    float sum = 0.0f;
+    for (int i = 0; i < CURRENT_FILTER_SIZE; i++) {
+        sum += currentBuffer_S4[i];
+    }
+    return sum / CURRENT_FILTER_SIZE;
+}
 
 void printSensorData() {
 
-    // 1) Crear array para recibir TODOS los sensores
-    //Se queda con el ultimo valor de cada uno
     ADCData data[NUMBER_OF_SENSORS];
 
     if(SEND_DATA == false){
         writeSerialComln("Modo SEND DATA desactivado. No se enviarán datos de sensores.");
         return;
     }
-    // 2) Llenarlo con receiveSensorDataToUserInterface()
     if (!receiveSensorDataToUserInterface(data)) {
         return;
     }
 
-    // 3) Tamaño en líneas de cada bloque de sensor
     const int LINES_PER_SENSOR = 6;
 
-    // 4) Recorrer todos los sensores por pin
     for (int pin = 0; pin < NUMBER_OF_SENSORS; pin++) {
 
-        // Si no hay datos válidos para este sensor, saltearlo
-        // Podés agregar un flag de validez si querés
-        // Por ahora asumimos que siempre llegará algún dato
         ADCData sensor = data[pin];
 
-        int baseRow = 2 + pin * LINES_PER_SENSOR;
+        // Solo para el pin 4, promediar la corriente antes de mostrarla
+        float currentToShow = sensor.current_mA;
+        if (pin == 4) {
+            currentToShow = filterCurrentS4(sensor.current_mA);
+        }
 
-        // ---- Imprimir bloque ----
+        int baseRow = 2 + pin * LINES_PER_SENSOR;
 
         moveCursor(baseRow + 0, 1);
         writeSerialCom(String("Pin ") + String(sensor.pin) + "              ");
@@ -912,7 +947,7 @@ void printSensorData() {
         writeSerialCom("Shunt Voltage: " + String(sensor.shuntVoltage_mV) + " mV   ");
 
         moveCursor(baseRow + 3, 8);
-        writeSerialCom("Current: " + String(sensor.current_mA) + " mA     ");
+        writeSerialCom("Current: " + String(currentToShow) + " mA     ");
 
         moveCursor(baseRow + 4, 8);
         writeSerialCom("Power: " + String(sensor.power_mW) + " mW     ");
@@ -947,7 +982,7 @@ static bool nodeRequiresInput(int id) {
     switch (id) {
         case 3:  // Entre SSID
         case 4:  // Entre contraseña
-        case 6:  // Activar/desactivar SEND DATA (y/n)
+        case 7:  // Activar/desactivar SEND DATA (y/n)
         case 8:  // Duty cycle
         case 9:  // Frecuencia
         case 10: // Max current reference
@@ -970,6 +1005,7 @@ static bool nodeRequiresInput(int id) {
         case 40: // Iniciar calibración -> requiere pin,numPuntos,tiempo_por_punto_s
         case 41: // Iniciar calibración relativa -> requiere pin,numPuntos,tiempo_por_punto_s
         case 43: // Activar/desactivar calibración absoluta/relativa -> requiere pin,tipo(a/r)
+        case 44: // Seleccionar sensores activos
         return true;
         default:
             return false;
@@ -1149,6 +1185,12 @@ static void onEnterNode(MenuNode* n) {
                 writeSerialComln(String("Sensor ") + String(i) + String(": Calibracion absoluta: ") + (getAbsoluteCalibFlag(i) ? "ACTIVADA" : "DESACTIVADA") + String(", Calibracion relativa: ") + (getRelativeCalibFlag(i) ? "ACTIVADA" : "DESACTIVADA"));
             }
         }break;
+        case 44: {
+            writeSerialComln("Seleccionar sensores activos");
+            for(int i=0; i<NUMBER_OF_SENSORS;i++){
+                writeSerialComln(String("Sensor ")+String(i)+String(":")+(getSensorState(i) ? "ACTIVADO" : "DESACTIVADO") );
+            }
+        }
 
         
 
@@ -1168,7 +1210,7 @@ static void onEnterNode(MenuNode* n) {
         switch (n->id) {
             case 3:  writeSerialComln("Ingrese SSID y presione 'ENTER' para confirmar"); break;
             case 4:  writeSerialComln("Ingrese PASSWORD y presione 'ENTER'"); break;
-            case 6:  writeSerialComln("Para activar/desactivar el modo SEND DATA ingrese y/n y presione 'ENTER'"); break;
+            case 7:  writeSerialComln("Para activar/desactivar el modo SEND DATA ingrese y/n y presione 'ENTER'"); break;
             case 8:  writeSerialComln("Ingrese la corriente de referencia <indice>,<corriente_mA>  (ej: 0,500) y presione 'ENTER'"); break;
             case 9:  writeSerialComln("Ingrese frecuencia <0-78125> y presione 'ENTER'"); break;
             case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione 'ENTER'"); break;
@@ -1190,6 +1232,7 @@ static void onEnterNode(MenuNode* n) {
             case 40: writeSerialComln("Ingrese <pin>,<#puntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
             case 41: writeSerialComln("Ingrese <sensor_carga>,<#puntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
             case 43: writeSerialComln("Ingrese <sensor>,<tipo> (ej: 3,r o 4,a) y presione 'ENTER'"); break;
+            case 44: writeSerialComln("Ingrese <sensor>,<0/1> para desactivar/activar el envio de datos del sensor");break;
             default: break;
         }
     }

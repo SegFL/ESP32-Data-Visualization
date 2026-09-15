@@ -68,14 +68,14 @@ static uint16_t ina219_config_reg[NUMBER_OF_SENSORS] = {0};
 
 //ADS1115
 float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 0.0f, 0.0f, 14.0f};
+float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 0.0f, 0.0f, 13.51f};
 
 float ads_offset_i[NUMBER_OF_SENSORS];
 float ads_gain_i[NUMBER_OF_SENSORS];
 
 //ACS712
-float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f,  1.6255f}; //Si l alimentacion es de 3.3V, el offset es 1.65V. Si la alimentacion es de 5V, el offset es 2.5V
-float acs_gain[NUMBER_OF_SENSORS]     = {1.0f, 1.0f, 1.0f, 1.0f, (5/3.3)*(1.0f+0.0101+2.50/100.0f)*10000.0f};//La sensibilidad tambien depende de VCC
+float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.4215f}; //Si l alimentacion es de 3.3V, el offset es 1.65V. Si la alimentacion es de 5V, el offset es 2.5V
+float acs_gain[NUMBER_OF_SENSORS] = {1.0f, 1.0f, 1.0f, 1.0f, 11305.6f};//La sensibilidad tambien depende de VCC
 
 
 
@@ -236,10 +236,11 @@ float getCalibratedVoltageADS1115(int sensor) {
 
 float getCalibratedCurrentADS1115(int sensor) {
     float raw     = ads1115[sensor]->readADC_Differential_0_1();
-    float voltage = ads1115[sensor]->toVoltage(raw);
+    float voltage = ads1115[sensor]->toVoltage(raw)*(11.0f); // Factor de ganancia del divisor de tensión a la salida del acs: (R1+R2)/R2 = 100k/(10k) = 11
     float deltaV  = voltage - acs_offset_V[sensor];
     float current = deltaV * acs_gain[sensor];
 
+    //writeSerialComln(String("[S4] raw= ") + String(raw) + String("  voltage= ") + String(voltage) + String("  deltaV= ") + String(deltaV) + String("  current= ") + String(current));
 
     return current;
 }

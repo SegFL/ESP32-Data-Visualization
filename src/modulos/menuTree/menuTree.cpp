@@ -90,8 +90,18 @@ MenuNode* menuInit() {
         add_child(child5, child11);
 
 
-    MenuNode* child6 = create_node("Modo de funcionamiento", '4',6);
+    MenuNode* child6 = create_node("Envio de datos", '4',6);
     add_child(root, child6);
+
+        MenuNode* child7 = create_node("Modo de funcionamiento", '1',7);
+        add_child(child6, child7);
+
+        MenuNode* child44 = create_node("Activar sensor", '2',44);
+        add_child(child6, child44);
+
+
+        //
+
 
 //        MenuNode* child7 = create_node("Cambiar modo de funcionamiento", '1',7);
 //        add_child(child6, child7);

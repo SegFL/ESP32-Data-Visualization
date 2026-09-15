@@ -218,6 +218,7 @@
                 "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Adafruit GFX Library",
                 "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Adafruit NeoPixel",
                 "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Adafruit SSD1306",
+                "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Unity/src",
                 "C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                 "C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src",
                 "C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src",
@@ -463,6 +464,7 @@
                     "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Adafruit GFX Library",
                     "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Adafruit NeoPixel",
                     "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Adafruit SSD1306",
+                    "C:/Users/segus/Desktop/Backup segundo cuatri 02102024/Placa de consumo TPP/Proyecto ESP32/LedsAndWiFi/.pio/libdeps/esp32doit-devkit-v1/Unity/src",
                     "C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
                     "C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src",
                     "C:/Users/segus/.platformio/packages/framework-arduinoespressif32/libraries/BLE/src",
@@ -497,7 +499,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=60119",
+                "PLATFORMIO=60200",
                 "ARDUINO_ESP32_DEV",
                 "HAVE_CONFIG_H",
                 "MBEDTLS_CONFIG_FILE=\"mbedtls/esp_config.h\"",
@@ -515,6 +517,7 @@
                 "ARDUINO_BOARD=\"DOIT ESP32 DEVKIT V1\"",
                 "ARDUINO_PARTITION_default",
                 "__PLATFORMIO_BUILD_DEBUG__",
+                "UNITY_INCLUDE_CONFIG_H",
                 ""
             ],
             "cStandard": "gnu99",

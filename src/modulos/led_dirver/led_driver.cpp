@@ -29,12 +29,12 @@ typedef struct {
 */
 static const led_config_t led_config[LED_STATE_COUNT] = {
     [LED_STATE_RUN]            = { .bit = 2, .mode = LED_MODE_BLINK, .blink_period_ms = 500,               .timeout_ms = 500  },
-    [LED_STATE_SENDING_DATA]   = { .bit = 4, .mode = LED_MODE_BLINK, .blink_period_ms = 200,               .timeout_ms = 1000 },
-    [LED_STATE_LOAD_0]         = { .bit = 0, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
-    [LED_STATE_LOAD_1]         = { .bit = 1, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
-    [LED_STATE_LOAD_2]         = { .bit = 3, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
-    [LED_STATE_LOAD_3]         = { .bit = 5, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
-    [LED_STATE_LOAD_4]         = { .bit = 6, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_SENDING_DATA]   = { .bit = 8, .mode = LED_MODE_BLINK, .blink_period_ms = 200,               .timeout_ms = 1000 },
+    [LED_STATE_LOAD_0]         = { .bit = 3, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_LOAD_1]         = { .bit = 4, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_LOAD_2]         = { .bit = 5, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_LOAD_3]         = { .bit = 6, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
+    [LED_STATE_LOAD_4]         = { .bit = 7, .mode = LED_MODE_PWM,   .blink_period_ms = LOAD_LED_PWM_PERIOD_MS, .timeout_ms = 0 },
     // bit 7 queda libre
 };
 
@@ -80,7 +80,6 @@ void led_driver_test_blink(uint8_t times, uint16_t on_ms, uint16_t off_ms)
     }
     led_last_sent = 0xFF; // fuerza reenvio en el primer led_driver_update() posterior
 }
-
 void led_write_state(led_state_t state, bool active)
 {
     if (state >= LED_STATE_COUNT) return;
@@ -154,12 +153,7 @@ void led_driver_update(void)
         }
     }
 
-    led_shadow_register = output;
 
-    if (led_shadow_register != led_last_sent) {
-        led_hc595_shift_out(led_shadow_register);
-        led_last_sent = led_shadow_register;
-    }
 }
 
 
@@ -196,7 +190,8 @@ void led_set_duty(led_state_t state, uint8_t duty_percent) {
     xSemaphoreTake(led_mutex, portMAX_DELAY);
     led_duty[state] = duty_percent;
     if (duty_percent > 0) {
-        led_active_flags |= (1 << led_config[state].bit); // activa el bit para que el loop lo procese
+        led_active_flags |= (1 << led_config[state].bit);
+        blink_counters[state] = 0;   // <-- reinicia fase al reactivar
     } else {
         led_active_flags &= ~(1 << led_config[state].bit);
     }

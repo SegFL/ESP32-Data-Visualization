@@ -14,6 +14,8 @@ float lastPower_mW[NUMBER_OF_SENSORS] = {0.0f}; // Variable para almacenar la ú
 static SemaphoreHandle_t currentMutex = nullptr;
 
 
+bool sensorInUse[NUMBER_OF_SENSORS]={false};
+
 
 void adcInit() {
 
@@ -39,7 +41,7 @@ void  leerADC(){
         //sendToActuator(temp.current_mA); 
         
 
-        if(sendDataStatus()==true){
+        if(sendDataStatus()==true && getSensorState(i)==true){
 
           //Envio datos por la terminal serie hacia la app
 
@@ -102,4 +104,16 @@ float getLastPowerData(int index){
         xSemaphoreGive(currentMutex);
     }
     return val;
+}
+
+bool getSensorState(uint8_t index){
+    if(index<NUMBER_OF_SENSORS)
+        return  sensorInUse[index];
+    return false;
+}
+
+bool setSensorState(uint8_t index, bool state){
+    if(index<NUMBER_OF_SENSORS)
+        sensorInUse[index]=state;
+    return sensorInUse[index]=state;
 }

@@ -359,7 +359,7 @@ void CargaElectronicaUpdate(){
   
 
 
-//Luego de actualizar el PWM, hago elprocesamiento pesado para evitar un posible delay
+    //Luego de actualizar el PWM, hago elprocesamiento pesado para evitar un posible delay
     //Seccion de calibracion y de identificacion de planta
     for(int i = 0; i < NUMBER_OF_SENSORS; i++){
         if(identificaciones[i] != nullptr && identificaciones[i]->activa){
@@ -373,17 +373,27 @@ void CargaElectronicaUpdate(){
         }
     }
 
-    //Seccion de manejo de leds
 
 
+
+    // Sección de manejo de leds
 
     for (int i = 0; i < NUMBER_OF_ELECTRONIC_LOADS; i++) {
-        float medida_mA = getLastCurrentData(i);
-        float pct = (medida_mA / maxCurrent_mA[i]) * 100.0f;
-        if (pct < 0.0f) pct = 0.0f;
-        if (pct > 100.0f) pct = 100.0f;
 
-        led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), (uint8_t)pct);
+        float ref_mA = getCurrentReference_mA(i);
+
+        if (ref_mA <= 0.0f) {
+            led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), 0); // canal apagado -> led apagado, ignora ruido/fuga
+            continue;
+        }
+
+        float medida_mA = getLastCurrentData(i);
+
+        if (medida_mA > 100.0f) { // umbral de corriente para encender el led
+            led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), 100);
+        } else {
+            led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), 0);
+        }
     }
 
 }
