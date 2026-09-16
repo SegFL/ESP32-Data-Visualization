@@ -114,6 +114,7 @@ void led_driver_update(void)
     }
 
     active_snapshot = led_active_flags;
+
     xSemaphoreGive(led_mutex);
 
     uint8_t output = 0;
@@ -152,6 +153,11 @@ void led_driver_update(void)
             }
         }
     }
+    if (output != led_last_sent) {
+        led_hc595_shift_out(output);
+        led_last_sent = output;
+    }
+
 
 
 }

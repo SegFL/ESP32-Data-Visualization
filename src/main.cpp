@@ -12,6 +12,15 @@
 #include "config.h"
 
 
+//#define MODO_DEBUG
+
+#ifdef MODO_DEBUG
+  #define ESPTIMERPRINT(label, code) do { int64_t _t0 = esp_timer_get_time(); code; char _buf[48]; snprintf(_buf, sizeof(_buf), "%s: %lld us", label, esp_timer_get_time() - _t0); writeSerialComln(_buf); } while(0)
+#else
+  #define ESPTIMERPRINT(label, code) do { code; } while(0)
+#endif
+
+
 #define QUEUE_LENGTH 100
 #define ITEM_SIZE sizeof(char)
 
@@ -42,8 +51,10 @@ void TaskUserInt(void *pvParameters) {
       }
     }
 
-    userInterfaceUpdate();
-    TimeUpdate();
+    ESPTIMERPRINT("UserIntInterface", userInterfaceUpdate());
+
+    ESPTIMERPRINT("UserIntTime", TimeUpdate());
+
     vTaskDelay(pdMS_TO_TICKS(200)); // Cede CPU al resto de tareas
   }
 }
@@ -81,7 +92,9 @@ void TaskLed(void *pvParameters)
     for (;;) {
         led_write_state(LED_STATE_RUN, true); // kick constante
 
+        
         led_driver_update();
+
         vTaskDelayUntil(&lastWake, period);
     }
 }
@@ -91,7 +104,7 @@ void TaskSensors(void *pvParameters) {
     const TickType_t period = pdMS_TO_TICKS(100);
 
     for (;;) {
-        leerADC();
+        ESPTIMERPRINT("LeerADC", leerADC());
         vTaskDelayUntil(&lastWake, period);
     }
 }
@@ -101,7 +114,8 @@ void TaskControl(void *pvParameters) {
     const TickType_t period = pdMS_TO_TICKS(100); // PID puede correr más seguido
 
     for (;;) {
-        CargaElectronicaUpdate();
+        ESPTIMERPRINT("CargaElectronica", CargaElectronicaUpdate());
+
         vTaskDelayUntil(&lastWake, period);
     }
 }
@@ -136,12 +150,12 @@ void setup() {
   xQueueComSerial = xQueueCreate(QUEUE_LENGTH, ITEM_SIZE);
   timeRequestQueue = xQueueCreate(10, sizeof(int));
 
-  xTaskCreatePinnedToCore(TaskUserInt, "TaskUserInt", 2*4096, NULL, 1, &TaskUserIntHandle, 0);
+  xTaskCreatePinnedToCore(TaskUserInt, "TaskUserInt", 2*4096, NULL, configMAX_PRIORITIES-3, &TaskUserIntHandle, 0);
   //Task2 tendra la priordad maxima ya que se encarga se leer y escribir entradas/salidas
 
-  xTaskCreatePinnedToCore(TaskSensors, "Sensors", 2*4096, NULL, 4, NULL, 1);
-  xTaskCreatePinnedToCore(TaskControl, "Control", 2*4096, NULL, 5, NULL, 1); 
-  xTaskCreatePinnedToCore(TaskLed, "Led", 2*4096, NULL, 3, NULL, 1);
+  xTaskCreatePinnedToCore(TaskSensors, "Sensors", 2*4096, NULL, configMAX_PRIORITIES-2, NULL, 1);
+  xTaskCreatePinnedToCore(TaskControl, "Control", 2*4096, NULL, configMAX_PRIORITIES-1, NULL, 1); 
+  xTaskCreatePinnedToCore(TaskLed, "Led", 2*4096, NULL, 1, NULL, 1);
 
   writeSerialComln("Tareas inicializadas");
 }

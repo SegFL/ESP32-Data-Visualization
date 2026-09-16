@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#define UPDATE_PERIOD_MS 100
+#define UPDATE_PERIOD_MS 10
 
 // Estados logicos del sistema, cada uno mapeado a un LED fisico
 

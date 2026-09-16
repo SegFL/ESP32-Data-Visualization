@@ -54,7 +54,7 @@ typedef struct {
 static Identificacion_t* identificaciones[NUMBER_OF_SENSORS] = {nullptr};
 bool identificacionEnCurso[NUMBER_OF_SENSORS] = {false};
 //Arreglo de corrientes maximas permitidas por carga. Solo se usa para mostrar el esto en los leds
-float maxCurrent_mA[NUMBER_OF_ELECTRONIC_LOADS] = {1500.0f, 1500.0f, 5000.0f, 5000.0f, 6000.0f}; // AJUSTAR por canal
+float maxCurrent_mA[NUMBER_OF_ELECTRONIC_LOADS] = {2000.0f, 2000.0f, 5000.0f, 5000.0f, 6000.0f}; // AJUSTAR por canal
 
 
 typedef struct {
@@ -382,17 +382,24 @@ void CargaElectronicaUpdate(){
 
         float ref_mA = getCurrentReference_mA(i);
 
-        if (ref_mA <= 0.0f) {
+        float medida_mA = getLastCurrentData(i);
+
+        //Cuando la refrencia es 0, o sea se apaga la carga espero a tener corrientes casi 0 para apagar el led
+        //de esta forma sigo representando la corriente residual antes de apagar por completo el led
+        if (ref_mA <= 0.0f && medida_mA<200.0f) {
             led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), 0); // canal apagado -> led apagado, ignora ruido/fuga
             continue;
         }
 
-        float medida_mA = getLastCurrentData(i);
+        
 
-        if (medida_mA > 100.0f) { // umbral de corriente para encender el led
-            led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), 100);
-        } else {
-            led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), 0);
+        float duty = 0.0f;
+
+        if (ref_mA > 0.0f && maxCurrent_mA[i] > 0.0f) {
+            duty = (medida_mA / maxCurrent_mA[i]) * 100.0f;
+            if (duty > 100.0f) duty = 100.0f;
+            if (duty < 0.0f) duty = 0.0f;
+            led_set_duty((led_state_t)(LED_STATE_LOAD_0 + i), (uint8_t)duty);    
         }
     }
 
