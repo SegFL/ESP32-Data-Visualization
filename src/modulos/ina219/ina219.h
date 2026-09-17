@@ -1,6 +1,6 @@
 
 #include <Wire.h>
-#include <Adafruit_INA219.h>
+//#include <Adafruit_INA219.h>
 #include "ADCData.h"
 #include "../../modulos/time/time.h"
 #include "../../config.h"
@@ -12,10 +12,13 @@ SDA=D32
 SCL=D33
 
 */
-
 void ina219Init();
 
-//Recive como parametro un puntero a un ADCData y el numero de sensor que lee
-//Modifica elcontenido de data con losparametros leidos del sensor
-bool getData(ADCData& data,int sensor); 
+void leerINA219(ADCData dataArr[NUMBER_OF_SENSORS]);
+void ads_prepareVoltage(ADCData dataArr[NUMBER_OF_SENSORS]);
+void ads_readVoltage(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp);
+void ads_prepareCurrent(ADCData dataArr[NUMBER_OF_SENSORS]);
+// PRECONDICIÓN: requiere que ads_readVoltage() se haya llamado antes
+// en el mismo ciclo, para que busVoltage_V esté actualizado.
 
+void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp);

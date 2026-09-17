@@ -4,15 +4,13 @@
 #include "modulos/carga_electronica/carga_electronica.h"
 #include "modulos/userInterface/userInterface.h"
 #include "modulos/queueCom/queueCom.h"
-#include "modulos/ina219/ina219.h"
 #include "modulos/time/time.h"
 #include "modulos/dac/dac.h"
 #include "modulos/led_dirver/led_driver.h"
 #include "esp_timer.h"
 #include "config.h"
 
-
-//#define MODO_DEBUG
+#define MODO_DEBUG
 
 #ifdef MODO_DEBUG
   #define ESPTIMERPRINT(label, code) do { int64_t _t0 = esp_timer_get_time(); code; char _buf[48]; snprintf(_buf, sizeof(_buf), "%s: %lld us", label, esp_timer_get_time() - _t0); writeSerialComln(_buf); } while(0)
@@ -23,6 +21,7 @@
 
 #define QUEUE_LENGTH 100
 #define ITEM_SIZE sizeof(char)
+#define ADS_CONVERSION_TIME_US 1200
 
 
 
@@ -32,6 +31,9 @@ void run_led_set_period(uint64_t period_us);
 static esp_timer_handle_t run_led_timer;
 #define BLINK_FAST_US 50000   // 100ms → 5 Hz mientras inicializa
 #define BLINK_SLOW_US 250000   // 250ms → 2 Hz en operación normal
+
+
+void TaskSensors(void *pvParameters);
 
 static bool run_led_state = false;
 
@@ -99,9 +101,10 @@ void TaskLed(void *pvParameters)
     }
 }
 
+
 void TaskSensors(void *pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(100);
+    const TickType_t period = pdMS_TO_TICKS(10);
 
     for (;;) {
         ESPTIMERPRINT("LeerADC", leerADC());
