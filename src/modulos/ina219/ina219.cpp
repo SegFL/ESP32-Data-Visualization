@@ -24,7 +24,7 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
     1.0f / 0.1f,       // ← era 1.0f/0.12f = 8.333. Corrige ganancia (slope=1.1356)
     1.0f / 0.1f,
-    1.0f / 0.1f,
+    1.0f / 0.05f,
     1.0f / 0.05f,
     0.0f
 };
@@ -112,7 +112,7 @@ void ina219Init() {
     writeSerialComln(String("Inicializando sensores INA219 y ADS1115..."));
 
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-    Wire.setClock(100000);
+    Wire.setClock(1000000);
 
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
 
@@ -167,6 +167,8 @@ void ina219Init() {
                 continue;
             }
             ads1115[i]->setGain(1);
+            ads1115[i]->setMode(0);       // continuo
+            ads1115[i]->setDataRate(7);   // 860 SPS → conversión real ≈1.16ms
             sensorAvailable[i] = true;
             writeSerialCom("ADS1115 en 0x");
             writeSerialCom(String(sensorAddresses[i], HEX));
@@ -183,7 +185,7 @@ bool getData(ADCData& data, int const sensor) {
     if (type_sensor[sensor] == INA219_) {
 
         // Reescritura defensiva del Cal register: protege ante reset por transitorio
-        ina219_writeReg(sensorAddresses[sensor], INA219_REG_CALIBRATION, ina219_cal_value[sensor]);
+        //ina219_writeReg(sensorAddresses[sensor], INA219_REG_CALIBRATION, ina219_cal_value[sensor]);
 
         // Shunt Voltage Register: signed 16-bit, LSB = 10µV
         const int16_t raw_shunt   = ina219_readReg(sensorAddresses[sensor], INA219_REG_SHUNTVOLTAGE);
@@ -227,22 +229,22 @@ bool getData(ADCData& data, int const sensor) {
 
 // Como el ADS1115 no se calibra, lo hago a mano
 float getCalibratedVoltageADS1115(int sensor) {
-    float raw       = ads1115[sensor]->readADC_Differential_2_3();
+    ads1115[sensor]->requestADC_Differential_2_3(); // cambia mux, dispara conversión
+    delayMicroseconds(1300); // ~1.16ms conversión @860SPS + margen
+    float raw = ads1115[sensor]->getValue();
     float corrected = raw - ads_offset_v[sensor];
-    float voltage   = ads1115[sensor]->toVoltage(corrected);
+    float voltage = ads1115[sensor]->toVoltage(corrected);
     voltage *= ads_gain_v[sensor];
     return voltage;
 }
 
 float getCalibratedCurrentADS1115(int sensor) {
-    float raw     = ads1115[sensor]->readADC_Differential_0_1();
-    float voltage = ads1115[sensor]->toVoltage(raw)*(11.0f); // Factor de ganancia del divisor de tensión a la salida del acs: (R1+R2)/R2 = 100k/(10k) = 11
-    float deltaV  = voltage - acs_offset_V[sensor];
-    float current = deltaV * acs_gain[sensor];
-
-    //writeSerialComln(String("[S4] raw= ") + String(raw) + String("  voltage= ") + String(voltage) + String("  deltaV= ") + String(deltaV) + String("  current= ") + String(current));
-
-    return current;
+    ads1115[sensor]->requestADC_Differential_0_1();
+    delayMicroseconds(1300);
+    float raw = ads1115[sensor]->getValue();
+    float voltage = ads1115[sensor]->toVoltage(raw) * 11.0f;
+    float deltaV = voltage - acs_offset_V[sensor];
+    return deltaV * acs_gain[sensor];
 }
 
 
@@ -410,3 +412,69 @@ float getCalibratedCurrentADS1115(int sensor) {
 }
 
 */
+
+
+// ── Lectura de los 4 INA219 ──────────────────────────────────────────────
+void leerINA219(ADCData dataArr[NUMBER_OF_SENSORS]) {
+    for (int sensor = 0; sensor < 4; sensor++) {
+        if (!sensorAvailable[sensor]) continue;
+
+        const int16_t raw_shunt   = ina219_readReg(sensorAddresses[sensor], INA219_REG_SHUNTVOLTAGE);
+        const int16_t raw_bus     = ina219_readReg(sensorAddresses[sensor], INA219_REG_BUSVOLTAGE);
+        const int16_t raw_current = ina219_readReg(sensorAddresses[sensor], INA219_REG_CURRENT);
+
+        const float shuntV = (raw_shunt * 10.0f / 1000.0f) - shuntVoltageOffset_mV[sensor];
+        const float cur    = applyCurrentCalib(sensor, (float)raw_current * ina219_lsb_mA[sensor]);
+        const float busV   = applyVoltageCalib(sensor, (float)(raw_bus >> 3) * 4.0f / 1000.0f);
+
+        dataArr[sensor].shuntVoltage_mV = shuntV;
+        dataArr[sensor].busVoltage_V    = busV;
+        dataArr[sensor].current_mA      = cur;
+        dataArr[sensor].power_mW        = cur * busV;
+        dataArr[sensor].pin             = sensor;
+        dataArr[sensor].timestampMillis = customMillis();
+    }
+}
+
+// ── ADS1115: request/read separados ──────────────────────────────────────
+static const int ADS_SENSOR_IDX = NUMBER_OF_SENSORS - 1; // ajustar si cambia el layout
+
+void ads_prepareVoltage(ADCData dataArr[NUMBER_OF_SENSORS]) {
+    if (!sensorAvailable[ADS_SENSOR_IDX]) return;
+    ads1115[ADS_SENSOR_IDX]->requestADC_Differential_2_3();
+}
+
+void ads_readVoltage(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
+    if (!sensorAvailable[ADS_SENSOR_IDX]) return;
+
+    float raw       = ads1115[ADS_SENSOR_IDX]->getValue();
+    float corrected = raw - ads_offset_v[ADS_SENSOR_IDX];
+    float voltage   = ads1115[ADS_SENSOR_IDX]->toVoltage(corrected);
+    voltage *= ads_gain_v[ADS_SENSOR_IDX];
+
+    dataArr[ADS_SENSOR_IDX].busVoltage_V    = applyVoltageCalib(ADS_SENSOR_IDX, voltage);
+    dataArr[ADS_SENSOR_IDX].timestampMillis = timestamp;
+    dataArr[ADS_SENSOR_IDX].pin             = ADS_SENSOR_IDX;
+}
+
+void ads_prepareCurrent(ADCData dataArr[NUMBER_OF_SENSORS]) {
+    if (!sensorAvailable[ADS_SENSOR_IDX]) return;
+    ads1115[ADS_SENSOR_IDX]->requestADC_Differential_0_1();
+}
+
+void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
+    if (!sensorAvailable[ADS_SENSOR_IDX]) return;
+
+    float raw     = ads1115[ADS_SENSOR_IDX]->getValue();
+    float voltage = ads1115[ADS_SENSOR_IDX]->toVoltage(raw) * 11.0f; // divisor resistivo a la salida del ACS712
+    float deltaV  = voltage - acs_offset_V[ADS_SENSOR_IDX];
+    float rawCur  = deltaV * acs_gain[ADS_SENSOR_IDX];
+
+    const float cur = applyCurrentCalib(ADS_SENSOR_IDX, rawCur);
+    const float busV = dataArr[ADS_SENSOR_IDX].busVoltage_V; // ya seteado por ads_readVoltage
+
+    dataArr[ADS_SENSOR_IDX].shuntVoltage_mV = 0.0f;
+    dataArr[ADS_SENSOR_IDX].current_mA      = cur;
+    dataArr[ADS_SENSOR_IDX].power_mW        = cur * busV;
+    dataArr[ADS_SENSOR_IDX].timestampMillis = timestamp;
+}
