@@ -4,6 +4,9 @@
 #define NUMBER_OF_SENSORS 5// Número de sensores INA219: Si se cambia tambien se deberia cambiar el valor en ins219.cpp
 #define NUMBER_OF_ELECTRONIC_LOADS 5 // Número de cargas electronicas (PWM) que se controlan. (4 + 1 para pruebas auxiliares)
 
+#define MAX_DUTY 95.0F
+#define MIN_DUTY 0.0f
+
 
 #define ESP32_WROOM
 ////////////////////////////////////PINES

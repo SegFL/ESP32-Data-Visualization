@@ -9,8 +9,7 @@
 
 
 
-#define MAX_DUTY 95.0F
-#define MIN_DUTY 10.0f
+
 #define TIEMPO_STANDBY_SEGUNDOS 10
 #define MUESTRAS_POR_SEGUNDO 10
 
@@ -196,8 +195,8 @@ void CargaElectronicaInit(){
         calibrationManagerInit();
 
         //Inicilizo los pid
-        PID_Init(0,0.10,0.10,0.000,0.1);
-        PID_Init(1,0.10,0.80,0.000,0.1);
+        PID_Init(0,0.3,0.90,0.000,0.1);
+        PID_Init(1,0.30,0.90,0.000,0.1);
 
         PID_Init(2,0.10,0.10,0.000,0.1);
         PID_Init(3,0.20,0.40,0.000,0.1);
@@ -343,7 +342,7 @@ void CargaElectronicaUpdate(){
 
     //Clamp del duty para asegurar que esté dentro de los límites permitidos 
     if (dutyCycleAux > MAX_DUTY) dutyCycleAux = MAX_DUTY;
-    if (dutyCycleAux < MIN_DUTY) dutyCycleAux = 0;
+    if (dutyCycleAux < 0.0f) dutyCycleAux = 0;
 
 
 

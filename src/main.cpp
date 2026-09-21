@@ -10,7 +10,7 @@
 #include "esp_timer.h"
 #include "config.h"
 
-#define MODO_DEBUG
+//#define MODO_DEBUG
 
 #ifdef MODO_DEBUG
   #define ESPTIMERPRINT(label, code) do { int64_t _t0 = esp_timer_get_time(); code; char _buf[48]; snprintf(_buf, sizeof(_buf), "%s: %lld us", label, esp_timer_get_time() - _t0); writeSerialComln(_buf); } while(0)
@@ -43,6 +43,7 @@ QueueHandle_t timeRequestQueue;
 
 TaskHandle_t TaskUserIntHandle = NULL;
 TaskHandle_t Task2Handle = NULL;
+TaskHandle_t TaskControlHandle = NULL;
 
 void TaskUserInt(void *pvParameters) {
   int received;
@@ -104,10 +105,11 @@ void TaskLed(void *pvParameters)
 
 void TaskSensors(void *pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
-    const TickType_t period = pdMS_TO_TICKS(10);
+    const TickType_t period = pdMS_TO_TICKS(50);
 
     for (;;) {
         ESPTIMERPRINT("LeerADC", leerADC());
+        if (TaskControlHandle) xTaskNotifyGive(TaskControlHandle);
         vTaskDelayUntil(&lastWake, period);
     }
 }
@@ -117,9 +119,11 @@ void TaskControl(void *pvParameters) {
     const TickType_t period = pdMS_TO_TICKS(100); // PID puede correr más seguido
 
     for (;;) {
-        ESPTIMERPRINT("CargaElectronica", CargaElectronicaUpdate());
-
-        vTaskDelayUntil(&lastWake, period);
+        if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(300)) > 0) {
+            CargaElectronicaUpdate();
+        } else {
+            // timeout: sensores no responden → estado seguro (duty = MIN_DUTY)
+        }
     }
 }
 
@@ -157,7 +161,9 @@ void setup() {
   //Task2 tendra la priordad maxima ya que se encarga se leer y escribir entradas/salidas
 
   xTaskCreatePinnedToCore(TaskSensors, "Sensors", 2*4096, NULL, configMAX_PRIORITIES-2, NULL, 1);
-  xTaskCreatePinnedToCore(TaskControl, "Control", 2*4096, NULL, configMAX_PRIORITIES-1, NULL, 1); 
+xTaskCreatePinnedToCore(TaskControl, "Control", 2*4096, NULL,
+                        configMAX_PRIORITIES-1, &TaskControlHandle, 1);
+
   xTaskCreatePinnedToCore(TaskLed, "Led", 2*4096, NULL, 1, NULL, 1);
 
   writeSerialComln("Tareas inicializadas");

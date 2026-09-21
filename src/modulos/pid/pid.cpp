@@ -3,8 +3,7 @@
 #include "pid.h"
 #include <modulos/carga_electronica/carga_electronica.h>
 
-#define MAX_DUTY 95.0F
-#define MIN_DUTY 0.0f
+
 
 #define MAX_SAFE_CURRENT 2000.0f
 

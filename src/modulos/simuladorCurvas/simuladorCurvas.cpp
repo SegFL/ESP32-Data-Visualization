@@ -5,6 +5,8 @@
 curve_t** curveArray=NULL;
 int curveArraySize=0;
 
+#define TIME_UNIT_MS 1000UL
+
 #define NUMERO_PASOS_XSEG 10//Cantidad de veces que se llamaa getcurvevalue por segundo t=200ms==>5 veces por segundo
 #define PERIODO_INTERRUPCION 0.1f // segundos (200ms)
 
@@ -182,8 +184,10 @@ bool initCurve(curve_t *curve) {
 //Devuelve el valor del punto actual de la curva
 //Si no hay puntos, devuelve -1
 //Recive comoparametro el pin asociado a la curva, no el id de la curva
+
+//   LINEAR -> v(t) = v0 + (v1 - v0) * (t - t0) / (t1 - t0)
+//   STEP   -> mantiene v0 hasta t1 y salta a v1
 float getCurveValue(int pin, bool* isNewStep) {
-    bool punto_nuevo=false;
     if (curveArray == NULL) {
         writeSerialComln("Error: Array de curvas no inicializado");
         return -1;
@@ -192,75 +196,51 @@ float getCurveValue(int pin, bool* isNewStep) {
         writeSerialComln("Error: Curva no válida");
         return -1;
     }
-
-    //Curva asociada al pin
-    curve_t *curve = pinToCurve[pin];
-    if (!curve || !curve->point || curve->contador <= 0) {
-        return -1; // no hay puntos válidos
+ 
+    curve_t* curve = pinToCurve[pin];
+    if (!curve || !curve->point || curve->contador <= 0) return -1;
+    if (!curve->enabled) return -1;
+ 
+    const int last = curve->contador - 1;
+ 
+    // Ya se aplicó el último punto un ciclo -> finalizar (comportamiento original)
+    if (curve->currentIndex >= last) {
+        endCurve(curve, pin);
+        return 0.0f;
     }
-    if (!curve->enabled) {
-        //writeSerialComln("Curva deshabilitada");
-        return -1; // curva deshabilitada
-    }
-
-    
-    unsigned long currentTime = getCurrentEpoch();
-    //writeSerialComln(String("Current Time: ") + String(currentTime) +
-   //                  ", Curve Timestamp: " + String(curve->timestamp));
-
-
- // Avanzar solo si no llegamos al último punto
-    if (curve->currentIndex < curve->contador -1) {
-        //writeSerialComln("Index:" + String(curve->currentIndex)+" , Contador : " + String(curve->contador-1));
-        unsigned long nextPointTime = curve->timestamp + curve->point[curve->currentIndex + 1].tiempo;
-
-        if (currentTime >= nextPointTime) {
-            curve->currentIndex++;
-             if (isNewStep != NULL &&
-                curve->point[curve->currentIndex].type == STEP) {
-                *isNewStep = true;
-            }
-            if (curve->currentIndex < curve->contador - 1 &&
-                curve->point[curve->currentIndex + 1].type == LINEAR) {
-                    writeSerialComln(String("MODO LINEAL"));
-                calcular_incrementos(curve); // resetea index_pasos a 0
-            }
-
-        }else{
-            // Ciclo normal: NO recalcular, solo incrementar y devolver
-            if (curve->point[curve->currentIndex + 1].type == LINEAR) {
-                curve->linear_parameters.index_pasos++;
-                float returnVal = curve->point[curve->currentIndex].value +
-                                curve->linear_parameters.index_pasos *
-                                curve->linear_parameters.incremento;
-
-                return returnVal;
-            } else {
-                return curve->point[curve->currentIndex].value;
-            }
+ 
+    // Tiempo transcurrido en ms (uint32: seguro ante overflow de millis())
+    uint32_t elapsed = millis() - (uint32_t)curve->timestamp;
+ 
+    // Avanzar índice; while por si se perdió más de un punto (jitter/bloqueo)
+    while (curve->currentIndex < last &&
+           elapsed >= (uint32_t)curve->point[curve->currentIndex + 1].tiempo * TIME_UNIT_MS) {
+        curve->currentIndex++;
+        if (isNewStep != NULL && curve->point[curve->currentIndex].type == STEP) {
+            *isNewStep = true;
         }
-        // Si llegué acá es porque avancé de índice
-        if (curve->currentIndex < curve->contador - 1 &&
-            curve->point[curve->currentIndex + 1].type == LINEAR) {
-            curve->linear_parameters.index_pasos++;
-            float returnVal = curve->point[curve->currentIndex].value +
-                            curve->linear_parameters.index_pasos *
-                            curve->linear_parameters.incremento;
-
-            return returnVal;
-        } else {
-            return curve->point[curve->currentIndex].value;
-        }
-    }else{
-
-        // Si llegamos al último punto, deshabilitar la curva
-        endCurve(curve,pin);
-       // writeSerialComln(String("Curva del pin") + String(pin) + String(" finalizada y deshabilitada."));
-        return 0.0;
     }
-
-    return 0.0;
-
+ 
+    const point_t* p0 = &curve->point[curve->currentIndex];
+ 
+    // Se llegó al último punto: se devuelve su valor este ciclo
+    if (curve->currentIndex >= last) return p0->value;
+ 
+    const point_t* p1 = p0 + 1;
+ 
+    // STEP: mantener valor
+    if (p1->type != LINEAR) return p0->value;
+ 
+    // LINEAR: interpolación por tiempo real
+    uint32_t t0 = (uint32_t)p0->tiempo * TIME_UNIT_MS;
+    uint32_t t1 = (uint32_t)p1->tiempo * TIME_UNIT_MS;
+    if (t1 <= t0) return p0->value;   // protección división por cero
+ 
+    float frac = (float)(elapsed - t0) / (float)(t1 - t0);   // elapsed >= t0 garantizado
+    if (frac < 0.0f) frac = 0.0f;
+    if (frac > 1.0f) frac = 1.0f;
+ 
+    return p0->value + (p1->value - p0->value) * frac;
 }
 
 void calcular_incrementos(curve_t *curve) {
@@ -540,22 +520,15 @@ bool asociarCurvaAPin(int curveId, int pin){
 
 
 }
-
-void startCurve(curve_t* curve,int pin){
-    if(curve==NULL) return;
-    if(pin<0 || pin>=NUMBER_OF_SENSORS) return;
-    //Habilitar curva/reiniciar
-    unsigned long t0 = getCurrentEpoch();
-    curve->enabled = true;
-    curve->timestamp = t0;
+void startCurve(curve_t* curve, int pin) {
+    if (curve == NULL) return;
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return;
+ 
+    curve->enabled      = true;
+    curve->timestamp    = millis();     // <-- antes: getCurrentEpoch()
     curve->currentIndex = 0;
-
-
-
-    // TODO: por ahora hardcodeado, el sensor de entrada es siempre el 4
+ 
     const int SENSOR_ENTRADA = 4;
-
-    // Formato: START_CURVE,<curvaId>,<cantidadSensores>,<sensor1>,<sensor2>,...
     writeSerialComlnCOMMAND(
         "START_CURVE," + String((int)(curve->id)) +
         ",2," + String(pin) + "," + String(SENSOR_ENTRADA)

@@ -121,15 +121,15 @@ void leerADC() {
     ads_readCurrent(dataArr, adsConversionDoneTimestamp);
     enviarSensor(dataArr[NUMBER_OF_SENSORS - 1], NUMBER_OF_SENSORS - 1);
 }
-
-float getLastCurrentData(int index) {
-    if (index < 0 || index >= NUMBER_OF_SENSORS) return 0.0f;
-    float val = 0.0f;
+static volatile uint32_t mutexFails;
+float getLastCurrentData(int i) {
+    static float last[NUMBER_OF_SENSORS];
+    if (i < 0 || i >= NUMBER_OF_SENSORS) return 0.0f;
     if (xSemaphoreTake(currentMutex, pdMS_TO_TICKS(2)) == pdTRUE) {
-        val = lastCurrent_mA[index];
+        last[i] = lastCurrent_mA[i];
         xSemaphoreGive(currentMutex);
-    }
-    return val;
+    } else mutexFails++;
+    return last[i];
 }
 
 float getLastBusVoltage(int index) {
