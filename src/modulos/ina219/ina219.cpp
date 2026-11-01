@@ -22,17 +22,17 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 // ── Calibracion  ───────────────────────
 //INA219
 const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
-    3.0f / 0.1f,       // ← era 1.0f/0.12f = 8.333. Corrige ganancia (slope=1.1356)
-    1.0f / 0.1f,
-    1.0f / 0.05f,
+    27.49f,            // ≈ 1/0.03638 Ω (calibrado con tester a 1356.2 mA)
+    10.025f,
+    14.684f,
     1.0f / 0.05f,
     0.0f
 };
 
 float shuntVoltageOffset_mV[NUMBER_OF_SENSORS] = {
-    -0.6474f,        // ← era 0.1f. Negativo porque internamente se resta
-    0.38f,
-    0.67f,
+    0.0193f,         // calibrado con corto a la salida
+    -0.02f,
+    -0.03f,
     0.67f,
     0.0f
 };
@@ -66,16 +66,20 @@ static uint16_t ina219_config_reg[NUMBER_OF_SENSORS] = {0};
 #define INA219_CONFIG_SADC_12BIT       ((uint16_t)(0b0011 << 3))
 #define INA219_CONFIG_MODE_CONT        ((uint16_t)0b111)         // shunt+bus continuo
 
+
+float busGain[NUMBER_OF_SENSORS]     = {1.0058f, 1.00898f, 1.01247f, 1.0f, 1.0f};
+float busOffset_V[NUMBER_OF_SENSORS] = {0.01006f, 0.01413f, 0.01215f, 0.0f, 0.0f};
+
 //ADS1115
 float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 0.0f, 0.0f, 13.51f};
+float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 0.0f, 0.0f, 13.114f};
 
 float ads_offset_i[NUMBER_OF_SENSORS];
 float ads_gain_i[NUMBER_OF_SENSORS];
 
 //ACS712
-float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.4215f}; //Si l alimentacion es de 3.3V, el offset es 1.65V. Si la alimentacion es de 5V, el offset es 2.5V
-float acs_gain[NUMBER_OF_SENSORS] = {1.0f, 1.0f, 1.0f, 1.0f, 11305.6f};//La sensibilidad tambien depende de VCC
+float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.3772f}; //Si l alimentacion es de 3.3V, el offset es 1.65V. Si la alimentacion es de 5V, el offset es 2.5V
+float acs_gain[NUMBER_OF_SENSORS] = {1.0f, 1.0f, 1.0f, 1.0f,  11093.0f};//La sensibilidad tambien depende de VCC
 
 
 
@@ -98,13 +102,15 @@ static bool ina219_writeReg(uint8_t addr, uint8_t reg, uint16_t value) {
     return Wire.endTransmission() == 0;
 }
 
-static int16_t ina219_readReg(uint8_t addr, uint8_t reg) {
+static bool ina219_readReg(uint8_t addr, uint8_t reg, int16_t* out) {
     Wire.beginTransmission(addr);
     Wire.write(reg);
-    if (Wire.endTransmission(false) != 0) return 0;
-    Wire.requestFrom((uint8_t)addr, (uint8_t)2);
-    if (Wire.available() < 2) return 0;
-    return (int16_t)(((uint16_t)Wire.read() << 8) | Wire.read());
+    if (Wire.endTransmission(false) != 0) return false;
+    if (Wire.requestFrom((uint8_t)addr, (uint8_t)2) != 2) return false;
+    const uint16_t hi = Wire.read();   // lecturas en sentencias separadas:
+    const uint16_t lo = Wire.read();   // el orden de evaluación de "a<<8 | b" no está garantizado en C++
+    *out = (int16_t)((hi << 8) | lo);
+    return true;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
@@ -184,27 +190,22 @@ void ina219Init() {
 bool getData(ADCData& data, int const sensor) {
     if (sensor < 0 || sensor >= NUMBER_OF_SENSORS || !sensorAvailable[sensor])
         return false;
-
     if (type_sensor[sensor] == INA219_) {
-        // Reescritura defensiva del Cal register: protege ante reset por transitorio
-        //ina219_writeReg(sensorAddresses[sensor], INA219_REG_CALIBRATION, ina219_cal_value[sensor]);
+        int16_t raw_shunt, raw_bus;
+        if (!ina219_readReg(sensorAddresses[sensor], INA219_REG_SHUNTVOLTAGE, &raw_shunt) ||
+            !ina219_readReg(sensorAddresses[sensor], INA219_REG_BUSVOLTAGE,   &raw_bus))
+            return false;
 
-        // Shunt Voltage Register: signed 16-bit, LSB = 10µV
-        const int16_t raw_shunt   = ina219_readReg(sensorAddresses[sensor], INA219_REG_SHUNTVOLTAGE);
-        // Bus Voltage Register: bits 15:3 = valor, bit 0 = OVF — desplazar 3 bits
-        const int16_t raw_bus     = ina219_readReg(sensorAddresses[sensor], INA219_REG_BUSVOLTAGE);
-        // Current Register: signed 16-bit, LSB = ina219_lsb_mA[sensor]
-        const int16_t raw_current = ina219_readReg(sensorAddresses[sensor], INA219_REG_CURRENT);
+        const float shuntV = (raw_shunt * 0.01f) - shuntVoltageOffset_mV[sensor];
+        const float cur    = applyCurrentCalib(sensor, shuntV * R_SHUNT_INV[sensor]);
+        const float busRaw = (float)((uint16_t)raw_bus >> 3) * 4.0f / 1000.0f;
+        const float busV   = applyVoltageCalib(sensor, busRaw * busGain[sensor] - busOffset_V[sensor]);
 
-        const float shuntV = (raw_shunt * 10.0f / 1000.0f) - shuntVoltageOffset_mV[sensor]; // 10µV/bit → mV
-        const float cur  = applyCurrentCalib(sensor, (float)raw_current * ina219_lsb_mA[sensor]);
-        const float busV = applyVoltageCalib(sensor, (float)(raw_bus >> 3) * 4.0f / 1000.0f);
         data.shuntVoltage_mV = shuntV;
         data.busVoltage_V    = busV;
         data.current_mA      = cur;
         data.power_mW        = cur * busV;
-
-    } else { // ADS1115_
+    } else {
     const float rawCur     = getCalibratedCurrentADS1115(sensor);
     const float afterAbs   = applyCurrentCalibAbsOnly(sensor, rawCur);
     const float cur        = applyCurrentCalib(sensor, rawCur);
@@ -414,20 +415,36 @@ float getCalibratedCurrentADS1115(int sensor) {
 }
 
 */
-
-
-// ── Lectura de los 4 INA219 ──────────────────────────────────────────────
 void leerINA219(ADCData dataArr[NUMBER_OF_SENSORS]) {
+    static ADCData lastGood[4];
+    static bool    haveGood[4] = {false, false, false, false};
+    static uint8_t fails[4]    = {0, 0, 0, 0};
+
     for (int sensor = 0; sensor < 4; sensor++) {
         if (!sensorAvailable[sensor]) continue;
 
-        const int16_t raw_shunt   = ina219_readReg(sensorAddresses[sensor], INA219_REG_SHUNTVOLTAGE);
-        const int16_t raw_bus     = ina219_readReg(sensorAddresses[sensor], INA219_REG_BUSVOLTAGE);
-        const int16_t raw_current = ina219_readReg(sensorAddresses[sensor], INA219_REG_CURRENT);
+        int16_t raw_shunt, raw_bus;
+        if (!ina219_readReg(sensorAddresses[sensor], INA219_REG_SHUNTVOLTAGE, &raw_shunt) ||
+            !ina219_readReg(sensorAddresses[sensor], INA219_REG_BUSVOLTAGE,   &raw_bus)) {
 
-        const float shuntV = (raw_shunt * 10.0f / 1000.0f) - shuntVoltageOffset_mV[sensor];
-        const float cur    = applyCurrentCalib(sensor, (float)raw_current * ina219_lsb_mA[sensor]);
-        const float busV   = applyVoltageCalib(sensor, (float)(raw_bus >> 3) * 4.0f / 1000.0f);
+            if (fails[sensor] < 255) fails[sensor]++;
+            if (fails[sensor] == 1 || fails[sensor] % 50 == 0) {
+                writeSerialComln(String("[INA219] Error I2C sensor ") + String(sensor) +
+                                 String(" (consecutivos: ") + String(fails[sensor]) + String(")"));
+            }
+            // Mantener la última muestra válida: un 0 mA falso haría que el PID suba el duty al máximo
+            if (haveGood[sensor]) {
+                dataArr[sensor] = lastGood[sensor];
+                dataArr[sensor].timestampMillis = customMillis();
+            }
+            continue;
+        }
+        fails[sensor] = 0;
+
+        const float shuntV = (raw_shunt * 0.01f) - shuntVoltageOffset_mV[sensor];     // mV
+        const float cur    = applyCurrentCalib(sensor, shuntV * R_SHUNT_INV[sensor]); // mA = mV / Ω
+        const float busRaw = (float)((uint16_t)raw_bus >> 3) * 4.0f / 1000.0f;        // sin signo: válido hasta 32 V
+        const float busV   = applyVoltageCalib(sensor, busRaw * busGain[sensor] - busOffset_V[sensor]);
 
         dataArr[sensor].shuntVoltage_mV = shuntV;
         dataArr[sensor].busVoltage_V    = busV;
@@ -436,9 +453,8 @@ void leerINA219(ADCData dataArr[NUMBER_OF_SENSORS]) {
         dataArr[sensor].pin             = sensor;
         dataArr[sensor].timestampMillis = customMillis();
 
-
-
-
+        lastGood[sensor] = dataArr[sensor];
+        haveGood[sensor] = true;
     }
 }
 
@@ -488,7 +504,14 @@ void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
     dataArr[ADS_SENSOR_IDX].current_mA      = cur;
     dataArr[ADS_SENSOR_IDX].power_mW        = cur * busV;
     dataArr[ADS_SENSOR_IDX].timestampMillis = timestamp;
-
+static uint32_t lastDbg4 = 0;
+if (millis() - lastDbg4 > 1000) {
+    lastDbg4 = millis();
+    char b[110];
+    snprintf(b, sizeof(b), "[S4] cuentas=%.0f Vads=%.4f Vacs=%.4f Iraw=%.1fmA",
+             raw, ads1115[ADS_SENSOR_IDX]->toVoltage(raw), voltage, rawCur);
+    writeSerialComln(String(b));
+}
 
 
 
