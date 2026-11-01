@@ -732,6 +732,22 @@ if(menu->id == 19) {
             writeSerialComln(String("Error al iniciar identificacion en canal ") + String(pin));
         }
     }
+    if(menu->id == 45){
+        int pin = -1;
+        if (sscanf(data.c_str(), "%d", &pin) != 1) {
+            writeSerialComln("Error: formato esperado: <pin>");
+            return;
+        }
+        if(pin < 0 || pin >= NUMBER_OF_SENSORS){
+            writeSerialComln(String("Error: pin invalido. Use 0-") + String(NUMBER_OF_SENSORS - 1));
+            return;
+        }
+        if(borrarIdentificacionNVS(pin)){
+            writeSerialComln(String("Identificacion del canal ") + String(pin) + String(" borrada correctamente"));
+        }else{
+            writeSerialComln(String("Error al borrar la identificacion del canal ") + String(pin));
+        }
+    }
 
 
     if (menu->id == 40) {
@@ -1006,6 +1022,7 @@ static bool nodeRequiresInput(int id) {
         case 41: // Iniciar calibración relativa -> requiere pin,numPuntos,tiempo_por_punto_s
         case 43: // Activar/desactivar calibración absoluta/relativa -> requiere pin,tipo(a/r)
         case 44: // Seleccionar sensores activos
+        case 45: // Borrar identificación de un canal
         return true;
         default:
             return false;
@@ -1190,6 +1207,12 @@ static void onEnterNode(MenuNode* n) {
             for(int i=0; i<NUMBER_OF_SENSORS;i++){
                 writeSerialComln(String("Sensor ")+String(i)+String(":")+(getSensorState(i) ? "ACTIVADO" : "DESACTIVADO") );
             }
+        }break;
+        case 45: {
+            writeSerialComln("Borrar identificacion de un canal");
+            for(int i=0; i<NUMBER_OF_SENSORS;i++){
+                writeSerialComln(String("Sensor ")+String(i)+String(":")+(isIdentificacionStoredNVS(i) ? "IDENTIFICACION GUARDADA" : "SIN IDENTIFICACION") );
+            }
         }
 
         
@@ -1233,6 +1256,7 @@ static void onEnterNode(MenuNode* n) {
             case 41: writeSerialComln("Ingrese <sensor_carga>,<#puntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
             case 43: writeSerialComln("Ingrese <sensor>,<tipo> (ej: 3,r o 4,a) y presione 'ENTER'"); break;
             case 44: writeSerialComln("Ingrese <sensor>,<0/1> para desactivar/activar el envio de datos del sensor");break;
+            case 45: writeSerialComln("Ingrese <pin> para borrar la identificacion del canal y presione 'ENTER'"); break;
             default: break;
         }
     }

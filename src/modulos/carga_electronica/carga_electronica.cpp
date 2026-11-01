@@ -28,7 +28,7 @@ static int calcularMaxDuty(int resolution);
 #define IDENT_DUTY_MIN              10.0f   // duty mínimo del barrido (%)
 #define IDENT_DUTY_MAX              95.0f   // duty máximo del barrido (%)
 #define IDENT_TIEMPO_STANDBY_S      10      // segundos en duty=0 antes de arrancar
-#define IDENT_MUESTRAS_POR_SEGUNDO  10      // coincide con la frecuencia de leerADC()
+#define IDENT_MUESTRAS_POR_SEGUNDO  20      // coincide con la frecuencia de leerADC()
 #define IDENT_NVS_NAMESPACE         "ident" // namespace NVS dedicado a identificaciones
 
 
@@ -195,12 +195,11 @@ void CargaElectronicaInit(){
         calibrationManagerInit();
 
         //Inicilizo los pid
-        PID_Init(0,0.3,0.90,0.000,0.1);
-        PID_Init(1,0.30,0.90,0.000,0.1);
-
-        PID_Init(2,0.10,0.10,0.000,0.1);
-        PID_Init(3,0.20,0.40,0.000,0.1);
-        PID_Init(4,0.10 ,0.10,0.000,0.1);
+        PID_Init(0, 0.3,  0.90, 0.0, 0.05);
+        PID_Init(1, 0.30, 0.90, 0.0, 0.05);
+        PID_Init(2, 0.10, 0.10, 0.0, 0.05);
+        PID_Init(3, 0.20, 0.40, 0.0, 0.05);
+        PID_Init(4, 0.10, 0.10, 0.0, 0.05);
 
 
 
@@ -352,7 +351,7 @@ void CargaElectronicaUpdate(){
     ledcWrite(pwmConfig[i].channel,pwmValue); 
 
 
-  }
+}
 
 
   
@@ -770,7 +769,40 @@ static void guardarPuntoIdentificado(int pin, float corriente_mA) {
     }
 }
 
+bool borrarIdentificacionNVS(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return false;
 
+    nvs_handle_t handle;
+    if (nvs_open(IDENT_NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
+
+    static const char* sufijos[] = {"pin", "npts", "ts", "mxpt", "data"};
+    char key[48];
+    for (size_t i = 0; i < sizeof(sufijos)/sizeof(sufijos[0]); i++) {
+        snprintf(key, sizeof(key), "ident_%d_%s", pin, sufijos[i]);
+        esp_err_t e = nvs_erase_key(handle, key);
+        if (e != ESP_OK && e != ESP_ERR_NVS_NOT_FOUND) {
+            nvs_close(handle);
+            return false;
+        }
+    }
+    esp_err_t err = nvs_commit(handle);
+    nvs_close(handle);
+    return err == ESP_OK;
+}
+bool isIdentificacionStoredNVS(int pin) {
+    if (pin < 0 || pin >= NUMBER_OF_SENSORS) return false;
+
+    nvs_handle_t handle;
+    if (nvs_open(IDENT_NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) return false;
+
+    char key[48];
+    int32_t npts = 0;
+    snprintf(key, sizeof(key), "ident_%d_npts", pin);
+    esp_err_t err = nvs_get_i32(handle, key, &npts);
+    nvs_close(handle);
+
+    return (err == ESP_OK && npts > 0 && npts <= 100);
+}
 // ============================================================
 // IDENTIFICACIÓN DE PLANTA — FUNCIÓN PÚBLICA
 // ============================================================

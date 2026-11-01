@@ -188,16 +188,20 @@ MenuNode* menuInit() {
             MenuNode* child38 = create_node("Identificar canal", '1',38);
             add_child(child36, child38);
 
-            MenuNode* child39 = create_node("Calibracion absoluta", '2',39);
+            MenuNode* child45 = create_node("Borrar identificacion", '2',45);
+            add_child(child36, child45);
+
+
+            MenuNode* child39 = create_node("Calibracion absoluta", '3',39);
             add_child(child36, child39);
 
                 MenuNode* child40 = create_node("Calibracion absoluta", '1',40);
                 add_child(child39, child40);
 
-            MenuNode* child41 = create_node("Calibracion relativa", '3',41);
+            MenuNode* child41 = create_node("Calibracion relativa", '4',41);
             add_child(child36, child41);
 
-            MenuNode* child42 = create_node("Activar / Desactivar calibracion", '4',42);
+            MenuNode* child42 = create_node("Activar / Desactivar calibracion", '5',42);
             add_child(child36, child42); 
                 MenuNode* child43 = create_node("Activar / Desactivar calibracion", '1',43);
                 add_child(child42, child43); 

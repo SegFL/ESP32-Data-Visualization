@@ -60,5 +60,7 @@ bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s);
 void cargarEImprimirIdentificacionNVS(int pin);
 bool isIdentificacionRunning(int pin);
 PuntoIdentificado_t* getIdentificacionNVS(int pin, int* numPuntos);
+bool borrarIdentificacionNVS(int pin);
+bool isIdentificacionStoredNVS(int pin);
 
 #endif

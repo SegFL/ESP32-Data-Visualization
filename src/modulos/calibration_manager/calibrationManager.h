@@ -15,7 +15,7 @@
 
 #define CALIB_MAX_POINTS        10      // máximo de puntos por tabla
 #define CALIB_NVS_NAMESPACE     "calib" // namespace NVS dedicado
-#define CALIB_MUESTRAS_POR_SEG  10      // debe coincidir con la frecuencia de leerADC()
+#define CALIB_MUESTRAS_POR_SEG  20      // debe coincidir con la frecuencia de leerADC()
 #define CALIB_STANDBY_S         3       // segundos de estabilización antes de acumular
 
 

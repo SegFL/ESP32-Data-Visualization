@@ -120,6 +120,10 @@ void leerADC() {
     xSemaphoreTake(adsReadySem, pdMS_TO_TICKS(5));
     ads_readCurrent(dataArr, adsConversionDoneTimestamp);
     enviarSensor(dataArr[NUMBER_OF_SENSORS - 1], NUMBER_OF_SENSORS - 1);
+
+
+
+
 }
 static volatile uint32_t mutexFails;
 float getLastCurrentData(int i) {

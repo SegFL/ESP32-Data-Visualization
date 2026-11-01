@@ -80,3 +80,10 @@ EN y GND para filtrar el pulso corto sin afectar un reset manual (que dura más 
 
 Modificar el control PID, el antiwindup deberia ser aplicado en el termino integral con el fin de limitar solo la parte integral.
 Hacer que al resetear el PID los valores a cambiar sean 0.05 para kp y ki y para kd=0
+
+
+
+
+MUY IMPORTANTE:
+Cuando quise calibrar el sensor 4(entrada) se puso en el menu 3-1 de modo manual aparecio el valor a estabilizar en 4000.
+No deberia aparecer el sensor 4 y no deberia ocurrir eso

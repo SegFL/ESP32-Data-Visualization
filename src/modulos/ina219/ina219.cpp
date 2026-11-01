@@ -22,7 +22,7 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 // ── Calibracion  ───────────────────────
 //INA219
 const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
-    1.0f / 0.1f,       // ← era 1.0f/0.12f = 8.333. Corrige ganancia (slope=1.1356)
+    3.0f / 0.1f,       // ← era 1.0f/0.12f = 8.333. Corrige ganancia (slope=1.1356)
     1.0f / 0.1f,
     1.0f / 0.05f,
     1.0f / 0.05f,
@@ -45,7 +45,7 @@ float shuntVoltageOffset_mV[NUMBER_OF_SENSORS] = {
 //   Sensor 2: 0.10Ω → 160mV/0.10 = 1.60A  → usamos 1.5A
 //   Sensor 3: 0.05Ω → 160mV/0.05 = 3.20A  → usamos 3.0A
 //   Sensor 4: ADS1115, no aplica
-static const float INA219_MAX_CURRENT_A[NUMBER_OF_SENSORS] = {1.5f, 1.5f, 5.0f, 5.0f, 0.0f};
+static const float INA219_MAX_CURRENT_A[NUMBER_OF_SENSORS] = { 1.5f, 1.5f, 6.4f, 6.4f, 0.0f};
 
 // Valores calculados en ina219Init() y reutilizados en cada lectura
 static uint16_t ina219_cal_value[NUMBER_OF_SENSORS]  = {0};
@@ -135,10 +135,11 @@ void ina219Init() {
 
             uint16_t cal = (uint16_t)(0.04096f / (lsb_A * (1.0f / R_SHUNT_INV[i])));
             cal &= 0xFFFE;  // bit D0 es void (datasheet sección 8.6), siempre 0
-            ina219_cal_value[i] = cal;
-            uint16_t pga = (i == 3 ||i==4) ? ((uint16_t)(0b11 << 11))   // PGA_8 → ±320mV → 6.4A máx
-                                    : ((uint16_t)(0b10 << 11));   // PGA_4 → ±160mV → resto
+            ina219_cal_value[i] = cal;     
 
+            uint16_t pga = (i == 2 || i == 3)
+                            ? ((uint16_t)(0b11 << 11))   // PGA_8 → ±320mV
+                            : ((uint16_t)(0b10 << 11));  // PGA_4 → ±160mV
 
             // Registro de configuración
             ina219_config_reg[i] = INA219_CONFIG_BRNG_32V
@@ -167,14 +168,16 @@ void ina219Init() {
                 continue;
             }
             ads1115[i]->setGain(1);
-            ads1115[i]->setMode(0);       // continuo
-            ads1115[i]->setDataRate(7);   // 860 SPS → conversión real ≈1.16ms
+            ads1115[i]->setMode(1);       // single-shot (en ADS1X15 de Rob Tillaart: 0 = continuo, 1 = single)
+            ads1115[i]->setDataRate(7);   // 860 SPS
             sensorAvailable[i] = true;
             writeSerialCom("ADS1115 en 0x");
             writeSerialCom(String(sensorAddresses[i], HEX));
             writeSerialComln(" listo.");
         }
     }
+
+    
 }
 
 // ── Lectura de datos ──────────────────────────────────────────────────────
@@ -183,7 +186,6 @@ bool getData(ADCData& data, int const sensor) {
         return false;
 
     if (type_sensor[sensor] == INA219_) {
-
         // Reescritura defensiva del Cal register: protege ante reset por transitorio
         //ina219_writeReg(sensorAddresses[sensor], INA219_REG_CALIBRATION, ina219_cal_value[sensor]);
 
@@ -433,6 +435,10 @@ void leerINA219(ADCData dataArr[NUMBER_OF_SENSORS]) {
         dataArr[sensor].power_mW        = cur * busV;
         dataArr[sensor].pin             = sensor;
         dataArr[sensor].timestampMillis = customMillis();
+
+
+
+
     }
 }
 
@@ -455,6 +461,11 @@ void ads_readVoltage(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
     dataArr[ADS_SENSOR_IDX].busVoltage_V    = applyVoltageCalib(ADS_SENSOR_IDX, voltage);
     dataArr[ADS_SENSOR_IDX].timestampMillis = timestamp;
     dataArr[ADS_SENSOR_IDX].pin             = ADS_SENSOR_IDX;
+
+
+
+
+
 }
 
 void ads_prepareCurrent(ADCData dataArr[NUMBER_OF_SENSORS]) {
@@ -477,4 +488,14 @@ void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
     dataArr[ADS_SENSOR_IDX].current_mA      = cur;
     dataArr[ADS_SENSOR_IDX].power_mW        = cur * busV;
     dataArr[ADS_SENSOR_IDX].timestampMillis = timestamp;
+
+
+
+
+
 }
+
+
+
+
+

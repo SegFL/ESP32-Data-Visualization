@@ -199,13 +199,9 @@ void setPIDParams(int index, float kp, float ki, float kd) {
 
 
 // Función para configurar el período de muestreo Ts
-void setPIDTs(float ts) {
-    if(ts <= 0.1f) 
-        Ts=0.2f; // Valor mínimo razonable
-    else{   
-        Ts = ts;
-    }
-
+void setPIDTs(int index, float ts) {
+    if (index < 0 || index >= NUMBER_OF_SENSORS) return;
+    pid[index].Ts = (ts < 0.01f) ? 0.01f : ts;
 }
 
 // Función para resetear el controlador PID
