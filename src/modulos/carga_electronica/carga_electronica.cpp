@@ -57,20 +57,21 @@ float maxCurrent_mA[NUMBER_OF_ELECTRONIC_LOADS] = {2000.0f, 2000.0f, 5000.0f, 50
 
 
 typedef struct {
-    int channel;
-    int timer;        
-    int freq;
-    int resolution;
-    int pin;
-    int max_duty;  
+    int   channel;
+    int   timer;
+    int   freq;
+    int   resolution;
+    int   pin;
+    int   max_duty;         // fondo de escala en cuentas (según resolución)
+    float max_duty_hw_pct;  // tope hardcodeado en %, no va a NVS
 } PWM_Config_t;
 
 PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
-    { .channel = 0, .timer = 0, .freq = 78125, .resolution = 10, .pin = PWM_0_PIN, .max_duty = 0},  //En laplaca nueva deberia ser el 4
-    { .channel = 1, .timer = 1, .freq = 78125, .resolution = 10, .pin = PWM_1_PIN, .max_duty = 0},  
-    { .channel = 2, .timer = 2, .freq = 78125, .resolution = 10, .pin = PWM_2_PIN, .max_duty = 0},  
-    { .channel = 3, .timer = 2, .freq = 78125, .resolution = 10, .pin = PWM_3_PIN, .max_duty = 0}, 
-    { .channel = 4, .timer = 3, .freq = 78125, .resolution = 10, .pin = PWM_4_PIN, .max_duty = 0}   
+    { .channel=0, .timer=0, .freq=78125, .resolution=10, .pin=PWM_0_PIN, .max_duty=0, .max_duty_hw_pct=60.0f },
+    { .channel=1, .timer=1, .freq=78125, .resolution=10, .pin=PWM_1_PIN, .max_duty=0, .max_duty_hw_pct=60.0f },
+    { .channel=2, .timer=2, .freq=78125, .resolution=10, .pin=PWM_2_PIN, .max_duty=0, .max_duty_hw_pct=8.0f },
+    { .channel=3, .timer=2, .freq=78125, .resolution=10, .pin=PWM_3_PIN, .max_duty=0, .max_duty_hw_pct=8.0f },
+    { .channel=4, .timer=3, .freq=78125, .resolution=10, .pin=PWM_4_PIN, .max_duty=0, .max_duty_hw_pct=100.0f }
 };
 
 
@@ -107,7 +108,7 @@ static float promediarSegundaMitad(float* muestras, int total);
 static void liberarIdentificacion(int pin);
 void PWMSetCurveMode(curve_mode_t state, int index);
 static float calcularPromedio(float* muestras, int total);
-
+static float getMaxDutyEfectivo(int i);
 
 void CargaElectronicaInit(){
 
@@ -343,9 +344,9 @@ void CargaElectronicaUpdate(){
 
 
     //Clamp del duty para asegurar que esté dentro de los límites permitidos 
-    if (dutyCycleAux > MAX_DUTY) dutyCycleAux = MAX_DUTY;
-    if (dutyCycleAux < 0.0f) dutyCycleAux = 0;
-
+    float maxDuty = getMaxDutyEfectivo(i);
+    if (dutyCycleAux > maxDuty) dutyCycleAux = maxDuty;
+    if (dutyCycleAux < 0.0f)    dutyCycleAux = 0.0f;
 
 
 
@@ -417,11 +418,8 @@ float PWMSetDC(float currentRef,int index) {
     if (currentRef < 0.0f) return -1.0f;
     // aplicar límite máximo configurado
     float limited = currentRef;
-    if (max_dc_value[index] >= 0.0f && max_dc_value[index] <= 100.0f) {
-        if (limited > max_dc_value[index]) limited = max_dc_value[index];
-    }
-    // límite físico 0..100
-    if (limited > 100.0f) limited = 100.0f;
+    float lim = getMaxDutyEfectivo(index);
+    if (limited > lim) limited = lim;
     DC = limited;
     return DC;
 }
@@ -492,7 +490,7 @@ bool PWMSetFrequency(int frecuencies, int index){
 }
 bool PWMSetMaxDC(float dc,int index){
     if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return false;
-    if (dc < 0.0f || dc > 100.0f) return false;
+    if (dc < 0.0f || dc > pwmConfig[index].max_duty_hw_pct) return false;
     max_dc_value[index] = dc;
 
     // Guardar en NVS
@@ -525,8 +523,8 @@ bool setControlMode(modoFuncionamiento_t mode, int index){
 }
 
 float PWMGetMaxDC(int index){
-    if(index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return -1;
-    return pwmConfig[index].max_duty;
+    if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return -1;
+    return getMaxDutyEfectivo(index);
 }
 
 
@@ -833,22 +831,25 @@ bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s) {
         writeSerialComln(String("identificacionInit: liberando identificacion previa en canal ") + String(pin));
         liberarIdentificacion(pin);
     }
+    // Límite de duty para el barrido (se valida antes de tocar nada)
+    float dutyMax = getMaxDutyEfectivo(pin);
+    if (dutyMax > IDENT_DUTY_MAX) dutyMax = IDENT_DUTY_MAX;
+    if (dutyMax <= IDENT_DUTY_MIN) {
+        writeSerialComln(String("identificacionInit: limite de duty <= DUTY_MIN"));
+        return false;
+    }
 
+    // Si ya había una identificación activa en este canal, liberarla
+    if (identificaciones[pin] != nullptr) {
+        writeSerialComln(String("identificacionInit: liberando identificacion previa en canal ") + String(pin));
+        liberarIdentificacion(pin);
+    }
 
-    prev_curve_mode = getCurveMode(pin);
+    // Guardar el estado previo del canal (una sola vez)
+    prev_curve_mode   = getCurveMode(pin);
     prev_control_mode = getModoFuncionamiento(pin);
     bool estado;
-     if(getFeedforwardEnabled(&estado,pin)==true){
-        prev_feedforward_enabled = estado;
-     } else {
-        prev_feedforward_enabled = false;
-     }
-
-    // ── 1. Preparar el canal: apagar PID, feedforward y curva ────────────
-    PWMSetCurveMode(ON_t, pin);
-    setControlMode(NONE, pin);
-    setFeedforwardEnabled(false, pin);
-    writeSerialComln(String("Canal ") + String(pin) + String(": PID off, FF off, curva on"));
+    prev_feedforward_enabled = (getFeedforwardEnabled(&estado, pin) == true) ? estado : false;
 
     // ── 2. Crear y poblar la estructura de identificación ─────────────────
     Identificacion_t* id = (Identificacion_t*)malloc(sizeof(Identificacion_t));
@@ -875,7 +876,7 @@ bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s) {
         writeSerialComln(String("identificacionInit: sin memoria para dutyValues"));
         return false;
     }
-    float intervalo = (IDENT_DUTY_MAX - IDENT_DUTY_MIN) / (float)(numPuntos - 1);
+    float intervalo = (dutyMax - IDENT_DUTY_MIN) / (float)(numPuntos - 1);
     for (int i = 0; i < numPuntos; i++) {
         id->dutyValues[i] = IDENT_DUTY_MIN + i * intervalo;
     }
@@ -941,10 +942,7 @@ bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s) {
         float refValue = id->dutyValues[i] / 10.0f; // compensar el *10 de getDCDirecto
         addPointToCurve(curveId, tiempoAcumulado, refValue, STEP);
     }
-
-    // ── 7. Activar la curva en el canal ───────────────────────────────────
-    // curveMode ON + modoFuncionamiento NONE → getCurveValue provee la referencia
-    // y getDCDirecto la convierte en duty directo, sin PID ni feedforward
+    // ── 7a. Asociar la curva al canal ──
     if (!asociarCurvaAPin(curveId, pin)) {
         deleteCurve(curveId);
         for (int i = 0; i < numPuntos; i++) free(id->mediciones[i]);
@@ -955,8 +953,21 @@ bool identificacionInit(int pin, int numPuntos, int tiempo_por_punto_s) {
         writeSerialComln(String("identificacionInit: error al asociar curva al pin ") + String(pin));
         return false;
     }
-    PWMSetCurveMode(ON_t, pin);
 
+    // ── 7b. Preparar el canal: PID off, FF off, curva on ──
+    if (!setControlMode(NONE, pin)) {
+        deleteCurve(curveId);
+        for (int i = 0; i < numPuntos; i++) free(id->mediciones[i]);
+        free(id->mediciones);
+        free(id->dutyValues);
+        free(id->resultados);
+        free(id);
+        writeSerialComln(String("identificacionInit: error al guardar modo NONE en canal ") + String(pin));
+        return false;
+    }
+    setFeedforwardEnabled(false, pin);
+    PWMSetCurveMode(ON_t, pin);
+    writeSerialComln(String("Canal ") + String(pin) + String(": PID off, FF off, curva on"));
     // ── 8. Registrar y activar ────────────────────────────────────────────
     id->activa          = true;
     identificaciones[pin] = id;
@@ -1092,4 +1103,16 @@ PuntoIdentificado_t* getIdentificacionNVS(int pin, int* numPuntos) {
     nvs_close(handle);
     *numPuntos = npts;
     return datos;
+}
+
+
+static float getMaxDutyEfectivo(int i) {
+    if (i < 0 || i >= NUMBER_OF_ELECTRONIC_LOADS) return 0.0f;
+
+    float lim = pwmConfig[i].max_duty_hw_pct;       // hardcode
+    if (max_dc_value[i] < lim) lim = max_dc_value[i];  // usuario (NVS)
+
+    if (lim > 100.0f) lim = 100.0f;                 // tope físico
+    if (lim < 0.0f)   lim = 0.0f;
+    return lim;
 }
