@@ -197,8 +197,11 @@ void CargaElectronicaInit(){
         //Inicilizo los pid
         PID_Init(0, 0.3,  0.90, 0.0, 0.05);
         PID_Init(1, 0.30, 0.90, 0.0, 0.05);
-        PID_Init(2, 0.10, 0.10, 0.0, 0.05);
-        PID_Init(3, 0.20, 0.40, 0.0, 0.05);
+
+        PID_Init(2, 0.02, 0.080, 0.0, 0.05);
+        PID_Init(3, 0.02, 0.080, 0.0, 0.05);
+
+
         PID_Init(4, 0.10, 0.10, 0.0, 0.05);
 
 

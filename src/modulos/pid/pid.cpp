@@ -211,7 +211,7 @@ bool resetPID(int index) {
     pid[index].Kp = 1.0f;
     pid[index].Ki = 1.0f;
     pid[index].Kd = 0.0f;
-    pid[index].Ts = 0.2f;  // Período real de muestreo (200ms)
+    pid[index].Ts = 0.05f;  
     
     // Resetear variables internas
     pid[index].integral = 0.0f;

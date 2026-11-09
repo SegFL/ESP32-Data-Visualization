@@ -87,3 +87,10 @@ Hacer que al resetear el PID los valores a cambiar sean 0.05 para kp y ki y para
 MUY IMPORTANTE:
 Cuando quise calibrar el sensor 4(entrada) se puso en el menu 3-1 de modo manual aparecio el valor a estabilizar en 4000.
 No deberia aparecer el sensor 4 y no deberia ocurrir eso
+
+Cuando temrine de claibrar de forma absoluta el sensor 0 se activo sola la claibracion absoluta y la relativa tambien. No deberia suceder
+
+
+Deberia hacer que corte por corriente maxima. Y limitar el duty , deberia chequear con que duty se consigue la corriente maxima
+
+Cuando habilito el envio de datos de un sensor  lo hago con 3,8, si pongo cualq cosa distinta de 0 como 2do argumento se activa. Deberia ser solo con 1

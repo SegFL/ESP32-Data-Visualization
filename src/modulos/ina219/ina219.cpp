@@ -21,11 +21,19 @@ sensor_type_t type_sensor[NUMBER_OF_SENSORS] = {INA219_, INA219_,INA219_,INA219_
 
 // ── Calibracion  ───────────────────────
 //INA219
+/*
 const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
     27.49f,            // ≈ 1/0.03638 Ω (calibrado con tester a 1356.2 mA)
     10.025f,
     14.684f,
     1.0f / 0.05f,
+    0.0f
+};*/
+const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
+    10.025f,            // ≈ 1/0.03638 Ω (calibrado con tester a 1356.2 mA)
+    10.025f,
+    19.03f,
+    19.27f,
     0.0f
 };
 
@@ -63,7 +71,8 @@ static uint16_t ina219_config_reg[NUMBER_OF_SENSORS] = {0};
 #define INA219_CONFIG_BRNG_32V         ((uint16_t)(1 << 13))
 #define INA219_CONFIG_PGA_4_160MV      ((uint16_t)(0b10 << 11)) // ±160mV: cubre todos los shunts
 #define INA219_CONFIG_BADC_12BIT       ((uint16_t)(0b0011 << 7))
-#define INA219_CONFIG_SADC_12BIT       ((uint16_t)(0b0011 << 3))
+//#define INA219_CONFIG_SADC_12BIT       ((uint16_t)(0b0011 << 3)) // 12-bit, 1 sample sin promediado entre conversiones
+#define INA219_CONFIG_SADC_12BIT       ((uint16_t)(0b1101 << 3))   // 32 muestras promediadas en 17 ms
 #define INA219_CONFIG_MODE_CONT        ((uint16_t)0b111)         // shunt+bus continuo
 
 
@@ -504,14 +513,7 @@ void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
     dataArr[ADS_SENSOR_IDX].current_mA      = cur;
     dataArr[ADS_SENSOR_IDX].power_mW        = cur * busV;
     dataArr[ADS_SENSOR_IDX].timestampMillis = timestamp;
-static uint32_t lastDbg4 = 0;
-if (millis() - lastDbg4 > 1000) {
-    lastDbg4 = millis();
-    char b[110];
-    snprintf(b, sizeof(b), "[S4] cuentas=%.0f Vads=%.4f Vacs=%.4f Iraw=%.1fmA",
-             raw, ads1115[ADS_SENSOR_IDX]->toVoltage(raw), voltage, rawCur);
-    writeSerialComln(String(b));
-}
+
 
 
 
