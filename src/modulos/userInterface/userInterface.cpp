@@ -316,13 +316,21 @@ void procesarDatos(String data) {
         if (sscanf(data.c_str(), "%d,%f", &index, &current) == 2) {
 
             // Validaciones
-            if (index < 0 ) {
-                writeSerialComln("Indice de curva invalido");
+            if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS-1) {
+                writeSerialComln("Indice de carga invalido");
                 return;
             }
 
-            if (current < 0.0f || current > 6000.0f) {
-                writeSerialComln("Corriente invalida (0..6000 mA)");
+            if (getCurveMode(index) == ON_t) {
+                writeSerialComln(
+                    String("Error: La carga ") + String(index) +
+                    " esta en modo Curva. No se puede modificar manualmente."
+                );
+                return;
+            }
+
+            if (current < -1.0f || (current > -1.0f && current > 6000.0f)) {
+                writeSerialComln("Corriente invalida (-1 o 0..6000 mA)");
                 return;
             }
 
@@ -1048,11 +1056,25 @@ static void onEnterNode(MenuNode* n) {
             //updateScreen = true; // ya lo usabas para refrescar periódicamente
             break;
         case 8:
-            for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
-                float currentRef = getCurrentReference_mA(i);
-                writeSerialComln(String("Curva ") + String(i) + String(": Corriente de referencia actual: ") + String(currentRef) + String(" mA"));
+            for (int i = 0; i < NUMBER_OF_ELECTRONIC_LOADS-1; i++) {
+
+                if (getCurveMode(i) == ON_t) {
+                    writeSerialComln(String("Carga ") + String(i) + ": Modo Curva                    ");
+                } else {
+                    int ch, freq, resolution;
+                    getPWMConfig(i, &ch, &freq, &resolution);
+
+                    float dutyPercent = (float)getDutyCycle(i) * 100.0f /
+                                        ((1 << resolution) - 1);
+
+                    writeSerialComln(
+                        String("Carga ") + String(i) +
+                        ": Modo Manual - Duty: " +
+                        String(dutyPercent, 2) + "%                    "
+                    );
+                }
             }
-            break;
+        break;
         case 9:  // Frecuencia PWM
             for (char i = 0; i < 2; i++) {
                 int ch, f, res;
@@ -1234,7 +1256,7 @@ static void onEnterNode(MenuNode* n) {
             case 3:  writeSerialComln("Ingrese SSID y presione 'ENTER' para confirmar"); break;
             case 4:  writeSerialComln("Ingrese PASSWORD y presione 'ENTER'"); break;
             case 7:  writeSerialComln("Para activar/desactivar el modo SEND DATA ingrese y/n y presione 'ENTER'"); break;
-            case 8:  writeSerialComln("Ingrese la corriente de referencia <indice>,<corriente_mA>  (ej: 0,500) y presione 'ENTER'"); break;
+            case 8:  writeSerialComln("Ingrese la corriente de referencia <indice>,<corriente_mA>  (ej: 0,500) ,(-1 para apagar)y presione 'ENTER'"); break;
             case 9:  writeSerialComln("Ingrese frecuencia <0-78125> y presione 'ENTER'"); break;
             case 16: writeSerialComln("ID de curva a habilitar/deshabilitar y pin asociado <ID,pin> luego presione 'ENTER'"); break;
             case 18: writeSerialComln("Introduzca el id deseado de la curva y presione 'ENTER'"); break;
@@ -1272,6 +1294,37 @@ static void onUpdateNode(MenuNode* n) {
             //printNode(n);
             //printSensorInfo();
             printSensorData(); // refrescar siempre
+            break;
+        case 8:
+            for (int i = 0; i < NUMBER_OF_ELECTRONIC_LOADS-1; i++) {
+
+                int row = 2 + i;
+
+                moveCursor(row, 1);
+
+                if (getCurveMode(i) == ON_t) {
+                    writeSerialCom(
+                        String("Carga ") + String(i) + ": Modo Curva          "
+                    );
+                } else {
+                    int ch, freq, resolution;
+                    getPWMConfig(i, &ch, &freq, &resolution);
+
+                    float dutyPercent = (float)getDutyCycle(i) * 100.0f /
+                                        ((1 << resolution) - 1);
+
+                    float corriente_mA = getLastCurrentData(i);
+
+                    writeSerialCom(
+                        String("Carga ") + String(i) +
+                        ": Modo Manual - Duty: " +
+                        String(dutyPercent, 2) + "%" +
+                        " - Corriente: " +
+                        String(corriente_mA, 0) + " mA          "
+                    );
+                }
+            }
+            moveCursor(10, 1);
             break;
         case 24: // Ver fecha
             clearScreen();

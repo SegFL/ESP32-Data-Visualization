@@ -167,6 +167,7 @@ xTaskCreatePinnedToCore(TaskControl, "Control", 2*4096, NULL,
   xTaskCreatePinnedToCore(TaskLed, "Led", 2*4096, NULL, 1, NULL, 1);
 
   writeSerialComln("Tareas inicializadas");
+  
 }
 
 void loop() {

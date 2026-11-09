@@ -73,7 +73,7 @@ PWM_Config_t pwmConfig[NUMBER_OF_ELECTRONIC_LOADS] = {
     { .channel=3, .timer=2, .freq=78125, .resolution=10, .pin=PWM_3_PIN, .max_duty=0, .max_duty_hw_pct=8.0f },
     { .channel=4, .timer=3, .freq=78125, .resolution=10, .pin=PWM_4_PIN, .max_duty=0, .max_duty_hw_pct=100.0f }
 };
-
+static int pwmValue[NUMBER_OF_ELECTRONIC_LOADS] = {0};
 
 //La resolucion maxima depende de la frecuecnia utilizada, si se quiere mas frecuencia se tiene que
 //sacrificar resolucion
@@ -86,8 +86,9 @@ float DC = 0;  // Duty cycle actual (0-100%)
 
 float max_dc_value[NUMBER_OF_ELECTRONIC_LOADS]={100.0f}; // Valor máximo del duty cycle (0-100%)
 int valorSensado = 0; // Valor sensado de la corriente (mA) por el INA219
-float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {0.0f};
-
+float currentReference_mA[NUMBER_OF_ELECTRONIC_LOADS] = {
+    -1.0f, -1.0f, -1.0f, -1.0f, -1.0f
+};
 modoFuncionamiento_t modoFuncionamiento[NUMBER_OF_ELECTRONIC_LOADS]={NONE} ; // Modo de funcionamiento inicial (PID o directo/NONE)
 bool feedforwardEnabled[NUMBER_OF_ELECTRONIC_LOADS] = {false}; // Indica si el feedforward está habilitado para cada canal
 //referenceMode_t referenceMode = interface_state; // Modo de referencia inicial (interfaz o curva)
@@ -157,8 +158,8 @@ void CargaElectronicaInit(){
   for(int i=0;i<NUMBER_OF_ELECTRONIC_LOADS;i++){
     max_dc_value[i] = 100.0f; // Inicializar el valor máximo del duty cycle a 100% (sin recorte)
     ledcWrite(pwmConfig[i].channel,0); // Inicializar el PWM a 0 (apagado)
-
-    setCurrentReference_mA(0.0f,i); // referencia manual en mA
+    
+    setCurrentReference_mA(-1.0f,i); // referencia manual en mA
     writeSerialComln(String("Reference set to : ") + String(getCurrentReference_mA(i)) + String(" mA for channel ") + String(i));
 
   }
@@ -183,7 +184,7 @@ void CargaElectronicaInit(){
         printCurves();
  
         for(int i=0; i<NUMBER_OF_ELECTRONIC_LOADS; i++){
-            currentReference_mA[i] = 0.0f;
+            currentReference_mA[i] = -1.0f;
             max_dc_value[i] = 100.0f;
             ledcWrite(pwmConfig[i].channel, 0);
             
@@ -311,35 +312,32 @@ void CargaElectronicaUpdate(){
     }
 
     // Selección de modo de funcionamiento
-    switch(modoFuncionamiento[i]){
-      case PID:  
-      //El segundo argumento es el indice del pid que se quiere usar
-        dutyCycleAux = getDCPID(referenceCurrent,i);
+    if (referenceCurrent == -1.0f) {
+        dutyCycleAux = MIN_DUTY;
+    } else {
+        switch(modoFuncionamiento[i]){
+        case PID:  
+        //El segundo argumento es el indice del pid que se quiere usar
+            dutyCycleAux = getDCPID(referenceCurrent,i);
 
-        //writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
-        //                String(" -> Duty Cycle: ") + String(dutyCycleAux));
-        break;
-      case NONE: 
+            //writeSerialComln(String("Modo PID - Referencia: ") + String(referenceCurrent) + 
+            //                String(" -> Duty Cycle: ") + String(dutyCycleAux));
+            break;
+        case NONE: 
 
-      //Todo valor que reciva de referenceCurrent termina siendo un porcentaje de Duty Cycle directo
-       //dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
-       //Uso el valor predecido de dutycycle para la referencia dada porelusuario
-        if (feedforwardEnabled[i]) {
-            dutyCycleAux = feedforward(referenceCurrent, i);
-
-        } else {
-            dutyCycleAux = getDCDirecto(referenceCurrent)*10.0f; // o la lógica que corresponda
-             
+        //Todo valor que reciva de referenceCurrent termina siendo un porcentaje de Duty Cycle directo
+        //dutyCycleAux = getDCDirecto(referenceCurrent); // Duty cycle directo
+        //Uso el valor predecido de dutycycle para la referencia dada porelusuario
+            if (feedforwardEnabled[i]) {
+                dutyCycleAux = feedforward(referenceCurrent, i);
+            } else {
+                dutyCycleAux = getDCDirecto(referenceCurrent)*10.0f; // o la lógica que corresponda 
+            }
+            break;
+        default:   
+            dutyCycleAux = MIN_DUTY; 
+            break;
         }
-
-       
-
-        //writeSerialComln(String("Modo NONE - Duty Cycle directo: ") + String(dutyCycleAux));
-        break;
-      default:   
-        dutyCycleAux = MIN_DUTY; 
-        //writeSerialComln(String("Modo desconocido - Duty Cycle: 0"));
-        break;
     }
 
 
@@ -351,8 +349,9 @@ void CargaElectronicaUpdate(){
 
 
     // Aplicar el duty cycle actual (invertido)
-    int pwmValue = (int)((dutyCycleAux) * pwmConfig[i].max_duty / 100.0f);  //max_duty es el valor maximo de duty para la frecuencia del pwm
-    ledcWrite(pwmConfig[i].channel,pwmValue); 
+    pwmValue[i] = (int)(dutyCycleAux * pwmConfig[i].max_duty / 100.0f);
+
+    ledcWrite(pwmConfig[i].channel, pwmValue[i]);
 
 
 }
@@ -543,14 +542,17 @@ bool setCurrentReference_mA(float reference, int index){
         writeSerialComln(String("ERROR: Index fuera de rango: ") + String(index));
         return false;
     }
-    if(reference < 0.0f) {
-        writeSerialComln(String("ERROR: Corriente negativa: ") + String(reference) + String(" mA"));
+    if (reference < -1.0f) {
+        writeSerialComln("ERROR: Referencia invalida. Use -1 o 0..6000 mA");
         return false;
     }
     
     // Si el setpoint cambió y el modo es PID, activar feedforward
     // Solo activar feedforward si está habilitado para este canal y estoa en modocorriente
-    if (reference != currentReference_mA[index] && feedforwardEnabled[index] && getPIDMode(index) == 'i') {
+    if (reference >= 0.0f &&
+        reference != currentReference_mA[index] &&
+        feedforwardEnabled[index] &&
+        getPIDMode(index) == 'i') {
         PID_EnableFeedforward(index);
     }
 
@@ -1115,4 +1117,10 @@ static float getMaxDutyEfectivo(int i) {
     if (lim > 100.0f) lim = 100.0f;                 // tope físico
     if (lim < 0.0f)   lim = 0.0f;
     return lim;
+}
+
+int getDutyCycle(int index) {
+    if (index < 0 || index >= NUMBER_OF_ELECTRONIC_LOADS) return -1;
+
+    return pwmValue[index];
 }

@@ -62,5 +62,5 @@ bool isIdentificacionRunning(int pin);
 PuntoIdentificado_t* getIdentificacionNVS(int pin, int* numPuntos);
 bool borrarIdentificacionNVS(int pin);
 bool isIdentificacionStoredNVS(int pin);
-
+int getDutyCycle(int index);
 #endif

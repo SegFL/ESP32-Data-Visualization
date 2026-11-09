@@ -135,11 +135,12 @@ float getDCPID(float setPoint, int index) {
         error = -error;
     }
 
-    if (setPoint < 0.0f) {
-        p->integral   = 0.0f;
+    if (setPoint == -1.0f) {
+        p->integral = 0.0f;
         p->error_prev = 0.0f;
-        p->duty       = MIN_DUTY;
-        return MIN_DUTY;  // 10% = 0 mA, apagado funcional
+        p->duty = MIN_DUTY;
+        p->use_feedforward = false;
+        return MIN_DUTY;
     }
 
     // ── Ciclo de STEP: aplicar feedforward y salir ──

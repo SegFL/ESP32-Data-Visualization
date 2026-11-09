@@ -45,15 +45,10 @@ float shuntVoltageOffset_mV[NUMBER_OF_SENSORS] = {
     0.0f
 };
 
-// ── Calibración interna del registro INA219 ───────────────────────────────
-// Corriente máxima esperada por sensor (A). Determina la resolución del Cal register.
-// Ajustar según el circuito: I_max_posible = Vshunt_max / R_shunt
-//   Sensor 0: 0.12Ω → 160mV/0.12 = 1.33A  → usamos 1.5A con margen
-//   Sensor 1: 0.10Ω → 160mV/0.10 = 1.60A  → usamos 1.5A
-//   Sensor 2: 0.10Ω → 160mV/0.10 = 1.60A  → usamos 1.5A
-//   Sensor 3: 0.05Ω → 160mV/0.05 = 3.20A  → usamos 3.0A
+
 //   Sensor 4: ADS1115, no aplica
 static const float INA219_MAX_CURRENT_A[NUMBER_OF_SENSORS] = { 1.5f, 1.5f, 6.4f, 6.4f, 0.0f};
+// Podria aumetnar la corriente de lso primeros sensores pq aumente el pga a 8(podrian ser hasta 3.2A)
 
 // Valores calculados en ina219Init() y reutilizados en cada lectura
 static uint16_t ina219_cal_value[NUMBER_OF_SENSORS]  = {0};
@@ -152,10 +147,7 @@ void ina219Init() {
             cal &= 0xFFFE;  // bit D0 es void (datasheet sección 8.6), siempre 0
             ina219_cal_value[i] = cal;     
 
-            uint16_t pga = (i == 2 || i == 3)
-                            ? ((uint16_t)(0b11 << 11))   // PGA_8 → ±320mV
-                            : ((uint16_t)(0b10 << 11));  // PGA_4 → ±160mV
-
+            uint16_t pga = (uint16_t)(0b11 << 11);       // PGA_8 → ±320mV
             // Registro de configuración
             ina219_config_reg[i] = INA219_CONFIG_BRNG_32V
                                  | pga
