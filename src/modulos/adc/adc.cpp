@@ -92,7 +92,10 @@ static void enviarSensor(const ADCData& temp, int i) {
  *   listos (oculta la 2da conversión) → 6) leer corriente ADS
  */
 
+
 void leerADC() {
+
+
     ADCData dataArr[NUMBER_OF_SENSORS];
     memset(dataArr, 0, sizeof(dataArr));
 

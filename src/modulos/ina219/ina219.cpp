@@ -31,7 +31,7 @@ const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
 };*/
 const float R_SHUNT_INV[NUMBER_OF_SENSORS] = {
     10.025f,            // ≈ 1/0.03638 Ω (calibrado con tester a 1356.2 mA)
-    10.025f,
+    14.67f,
     19.03f,
     19.27f,
     0.0f
@@ -76,15 +76,16 @@ float busOffset_V[NUMBER_OF_SENSORS] = {0.01006f, 0.01413f, 0.01215f, 0.0f, 0.0f
 
 //ADS1115
 float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 0.0f, 0.0f, 13.114f};
+float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 0.0f, 0.0f, 13.1796f};
 
 float ads_offset_i[NUMBER_OF_SENSORS];
 float ads_gain_i[NUMBER_OF_SENSORS];
 
 //ACS712
-float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.3772f}; //Si l alimentacion es de 3.3V, el offset es 1.65V. Si la alimentacion es de 5V, el offset es 2.5V
-float acs_gain[NUMBER_OF_SENSORS] = {1.0f, 1.0f, 1.0f, 1.0f,  11093.0f};//La sensibilidad tambien depende de VCC
-
+float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.375f}; //Si l alimentacion es de 3.3V, el offset es 1.65V. Si la alimentacion es de 5V, el offset es 2.5V
+float acs_gain[NUMBER_OF_SENSORS] = {
+    1, 1, 1, 1, 9866.23f
+};
 
 
 // ── Variables globales ────────────────────────────────────────────────────
@@ -493,6 +494,8 @@ void ads_prepareCurrent(ADCData dataArr[NUMBER_OF_SENSORS]) {
 void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
     if (!sensorAvailable[ADS_SENSOR_IDX]) return;
 
+    static float meas_filtered[NUMBER_OF_SENSORS] = {0.0f};
+
     float raw     = ads1115[ADS_SENSOR_IDX]->getValue();
     float voltage = ads1115[ADS_SENSOR_IDX]->toVoltage(raw) * 11.0f; // divisor resistivo a la salida del ACS712
     float deltaV  = voltage - acs_offset_V[ADS_SENSOR_IDX];
@@ -501,8 +504,12 @@ void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
     const float cur = applyCurrentCalib(ADS_SENSOR_IDX, rawCur);
     const float busV = dataArr[ADS_SENSOR_IDX].busVoltage_V; // ya seteado por ads_readVoltage
 
+    meas_filtered[ADS_SENSOR_IDX] =
+        0.5f * cur + 0.5f * meas_filtered[ADS_SENSOR_IDX];
+
+
     dataArr[ADS_SENSOR_IDX].shuntVoltage_mV = 0.0f;
-    dataArr[ADS_SENSOR_IDX].current_mA      = cur;
+    dataArr[ADS_SENSOR_IDX].current_mA = meas_filtered[ADS_SENSOR_IDX];
     dataArr[ADS_SENSOR_IDX].power_mW        = cur * busV;
     dataArr[ADS_SENSOR_IDX].timestampMillis = timestamp;
 

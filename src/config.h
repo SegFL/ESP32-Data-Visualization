@@ -11,10 +11,10 @@
 #define ESP32_WROOM
 ////////////////////////////////////PINES
 #ifdef ESP32_WROOM      //Conversor usb 38 PINES
-    #define PWM_0_PIN 17
-    #define PWM_1_PIN 16
-    #define PWM_2_PIN 4
-    #define PWM_3_PIN 18
+    #define PWM_0_PIN 16
+    #define PWM_1_PIN 17
+    #define PWM_2_PIN 18
+    #define PWM_3_PIN 4
     #define PWM_4_PIN 19 //En realidad no se usa ni esta routeado
     #define I2C_SDA_PIN 13
     #define I2C_SCL_PIN  27
