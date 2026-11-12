@@ -59,8 +59,8 @@ void calibrationManagerInit();
 // Configura PID en modo corriente, distribuye numPuntos setpoints entre
 // 0 y I_max del sensor, y arranca la acumulación de muestras.
 // segundosPorPunto: tiempo de estabilización + acumulación por punto.
-bool calibracionAbsolutaInit(int sensor, int numPuntos, int segundosPorPunto);
 
+bool calibracionAbsolutaInit(int sensor, int numPuntos, int segundosPorPunto);
 // Llamar desde CargaElectronicaUpdate() en cada tick.
 // Acumula muestras; al completar un punto congela el promedio y espera al usuario.
 void calibracionUpdate(int sensor, float muestra_mA);
@@ -78,9 +78,15 @@ void calibracionAbortar(int sensor);
 // Inicia calibración relativa entre sensor_entrada y sensor_carga.
 // No bloqueante: usa el mismo mecanismo de calibracionUpdate().
 // El usuario NO ingresa valores: los toma automáticamente del sensor_entrada.
-bool calibracionRelativaInit(int sensorEntrada, int sensorCarga,
+bool calibracionRelativaInit(int sensorCarga,
                               int numPuntos, int segundosPorPunto);
 
+bool setSensorCargaActivo(int ref);
+
+void setAbsoluteCalibFlag(int sensor, bool activa);
+bool getAbsoluteCalibFlag(int sensor);
+void setRelativeCalibFlag(int sensor, bool activa);
+bool getRelativeCalibFlag(int sensor);
 
 // ── NVS ──────────────────────────────────────────────────────────────────
 bool guardarCalibracionAbsoluta(int sensor);

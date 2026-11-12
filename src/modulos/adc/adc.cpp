@@ -57,6 +57,7 @@ static void enviarSensor(const ADCData& temp, int i) {
         lastPower_mW[i]     = temp.power_mW;
         xSemaphoreGive(currentMutex);
     }
+
 }
 
 

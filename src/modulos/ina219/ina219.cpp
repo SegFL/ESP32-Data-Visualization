@@ -76,15 +76,15 @@ float busOffset_V[NUMBER_OF_SENSORS] = {0.01006f, 0.01413f, 0.01215f, 0.0f, 0.0f
 
 //ADS1115
 float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 0.0f, 0.0f, 13.1796f};
+float ads_gain_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 13.093f};   
 
 float ads_offset_i[NUMBER_OF_SENSORS];
 float ads_gain_i[NUMBER_OF_SENSORS];
 
 //ACS712
-float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.375f}; //Si l alimentacion es de 3.3V, el offset es 1.65V. Si la alimentacion es de 5V, el offset es 2.5V
+float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.4259f};
 float acs_gain[NUMBER_OF_SENSORS] = {
-    1, 1, 1, 1, 9866.23f
+    1, 1, 1, 1, 9610.6f
 };
 
 
@@ -213,11 +213,7 @@ bool getData(ADCData& data, int const sensor) {
     const float cur        = applyCurrentCalib(sensor, rawCur);
     const float busV       = applyVoltageCalib(sensor, getCalibratedVoltageADS1115(sensor));
 
-    char buf[128];
-    snprintf(buf, sizeof(buf),
-        "[S4] raw=%.2f  +absoluta=%.2f  +relativa=%.2f mA",
-        rawCur, afterAbs, cur);
-    //writeSerialComln(String(buf));
+
 
     data.shuntVoltage_mV = 0.0f;
     data.busVoltage_V    = busV;

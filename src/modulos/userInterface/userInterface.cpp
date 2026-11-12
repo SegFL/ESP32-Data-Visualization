@@ -777,6 +777,7 @@ if(menu->id == 19) {
             int sensor, numPuntos, segundosPorPunto;
             if (sscanf(data.c_str(), "%d,%d,%d", &sensor, &numPuntos, &segundosPorPunto) == 3) {
                 if (!calibracionAbsolutaInit(sensor, numPuntos, segundosPorPunto)) {
+                
                     writeSerialComln(String("Error al iniciar calibracion. Verifica: sensor(0-") +
                                     String(NUMBER_OF_SENSORS - 1) + String("), puntos(2-") +
                                     String(CALIB_MAX_POINTS) + String("), seg/punto(1-60)"));
@@ -791,19 +792,19 @@ if(menu->id == 19) {
 
 
     if (menu->id == 41) {
-        int sensorCarga, numPuntos, segundosPorPunto;
-        if (sscanf(data.c_str(), "%d,%d,%d", &sensorCarga, &numPuntos, &segundosPorPunto) == 3) {
-            if (!calibracionRelativaInit(4, sensorCarga, numPuntos, segundosPorPunto)) {
+        int sensorRef, numPuntos, segundosPorPunto;
+        if (sscanf(data.c_str(), "%d,%d,%d", &sensorRef, &numPuntos, &segundosPorPunto) == 3) {
+            if (!calibracionRelativaInit(sensorRef, numPuntos, segundosPorPunto)) {
                 writeSerialComln(String("Error al iniciar calibracion relativa. Verifica:"));
-                writeSerialComln(String("  sensor_carga(0-") + String(NUMBER_OF_SENSORS - 1) + String(")"));
+                writeSerialComln(String("  sensor_ref (INA219: 0-3, no el 4)"));
                 writeSerialComln(String("  puntos(2-")       + String(CALIB_MAX_POINTS)       + String(")"));
                 writeSerialComln(String("  seg/punto(1-60)"));
-            }else{
+            } else {
                 refrescarMenuActual();
             }
         } else {
-            writeSerialComln("Formato invalido. Use: <sensor_carga>,<puntos>,<seg_por_punto>");
-            writeSerialComln("Ejemplo: 1,6,10  (carga=sensor1, 6 puntos, 10seg c/u)");
+            writeSerialComln("Formato invalido. Use: <sensor_ref>,<puntos>,<seg_por_punto>");
+            writeSerialComln("Ejemplo: 1,6,10  (ref=INA219 1, 6 puntos, 10seg c/u)");
         }
     }
 
