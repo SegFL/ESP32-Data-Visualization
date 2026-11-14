@@ -820,16 +820,25 @@ if (menu->id == 43) {
         if (tipo == 'a') {
             bool nuevo = !getAbsoluteCalibFlag(sensor);
             setAbsoluteCalibFlag(sensor, nuevo);
-            refrescarMenuActual();
+            if (!persistirFlagAbsoluta(sensor)) writeSerialComln("Flag NO persistido (sin tabla o error NVS)");   
             writeSerialComln(String("Calibracion absoluta sensor ") + String(sensor) +
                             String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
         } else if (tipo == 'r') {
-            bool nuevo = !getRelativeCalibFlag(sensor);
-            setRelativeCalibFlag(sensor, nuevo);
+            if (sensor == NUMBER_OF_SENSORS - 1) {   // sensor 4 = CALIB_SENSOR_REL
+                writeSerialComln("La relativa se selecciona por referencia INA219 (0-3)");
+                return;
+            }
+            if (getSensorCargaActivo() == sensor) {
+                setSensorCargaActivo(-1);                        // deseleccionar
+                writeSerialComln(String("Relativa DESACTIVADA (ref ") + String(sensor) + ")");
+            } else if (setSensorCargaActivo(sensor)) {           // valida tabla y persiste
+                writeSerialComln(String("Relativa ACTIVADA con ref ") + String(sensor));
+            } else {
+                writeSerialComln("Esa referencia no tiene tabla relativa activa");
+            }
             refrescarMenuActual();
-            writeSerialComln(String("Calibracion relativa sensor ") + String(sensor) +
-                            String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
-        } else {
+        }
+        else {
             writeSerialComln("Tipo invalido. Use 'a' para absoluta o 'r' para relativa");
         }
     } else {
@@ -839,17 +848,15 @@ if (menu->id == 43) {
 
 if(menu->id==44){
 
-        uint8_t index;
-        bool state;
-        if (sscanf(data.c_str(), "%d,%d", &index, &state) != 2) {
+        int index, state;
+        if (sscanf(data.c_str(), "%d,%d", &index, &state) != 2){
             writeSerialComln("Error: formato invalido. Use <index>,<0/1>");
             return;
         }
     
 
 
-        state=setSensorState(index,state);
-
+        setSensorState((uint8_t)index, state != 0);
         refrescarMenuActual();
 
         writeSerialComln(
@@ -1220,11 +1227,25 @@ static void onEnterNode(MenuNode* n) {
                 imprimirCalibracionRelativa(i);
             }
         }break;
-        case 43:{
-            for(int i=0;i<NUMBER_OF_SENSORS;i++){
-                writeSerialComln(String("Sensor ") + String(i) + String(": Calibracion absoluta: ") + (getAbsoluteCalibFlag(i) ? "ACTIVADA" : "DESACTIVADA") + String(", Calibracion relativa: ") + (getRelativeCalibFlag(i) ? "ACTIVADA" : "DESACTIVADA"));
+        case 43: {
+            int refActiva = getSensorCargaActivo();   // -1 = ninguna
+
+            for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
+                String linea = String("Sensor ") + String(i) +
+                            String(": absoluta ") + (getAbsoluteCalibFlag(i) ? "ACTIVADA" : "DESACTIVADA");
+
+                if (i == NUMBER_OF_SENSORS - 1) {
+                    // El sensor 4 es el que se corrige: no tiene tabla propia como referencia
+                    linea += String(" | relativa: se corrige con ref ") +
+                            (refActiva >= 0 ? String(refActiva) : String("NINGUNA"));
+                } else {
+                    linea += String(" | tabla relativa: ") + (getRelativeCalibFlag(i) ? "VALIDA" : "NO") +
+                            (refActiva == i ? String(" (SELECCIONADA)") : String(""));
+                }
+                writeSerialComln(linea);
             }
-        }break;
+        }
+        break;
         case 44: {
             writeSerialComln("Seleccionar sensores activos");
             for(int i=0; i<NUMBER_OF_SENSORS;i++){
@@ -1618,3 +1639,5 @@ void refrescarMenuActual() {
     printNode(menu);
     onEnterNode(menu);
 }
+
+

@@ -323,6 +323,7 @@ static void procesarYGuardarRelativa(int sensorRef) {
     restaurarModo(sensorRef);
     setCurrentReference_mA(0.0f, sensorRef);
     liberarCalibracion(sensorRef);
+    setSensorCargaActivo(sensorRef);   // activa y persiste la referencia recién calibrada
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -791,8 +792,20 @@ bool cargarCalibracionNVS(int sensor) {
     char key[32];
     bool cargadaAlguna = false;
 
+    int32_t flagAbs = 0;
+    makeCalibKey(key, sizeof(key), "abs_flag", sensor);
+    if (nvs_get_i32(handle, key, &flagAbs) == ESP_OK) {
+        tablaCorreinte[sensor].activa = (bool)flagAbs;
+    }
+
     // ── Absoluta ──────────────────────────────────────────────────────────
     {
+        int32_t flagAbs = 0;
+        makeCalibKey(key, sizeof(key), "abs_flag", sensor);
+        if (nvs_get_i32(handle, key, &flagAbs) == ESP_OK) {
+            tablaCorreinte[sensor].activa = (bool)flagAbs;
+        }
+
         int32_t npts = 0;
         makeCalibKey(key, sizeof(key), "abs_npts", sensor);
         if (nvs_get_i32(handle, key, &npts) == ESP_OK &&
@@ -803,10 +816,7 @@ bool cargarCalibracionNVS(int sensor) {
             if (nvs_get_blob(handle, key, tablaCorreinte[sensor].puntos, &blobSize) == ESP_OK) {
                 tablaCorreinte[sensor].count = npts;
 
-                int32_t flag = 1;
-                makeCalibKey(key, sizeof(key), "abs_flag", sensor);
-                nvs_get_i32(handle, key, &flag);
-                tablaCorreinte[sensor].activa = (bool)flag;
+
 
                 writeSerialComln(
                     String("[CALIB] Calibración absoluta cargada — sensor ") + String(sensor) +
@@ -1029,4 +1039,21 @@ void setRelativeCalibFlag(int sensor, bool activa) {
 bool getRelativeCalibFlag(int sensor) {
     if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return false;
     return tablaRelativa[sensor].activa;
+}
+
+
+bool persistirFlagAbsoluta(int sensor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return false;
+    nvs_handle_t h;
+    esp_err_t e = nvs_open(CALIB_NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (e == ESP_OK) {
+        char key[32];
+        makeCalibKey(key, sizeof(key), "abs_flag", sensor);
+        e = nvs_set_i32(h, key, (int32_t)tablaCorreinte[sensor].activa);
+        if (e == ESP_OK) e = nvs_commit(h);
+        nvs_close(h);
+    }
+    writeSerialComln(String("[CALIB] persist abs_flag sensor ") + String(sensor) +
+                     String(" err=") + String((int)e));
+    return e == ESP_OK;
 }

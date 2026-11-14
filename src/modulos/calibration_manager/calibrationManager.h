@@ -116,4 +116,5 @@ bool  getAbsoluteCalibFlag(int sensor);
 void  setRelativeCalibFlag(int sensor, bool activa);
 bool  getRelativeCalibFlag(int sensor);
 
-
+int getSensorCargaActivo();
+bool persistirFlagAbsoluta(int sensor);
