@@ -63,7 +63,6 @@ static void enviarSensor(const ADCData& temp, int i) {
 
 
 /*
- * ── Orquestación de lectura de sensores (INA219 x4 + ADS1115) ─────────────
  *
  * El ADS1115 es de conversión única por canal (no hay 2 ADCs en paralelo,
  * datasheet TI SBAS444): cada cambio de mux + conversión tarda ~1.16ms a

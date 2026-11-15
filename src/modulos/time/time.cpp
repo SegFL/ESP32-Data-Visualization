@@ -2,6 +2,7 @@
 
 // Configuración de Wi-Fi
 bool saveManualDateTime(int year_, int month_, int day_, int hour_, int minute_, int second_);
+#define WIFI_ENABLED 0
 
 
 static unsigned long millisInit = 0; // milisegundos desde el incio del programa
@@ -23,22 +24,17 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Argent
 void enviarComandoCrearArchivo();
 
 void TimeInit() {
-    // 1. Intentar conectar WiFi y usar NTP
+#if WIFI_ENABLED
     connectWiFi();
-    if (checkWiFi() == true) {
-        updateDateTimeNTP();
-    }// 2. Si NO hay WiFi → usar fecha guardada manualmente
-    else {
-        if (loadManualDateTime()) {
-            WiFiConected = false;
-            enviarComandoCrearArchivo();
-            isFileCreated = true;
-        } else {
-            // Caso de error: no hay WiFi ni fecha manual
-            WiFiConected = false;
-            isFileCreated = false;
-        }
-    }
+    if (checkWiFi()) { updateDateTimeNTP(); return; }
+#else
+    WiFi.persistent(false);
+    WiFi.mode(WIFI_OFF);        // radio apagado
+#endif
+    WiFiConected = false;
+    loadManualDateTime();       // si no hay fecha guardada, epochTime queda en 0
+    enviarComandoCrearArchivo();
+    isFileCreated = true;
 }
 
 void updateDateTimeNTP(){

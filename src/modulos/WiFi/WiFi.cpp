@@ -2,8 +2,7 @@
 #include <modulos/serialCom/serialCom.h>
 
 String ssid = "Claro";
-String password = "17727630";
-
+String password = "";
 
 
 
