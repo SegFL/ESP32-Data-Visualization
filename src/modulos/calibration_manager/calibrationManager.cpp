@@ -224,7 +224,555 @@ static void calcularSetpoints(float* setpoints, int numPuntos, float imax_mA) {
 static void imponerSetpoint(int sensor, float setpoint_mA) {
     setCurrentReference_mA(setpoint_mA, sensor);
 }
+// ════════════════════════════════════════════════════════════════════════════
+//  CALIBRACIÓN DE TENSIÓN (absoluta y relativa)
+//
+//  PEGAR en calibrationManager.cpp justo DESPUÉS de la función imponerSetpoint()
+//  y ANTES de la sección "Procesado final y guardado en NVS".
+//
+//  - La tensión no la impone el equipo (depende de la fuente externa), así que
+//    la rutina espera al usuario en cada punto:
+//        valor >= 0 : el usuario ya ajustó la fuente. Absoluta: es la tensión
+//                     real medida con el tester. Relativa: tensión nominal
+//                     (solo informativa; la real sale del INA219 de referencia).
+//        valor = -1 : SALTEAR el punto (no se guarda; la curva interpola o
+//                     extrapola con los puntos que sí se guardaron).
+//        valor = -2 : ABORTAR la rutina.
+//  - Absoluta: par (lectura del sensor, valor del usuario).
+//  - Relativa: par (lectura del sensor 4, lectura del INA219 de referencia).
+//    Las dos usan la tensión ya corregida por firmware y por la absoluta.
+// ════════════════════════════════════════════════════════════════════════════
 
+#define V_CAL_MUESTRAS_POR_SEG 20          // leerADC() corre cada 50 ms
+#define CALIB_NVS_KEY_VREF     "vrel_ref"
+
+typedef enum {
+    VCAL_ESPERA_USUARIO,
+    VCAL_ESTABILIZANDO,
+    VCAL_ACUMULANDO
+} VCalFase_t;
+
+typedef struct {
+    int         sensor;               // absoluta: el calibrado; relativa: INA219 de referencia
+    CalibTipo_t tipo;
+    int         numPuntos;
+    int         muestras_por_punto;
+    int         puntoActual;
+    int         muestraActual;
+    int         llamadas;
+    int         guardados;            // puntos válidos (no salteados)
+    int         nMuestras;
+    double      sumaMed;              // acumulador del sensor que se corrige
+    double      sumaRef;              // acumulador de la referencia (solo relativa)
+    float       valorIngresado;       // tensión ingresada por el usuario (absoluta)
+    int         prev_refActivo;
+    bool        prev_flagAbs;
+    VCalFase_t  fase;
+    CalibPar_t  resultados[CALIB_MAX_POINTS];
+} CalibV_t;
+
+static CalibV_t*    calibV[NUMBER_OF_SENSORS] = {nullptr};
+static CalibTabla_t tablaTension[NUMBER_OF_SENSORS];      // absoluta
+static CalibTabla_t tablaTensionRel[NUMBER_OF_SENSORS];   // relativa, indexada por INA219 de referencia
+static int          refTensionActiva = -1;                // INA219 cuya tabla relativa se aplica al sensor 4
+
+// ── NVS ─────────────────────────────────────────────────────────────────────
+static void persistirRefTension(int ref) {
+    nvs_handle_t h;
+    if (nvs_open(CALIB_NVS_NAMESPACE, NVS_READWRITE, &h) == ESP_OK) {
+        nvs_set_i32(h, CALIB_NVS_KEY_VREF, (int32_t)ref);
+        nvs_commit(h);
+        nvs_close(h);
+    }
+}
+
+static bool guardarTensionAbs(int sensor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return false;
+    CalibTabla_t* t = &tablaTension[sensor];
+    nvs_handle_t h;
+    if (nvs_open(CALIB_NVS_NAMESPACE, NVS_READWRITE, &h) != ESP_OK) {
+        writeSerialComln(String("[CALIB V] Error al abrir NVS (absoluta)"));
+        return false;
+    }
+    char key[32];
+    makeCalibKey(key, sizeof(key), "vabs_npts", sensor);
+    nvs_set_i32(h, key, t->count);
+    makeCalibKey(key, sizeof(key), "vabs_data", sensor);
+    nvs_set_blob(h, key, t->puntos, sizeof(CalibPar_t) * t->count);
+    makeCalibKey(key, sizeof(key), "vabs_flag", sensor);
+    nvs_set_i32(h, key, (int32_t)t->activa);
+    nvs_commit(h);
+    nvs_close(h);
+    writeSerialComln(String("[CALIB V] Absoluta guardada - sensor ") + String(sensor));
+    return true;
+}
+
+static bool guardarTensionRel(int ref) {
+    if (ref < 0 || ref >= NUMBER_OF_SENSORS) return false;
+    CalibTabla_t* t = &tablaTensionRel[ref];
+    nvs_handle_t h;
+    if (nvs_open(CALIB_NVS_NAMESPACE, NVS_READWRITE, &h) != ESP_OK) {
+        writeSerialComln(String("[CALIB V] Error al abrir NVS (relativa)"));
+        return false;
+    }
+    char key[32];
+    makeCalibKey(key, sizeof(key), "vrel_npts", ref);
+    nvs_set_i32(h, key, t->count);
+    makeCalibKey(key, sizeof(key), "vrel_data", ref);
+    nvs_set_blob(h, key, t->puntos, sizeof(CalibPar_t) * t->count);
+    makeCalibKey(key, sizeof(key), "vrel_flag", ref);
+    nvs_set_i32(h, key, (int32_t)t->activa);
+    nvs_commit(h);
+    nvs_close(h);
+    writeSerialComln(String("[CALIB V] Relativa guardada - ref ") + String(ref));
+    return true;
+}
+
+static void cargarTensionNVS(int sensor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return;
+    nvs_handle_t h;
+    if (nvs_open(CALIB_NVS_NAMESPACE, NVS_READONLY, &h) != ESP_OK) return;
+
+    char key[32];
+    int32_t npts = 0;
+    int32_t flag = 0;
+
+    // Absoluta
+    makeCalibKey(key, sizeof(key), "vabs_npts", sensor);
+    if (nvs_get_i32(h, key, &npts) == ESP_OK && npts > 0 && npts <= CALIB_MAX_POINTS) {
+        size_t blobSize = sizeof(CalibPar_t) * npts;
+        makeCalibKey(key, sizeof(key), "vabs_data", sensor);
+        if (nvs_get_blob(h, key, tablaTension[sensor].puntos, &blobSize) == ESP_OK) {
+            tablaTension[sensor].count = npts;
+            flag = 0;
+            makeCalibKey(key, sizeof(key), "vabs_flag", sensor);
+            if (nvs_get_i32(h, key, &flag) == ESP_OK) tablaTension[sensor].activa = (bool)flag;
+            writeSerialComln(String("[CALIB V] Absoluta cargada - sensor ") + String(sensor) +
+                             String(" | ") + String((int)npts) + String(" puntos"));
+        }
+    }
+
+    // Relativa
+    npts = 0;
+    makeCalibKey(key, sizeof(key), "vrel_npts", sensor);
+    if (nvs_get_i32(h, key, &npts) == ESP_OK && npts > 0 && npts <= CALIB_MAX_POINTS) {
+        size_t blobSize = sizeof(CalibPar_t) * npts;
+        makeCalibKey(key, sizeof(key), "vrel_data", sensor);
+        if (nvs_get_blob(h, key, tablaTensionRel[sensor].puntos, &blobSize) == ESP_OK) {
+            tablaTensionRel[sensor].count = npts;
+            flag = 1;
+            makeCalibKey(key, sizeof(key), "vrel_flag", sensor);
+            nvs_get_i32(h, key, &flag);
+            tablaTensionRel[sensor].activa = (bool)flag;
+            writeSerialComln(String("[CALIB V] Relativa cargada - ref ") + String(sensor) +
+                             String(" | ") + String((int)npts) + String(" puntos"));
+        }
+    }
+    nvs_close(h);
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+// interpolate() necesita 'measured' creciente: ordeno por si el usuario no
+// aplicó las tensiones en orden ascendente
+static void ordenarPares(CalibPar_t* p, int n) {
+    for (int i = 1; i < n; i++) {
+        CalibPar_t k = p[i];
+        int j = i - 1;
+        while (j >= 0 && p[j].measured > k.measured) {
+            p[j + 1] = p[j];
+            j--;
+        }
+        p[j + 1] = k;
+    }
+}
+
+static void liberarCalibV(int s) {
+    if (s < 0 || s >= NUMBER_OF_SENSORS || calibV[s] == nullptr) return;
+    free(calibV[s]);
+    calibV[s] = nullptr;
+}
+
+// Devuelve las flags al estado previo a la rutina (aborto o fin)
+static void restaurarV(int s) {
+    CalibV_t* c = calibV[s];
+    if (c == nullptr) return;
+    if (c->tipo == CALIB_ABSOLUTA) {
+        tablaTension[s].activa = c->prev_flagAbs;
+        if (s == CALIB_SENSOR_REL) refTensionActiva = c->prev_refActivo;
+    } else {
+        refTensionActiva = c->prev_refActivo;
+    }
+}
+
+static void promptPuntoV(int s) {
+    CalibV_t* c = calibV[s];
+    if (c == nullptr) return;
+    String msg = String("[CALIB V] Punto ") + String(c->puntoActual + 1) + String("/") +
+                 String(c->numPuntos) + String(" | Ajusta la fuente y espera que estabilice. ");
+    if (c->tipo == CALIB_ABSOLUTA) {
+        msg += "Ingresa la tension REAL (V), -1 para saltear el punto, -2 para abortar:";
+    } else {
+        msg += "Ingresa la tension nominal (V, solo informativa), -1 para saltear, -2 para abortar:";
+    }
+    writeSerialComln(msg);
+}
+
+static void finalizarV(int s) {
+    CalibV_t* c = calibV[s];
+    if (c == nullptr) return;
+
+    const int n = c->guardados;
+    if (n < 2) {
+        writeSerialComln(String("[CALIB V] Menos de 2 puntos validos: no se guarda nada"));
+        calibracionTensionAbortar(s);
+        return;
+    }
+
+    ordenarPares(c->resultados, n);
+    restaurarV(s);
+
+    if (c->tipo == CALIB_ABSOLUTA) {
+        tablaTension[s].count  = n;
+        tablaTension[s].activa = true;
+        for (int i = 0; i < n; i++) tablaTension[s].puntos[i] = c->resultados[i];
+        guardarTensionAbs(s);
+
+        // Las relativas se calcularon sobre las absolutas vigentes: si cambia la base, quedan invalidas
+        if (s == CALIB_SENSOR_REL) {
+            for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
+                if (tablaTensionRel[i].activa) {
+                    tablaTensionRel[i].activa = false;
+                    if (tablaTensionRel[i].count > 0) guardarTensionRel(i);
+                }
+            }
+            refTensionActiva = -1;
+            persistirRefTension(-1);
+            writeSerialComln(String("[CALIB V] Absoluta del sensor 4 cambio: relativas invalidadas"));
+        } else if (tablaTensionRel[s].activa) {
+            tablaTensionRel[s].activa = false;
+            if (tablaTensionRel[s].count > 0) guardarTensionRel(s);
+            if (refTensionActiva == s) {
+                refTensionActiva = -1;
+                persistirRefTension(-1);
+            }
+            writeSerialComln(String("[CALIB V] Absoluta del sensor ") + String(s) +
+                             String(" cambio: su relativa fue invalidada"));
+        }
+
+        writeSerialComln(String("[CALIB V] === ABSOLUTA SENSOR ") + String(s) + String(" ==="));
+        for (int i = 0; i < n; i++) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "  [%d] sensor=%.3f V  real=%.3f V",
+                     i, c->resultados[i].measured, c->resultados[i].real);
+            writeSerialComln(String(buf));
+        }
+        writeSerialComln(String("[CALIB V] === FIN ==="));
+        liberarCalibV(s);
+
+    } else {
+        tablaTensionRel[s].count  = n;
+        tablaTensionRel[s].activa = true;
+        for (int i = 0; i < n; i++) tablaTensionRel[s].puntos[i] = c->resultados[i];
+        guardarTensionRel(s);
+
+        writeSerialComln(String("[CALIB V] === RELATIVA sensor") + String(CALIB_SENSOR_REL) +
+                         String(" vs ref INA219 ") + String(s) + String(" ==="));
+        for (int i = 0; i < n; i++) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "  [%d] sensor%d=%.3f V  ref%d=%.3f V",
+                     i, CALIB_SENSOR_REL, c->resultados[i].measured, s, c->resultados[i].real);
+            writeSerialComln(String(buf));
+        }
+        writeSerialComln(String("[CALIB V] === FIN ==="));
+        liberarCalibV(s);
+        setTensionRefActiva(s);      // activa y persiste la referencia recien calibrada
+    }
+}
+
+static void cerrarPuntoV(int s) {
+    CalibV_t* c = calibV[s];
+    if (c == nullptr) return;
+
+    const int   nm   = (c->nMuestras > 0) ? c->nMuestras : 1;
+    const float med  = (float)(c->sumaMed / (double)nm);
+    const float real = (c->tipo == CALIB_ABSOLUTA) ? c->valorIngresado
+                                                   : (float)(c->sumaRef / (double)nm);
+
+    c->resultados[c->guardados].measured = med;
+    c->resultados[c->guardados].real     = real;
+    c->guardados++;
+
+    writeSerialComln(String("[CALIB V] Punto ") + String(c->puntoActual + 1) +
+                     String(" | sensor=") + String(med, 3) +
+                     String(" V | ") + String(c->tipo == CALIB_ABSOLUTA ? "real=" : "ref=") +
+                     String(real, 3) + String(" V"));
+
+    c->puntoActual++;
+    c->muestraActual = 0;
+    c->llamadas      = 0;
+
+    if (c->puntoActual >= c->numPuntos) {
+        finalizarV(s);
+    } else {
+        c->fase = VCAL_ESPERA_USUARIO;
+        promptPuntoV(s);
+    }
+}
+
+// ── API pública de la calibración de tensión ────────────────────────────────
+static CalibV_t* allocCalibV(int sensor, int numPuntos, int segundosPorPunto, CalibTipo_t tipo) {
+    CalibV_t* c = (CalibV_t*)malloc(sizeof(CalibV_t));
+    if (c == nullptr) {
+        writeSerialComln(String("[CALIB V] Sin memoria"));
+        return nullptr;
+    }
+    memset(c, 0, sizeof(CalibV_t));
+    c->sensor             = sensor;
+    c->tipo               = tipo;
+    c->numPuntos          = numPuntos;
+    c->muestras_por_punto = segundosPorPunto * V_CAL_MUESTRAS_POR_SEG;
+    c->prev_refActivo     = refTensionActiva;
+    c->fase               = VCAL_ESPERA_USUARIO;
+    return c;
+}
+
+bool calibracionTensionAbsolutaInit(int sensor, int numPuntos, int segundosPorPunto) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) {
+        writeSerialComln(String("[CALIB V] sensor invalido"));
+        return false;
+    }
+    if (numPuntos < 2 || numPuntos > CALIB_MAX_POINTS) {
+        writeSerialComln(String("[CALIB V] numPuntos debe estar entre 2 y ") + String(CALIB_MAX_POINTS));
+        return false;
+    }
+    if (segundosPorPunto <= 0 || segundosPorPunto > 60) {
+        writeSerialComln(String("[CALIB V] segundosPorPunto invalido (1-60)"));
+        return false;
+    }
+    if (calibV[sensor] != nullptr) calibracionTensionAbortar(sensor);
+
+    CalibV_t* c = allocCalibV(sensor, numPuntos, segundosPorPunto, CALIB_ABSOLUTA);
+    if (c == nullptr) return false;
+
+    // Para calibrar uso la tension cruda (solo firmware): apago la absoluta de este sensor
+    // y, si es el sensor 4, tambien la relativa que se le aplica encima
+    c->prev_flagAbs = tablaTension[sensor].activa;
+    tablaTension[sensor].activa = false;
+    if (sensor == CALIB_SENSOR_REL) refTensionActiva = -1;
+
+    calibV[sensor] = c;
+    writeSerialComln(String("[CALIB V] Absoluta iniciada - sensor=") + String(sensor) +
+                     String(" puntos=") + String(numPuntos) +
+                     String(" seg/punto=") + String(segundosPorPunto));
+    promptPuntoV(sensor);
+    return true;
+}
+
+bool calibracionTensionRelativaInit(int sensorRef, int numPuntos, int segundosPorPunto) {
+    if (sensorRef < 0 || sensorRef >= NUMBER_OF_SENSORS || sensorRef == CALIB_SENSOR_REL) {
+        writeSerialComln(String("[CALIB V] Referencia invalida (debe ser un INA219)"));
+        return false;
+    }
+    if (numPuntos < 2 || numPuntos > CALIB_MAX_POINTS) {
+        writeSerialComln(String("[CALIB V] numPuntos debe estar entre 2 y ") + String(CALIB_MAX_POINTS));
+        return false;
+    }
+    if (segundosPorPunto <= 0 || segundosPorPunto > 60) {
+        writeSerialComln(String("[CALIB V] segundosPorPunto invalido (1-60)"));
+        return false;
+    }
+    if (calibV[CALIB_SENSOR_REL] != nullptr) {
+        writeSerialComln(String("[CALIB V] Hay una absoluta del sensor 4 en curso: terminala o abortala antes"));
+        return false;
+    }
+    if (calibV[sensorRef] != nullptr) calibracionTensionAbortar(sensorRef);
+
+    CalibV_t* c = allocCalibV(sensorRef, numPuntos, segundosPorPunto, CALIB_RELATIVA);
+    if (c == nullptr) return false;
+
+    // El sensor 4 se lee solo con su absoluta: apago la relativa mientras calibro
+    refTensionActiva = -1;
+
+    calibV[sensorRef] = c;
+    writeSerialComln(String("[CALIB V] Relativa iniciada - sensor") + String(CALIB_SENSOR_REL) +
+                     String(" vs ref INA219 ") + String(sensorRef) +
+                     String(" puntos=") + String(numPuntos) +
+                     String(" seg/punto=") + String(segundosPorPunto));
+    promptPuntoV(sensorRef);
+    return true;
+}
+
+// Indice de la rutina que espera un valor del usuario (-1 si ninguna)
+int calibracionTensionEsperando() {
+    for (int s = 0; s < NUMBER_OF_SENSORS; s++) {
+        if (calibV[s] != nullptr && calibV[s]->fase == VCAL_ESPERA_USUARIO) return s;
+    }
+    return -1;
+}
+
+bool calibracionTensionRecibirValor(int sensor, float valor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return false;
+    CalibV_t* c = calibV[sensor];
+    if (c == nullptr || c->fase != VCAL_ESPERA_USUARIO) {
+        writeSerialComln(String("[CALIB V] No hay rutina esperando valor en el sensor ") + String(sensor));
+        return false;
+    }
+
+    if (valor <= -1.5f) {                       // -2: abortar
+        calibracionTensionAbortar(sensor);
+        return true;
+    }
+
+    if (valor <= -0.5f) {                       // -1: saltear el punto
+        writeSerialComln(String("[CALIB V] Punto ") + String(c->puntoActual + 1) +
+                         String(" salteado (no se guarda)"));
+        c->puntoActual++;
+        if (c->puntoActual >= c->numPuntos) {
+            finalizarV(sensor);
+        } else {
+            promptPuntoV(sensor);
+        }
+        return true;
+    }
+
+    c->valorIngresado = valor;
+    c->fase           = VCAL_ESTABILIZANDO;
+    c->llamadas       = 0;
+    c->muestraActual  = 0;
+    c->nMuestras      = 0;
+    c->sumaMed        = 0.0;
+    c->sumaRef        = 0.0;
+    writeSerialComln(String("[CALIB V] Midiendo punto ") + String(c->puntoActual + 1) +
+                     String(" (no muevas la fuente)..."));
+    return true;
+}
+
+// v[i] = tension de cada sensor [V], ya corregida por firmware.
+// Llamar una vez por ciclo desde leerADC().
+void calibracionTensionUpdate(const float* v) {
+    if (v == nullptr) return;
+    for (int s = 0; s < NUMBER_OF_SENSORS; s++) {
+        CalibV_t* c = calibV[s];
+        if (c == nullptr || c->fase == VCAL_ESPERA_USUARIO) continue;
+
+        if (c->fase == VCAL_ESTABILIZANDO) {
+            c->llamadas++;
+            if (c->llamadas >= CALIB_STANDBY_S * V_CAL_MUESTRAS_POR_SEG) {
+                c->fase          = VCAL_ACUMULANDO;
+                c->muestraActual = 0;
+                c->nMuestras     = 0;
+                c->sumaMed       = 0.0;
+                c->sumaRef       = 0.0;
+            }
+            continue;
+        }
+
+        // VCAL_ACUMULANDO: promedio de la segunda mitad de la ventana
+        if (c->muestraActual >= c->muestras_por_punto / 2) {
+            if (c->tipo == CALIB_ABSOLUTA) {
+                c->sumaMed += (double)v[s];
+            } else {
+                c->sumaMed += (double)v[CALIB_SENSOR_REL];
+                c->sumaRef += (double)v[s];
+            }
+            c->nMuestras++;
+        }
+        c->muestraActual++;
+
+        if (c->muestraActual >= c->muestras_por_punto) {
+            cerrarPuntoV(s);                    // puede liberar calibV[s]
+        }
+    }
+}
+
+void calibracionTensionAbortar(int sensor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return;
+    if (calibV[sensor] == nullptr) return;
+    writeSerialComln(String("[CALIB V] Abortando calibracion de tension - sensor ") + String(sensor));
+    restaurarV(sensor);
+    liberarCalibV(sensor);
+}
+
+// ── Flags, referencia activa e impresión ────────────────────────────────────
+bool getAbsoluteTensionFlag(int sensor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return false;
+    return tablaTension[sensor].activa;
+}
+
+void setAbsoluteTensionFlag(int sensor, bool activa) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return;
+    tablaTension[sensor].activa = activa;
+}
+
+bool getRelativeTensionFlag(int sensor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return false;
+    return tablaTensionRel[sensor].activa;
+}
+
+bool persistirFlagTensionAbsoluta(int sensor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return false;
+    nvs_handle_t h;
+    esp_err_t e = nvs_open(CALIB_NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (e == ESP_OK) {
+        char key[32];
+        makeCalibKey(key, sizeof(key), "vabs_flag", sensor);
+        e = nvs_set_i32(h, key, (int32_t)tablaTension[sensor].activa);
+        if (e == ESP_OK) e = nvs_commit(h);
+        nvs_close(h);
+    }
+    return e == ESP_OK;
+}
+
+bool setTensionRefActiva(int ref) {
+    if (ref != -1) {
+        if (ref < 0 || ref >= NUMBER_OF_SENSORS || ref == CALIB_SENSOR_REL) {
+            writeSerialComln(String("[CALIB V] Referencia invalida: ") + String(ref));
+            return false;
+        }
+        if (!(tablaTensionRel[ref].activa && tablaTensionRel[ref].count > 0)) {
+            writeSerialComln(String("[CALIB V] Sin tabla relativa activa para ref ") + String(ref));
+            return false;
+        }
+    }
+    refTensionActiva = ref;
+    persistirRefTension(ref);
+    writeSerialComln(String("[CALIB V] Referencia relativa de tension activa: ") + String(ref));
+    return true;
+}
+
+int getTensionRefActiva() {
+    return refTensionActiva;
+}
+
+void imprimirCalibracionTensionAbsoluta(int sensor) {
+    if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return;
+    CalibTabla_t* t = &tablaTension[sensor];
+    writeSerialComln(String("[CALIB V] === Absoluta sensor ") + String(sensor) + String(" ==="));
+    writeSerialComln(String("  Activa: ") + String(t->activa ? "SI" : "NO"));
+    writeSerialComln(String("  Puntos: ") + String(t->count));
+    for (int i = 0; i < t->count; i++) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "  [%d] sensor=%.3f V  real=%.3f V",
+                 i, t->puntos[i].measured, t->puntos[i].real);
+        writeSerialComln(String(buf));
+    }
+}
+
+void imprimirCalibracionTensionRelativa(int sensorRef) {
+    if (sensorRef < 0 || sensorRef >= NUMBER_OF_SENSORS - 1) return;
+    CalibTabla_t* t = &tablaTensionRel[sensorRef];
+    writeSerialComln(String("[CALIB V] === Relativa sensor") + String(CALIB_SENSOR_REL) +
+                     String(" vs ref ") + String(sensorRef) + String(" ==="));
+    writeSerialComln(String("  Activa: ") + String(t->activa ? "SI" : "NO") +
+                     String(refTensionActiva == sensorRef ? "  (SELECCIONADA)" : ""));
+    writeSerialComln(String("  Puntos: ") + String(t->count));
+    for (int i = 0; i < t->count; i++) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "  [%d] sensor%d=%.3f V  ref=%.3f V",
+                 i, CALIB_SENSOR_REL, t->puntos[i].measured, t->puntos[i].real);
+        writeSerialComln(String(buf));
+    }
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Procesado final y guardado en NVS — equivalente a procesarYGuardar()
@@ -412,6 +960,11 @@ void calibrationManagerInit() {
         // Intentar cargar desde NVS
         cargarCalibracionNVS(i);
         imprimirCalibracionAbsoluta(i);
+        memset(&tablaTension[i],    0, sizeof(CalibTabla_t));
+        memset(&tablaTensionRel[i], 0, sizeof(CalibTabla_t));
+        calibV[i] = nullptr;
+        cargarTensionNVS(i);
+
     }
 
     // Restaurar la referencia relativa que estaba activa
@@ -428,6 +981,21 @@ void calibrationManagerInit() {
             sensorCargaActivo = (int)ref;
         }
     }
+
+        refTensionActiva = -1;
+    {
+        nvs_handle_t h;
+        int32_t ref = -1;
+        if (nvs_open(CALIB_NVS_NAMESPACE, NVS_READONLY, &h) == ESP_OK) {
+            if (nvs_get_i32(h, CALIB_NVS_KEY_VREF, &ref) != ESP_OK) ref = -1;
+            nvs_close(h);
+        }
+        if (ref >= 0 && ref < NUMBER_OF_SENSORS && ref != CALIB_SENSOR_REL &&
+            tablaTensionRel[ref].activa && tablaTensionRel[ref].count > 0) {
+            refTensionActiva = (int)ref;
+        }
+    }
+
 
     writeSerialComln(String("[CALIB] calibrationManager inicializado | ref relativa activa: ") +
                      String(sensorCargaActivo));
@@ -891,11 +1459,16 @@ float applyCurrentCalib(int sensor, float current_mA) {
 }
 
 float applyVoltageCalib(int sensor, float voltage_V) {
-    // Por ahora solo calibración absoluta de tensión
-    // (la relativa de tensión se puede agregar con otra tabla si se necesita)
     if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) return voltage_V;
-    // Placeholder: si en el futuro se agrega tablaVoltaje[], se interpola acá
-    return voltage_V;
+    float result = voltage_V;
+    if (tablaTension[sensor].activa && tablaTension[sensor].count > 0) {
+        result = interpolate(tablaTension[sensor], result);
+    }
+    if (sensor == CALIB_SENSOR_REL && refTensionActiva >= 0 && refTensionActiva < NUMBER_OF_SENSORS) {
+        const CalibTabla_t& rel = tablaTensionRel[refTensionActiva];
+        if (rel.activa && rel.count > 0) result = interpolate(rel, result);
+    }
+    return result;
 }
 
 

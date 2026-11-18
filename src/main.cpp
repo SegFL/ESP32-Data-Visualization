@@ -5,7 +5,6 @@
 #include "modulos/userInterface/userInterface.h"
 #include "modulos/queueCom/queueCom.h"
 #include "modulos/time/time.h"
-#include "modulos/dac/dac.h"
 #include "modulos/led_dirver/led_driver.h"
 #include "esp_timer.h"
 #include "config.h"
@@ -146,7 +145,7 @@ void setup() {
   adcInit();
   TimeInit();
   CargaElectronicaInit();
-  dacInit();
+  
 
   led_driver_init();
 

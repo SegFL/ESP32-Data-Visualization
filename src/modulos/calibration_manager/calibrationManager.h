@@ -118,3 +118,18 @@ bool  getRelativeCalibFlag(int sensor);
 
 int getSensorCargaActivo();
 bool persistirFlagAbsoluta(int sensor);
+
+bool calibracionTensionAbsolutaInit(int sensor, int numPuntos, int segundosPorPunto);
+bool calibracionTensionRelativaInit(int sensorRef, int numPuntos, int segundosPorPunto);
+bool calibracionTensionRecibirValor(int sensor, float valor);
+int  calibracionTensionEsperando();
+void calibracionTensionUpdate(const float* v);
+void calibracionTensionAbortar(int sensor);
+void imprimirCalibracionTensionAbsoluta(int sensor);
+void imprimirCalibracionTensionRelativa(int sensorRef);
+bool getAbsoluteTensionFlag(int sensor);
+void setAbsoluteTensionFlag(int sensor, bool activa);
+bool getRelativeTensionFlag(int sensor);
+bool persistirFlagTensionAbsoluta(int sensor);
+bool setTensionRefActiva(int ref);
+int  getTensionRefActiva();

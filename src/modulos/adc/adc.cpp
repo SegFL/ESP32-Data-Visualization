@@ -7,6 +7,7 @@
 #include <modulos/time/time.h>
 #include <modulos/carga_electronica/carga_electronica.h>
 #include <config.h>
+#include <modulos/calibration_manager/calibrationManager.h>
 
 #define ADS_CONVERSION_TIME_US 1200
 
@@ -94,39 +95,35 @@ static void enviarSensor(const ADCData& temp, int i) {
 
 
 void leerADC() {
-
-
     ADCData dataArr[NUMBER_OF_SENSORS];
     memset(dataArr, 0, sizeof(dataArr));
 
-    // 1) Disparar conversión de TENSIÓN del ADS1115
+    // 1) VCC (A1 vs GND) mientras se leen los 4 INA219
+    ads_prepareVcc(dataArr);
+    esp_timer_start_once(adsTimerHandle, ADS_CONVERSION_TIME_US);
+    leerINA219(dataArr);
+    xSemaphoreTake(adsReadySem, pdMS_TO_TICKS(5));
+    ads_readVcc(dataArr);
+
+    // 2) Tensión (A2-A3) mientras se envían INA219 0 y 1
     ads_prepareVoltage(dataArr);
     esp_timer_start_once(adsTimerHandle, ADS_CONVERSION_TIME_US);
-
-    // 2) Mientras convierte, leer los 4 INA219
-    leerINA219(dataArr);
-
-    // 3) Esperar fin de conversión de tensión y leerla
+    enviarSensor(dataArr[0], 0);
+    enviarSensor(dataArr[1], 1);
     xSemaphoreTake(adsReadySem, pdMS_TO_TICKS(5));
     ads_readVoltage(dataArr, adsConversionDoneTimestamp);
 
-    // 4) Disparar conversión de CORRIENTE
+    // 3) Corriente (A0-A1) mientras se envían INA219 2 y 3
     ads_prepareCurrent(dataArr);
     esp_timer_start_once(adsTimerHandle, ADS_CONVERSION_TIME_US);
-
-    // 5) Mientras convierte, enviar los datos de los 4 INA219 ya listos
-    for (int i = 0; i < 4; i++) {
-        enviarSensor(dataArr[i], i);
-    }
-
-    // 6) Esperar fin de conversión de corriente, leerla y enviarla
+    enviarSensor(dataArr[2], 2);
+    enviarSensor(dataArr[3], 3);
     xSemaphoreTake(adsReadySem, pdMS_TO_TICKS(5));
     ads_readCurrent(dataArr, adsConversionDoneTimestamp);
     enviarSensor(dataArr[NUMBER_OF_SENSORS - 1], NUMBER_OF_SENSORS - 1);
-
-
-
-
+    float vArr[NUMBER_OF_SENSORS];
+    for (int i = 0; i < NUMBER_OF_SENSORS; i++) vArr[i] = dataArr[i].busVoltage_V;
+    calibracionTensionUpdate(vArr);
 }
 static volatile uint32_t mutexFails;
 float getLastCurrentData(int i) {

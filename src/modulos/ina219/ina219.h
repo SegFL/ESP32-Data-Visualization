@@ -22,3 +22,7 @@ void ads_prepareCurrent(ADCData dataArr[NUMBER_OF_SENSORS]);
 // en el mismo ciclo, para que busVoltage_V esté actualizado.
 
 void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp);
+
+void ads_prepareVcc(ADCData dataArr[NUMBER_OF_SENSORS]);
+
+void ads_readVcc(ADCData dataArr[NUMBER_OF_SENSORS]);

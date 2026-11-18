@@ -11,7 +11,7 @@
 #include <modulos/simuladorCurvas/simuladorCurvas.h>
 #include <modulos/pid/pid.h>
 #include <modulos/estructura_datos/estructura_datos.h>
-#include <modulos/dac/dac.h>
+
 
 #define ARRAY_SIZE 3 // Tamaño del arreglo de curvas
 
@@ -262,7 +262,30 @@ bool loadConfiguration() {
 
 
 
-
+static bool procesarEntradaTension(const String& data, bool relativa) {
+    int esperando = calibracionTensionEsperando();
+    if (esperando >= 0) {
+        float valor;
+        if (sscanf(data.c_str(), "%f", &valor) == 1) {
+            calibracionTensionRecibirValor(esperando, valor);
+        } else {
+            writeSerialComln("Formato invalido. Ingresa la tension en V, -1 para saltear el punto o -2 para abortar");
+        }
+        return true;
+    }
+    if (data.length() > 2 && (data[0] == 'v' || data[0] == 'V') && data[1] == ',') {
+        int s, p, seg;
+        if (sscanf(data.c_str() + 2, "%d,%d,%d", &s, &p, &seg) != 3) {
+            writeSerialComln("Formato invalido. Use: v,<sensor>,<puntos>,<seg_por_punto> (ej: v,4,6,10)");
+            return true;
+        }
+        bool ok = relativa ? calibracionTensionRelativaInit(s, p, seg)
+                           : calibracionTensionAbsolutaInit(s, p, seg);
+        if (!ok) writeSerialComln("Error al iniciar la calibracion de tension. Revisa sensor, puntos y seg/punto (1-60)");
+        return true;
+    }
+    return false;
+}
 
 void procesarDatos(String data) {
         
@@ -774,6 +797,7 @@ if(menu->id == 19) {
         }
 
         if (!esperandoAlguno) {
+            if (procesarEntradaTension(data, false)) return;
             int sensor, numPuntos, segundosPorPunto;
             if (sscanf(data.c_str(), "%d,%d,%d", &sensor, &numPuntos, &segundosPorPunto) == 3) {
                 if (!calibracionAbsolutaInit(sensor, numPuntos, segundosPorPunto)) {
@@ -792,6 +816,7 @@ if(menu->id == 19) {
 
 
     if (menu->id == 41) {
+        if (procesarEntradaTension(data, true)) return;
         int sensorRef, numPuntos, segundosPorPunto;
         if (sscanf(data.c_str(), "%d,%d,%d", &sensorRef, &numPuntos, &segundosPorPunto) == 3) {
             if (!calibracionRelativaInit(sensorRef, numPuntos, segundosPorPunto)) {
@@ -807,42 +832,59 @@ if(menu->id == 19) {
             writeSerialComln("Ejemplo: 1,6,10  (ref=INA219 1, 6 puntos, 10seg c/u)");
         }
     }
-
 if (menu->id == 43) {
     int sensor;
-    char tipo;
-    if (sscanf(data.c_str(), "%d,%c", &sensor, &tipo) == 2) {
-        tipo = tolower(tipo);
+    char tipoStr[8];
+    if (sscanf(data.c_str(), "%d,%7s", &sensor, tipoStr) == 2) {
+        for (char* p = tipoStr; *p; ++p) *p = tolower(*p);
         if (sensor < 0 || sensor >= NUMBER_OF_SENSORS) {
             writeSerialComln(String("Sensor invalido. Use 0-") + String(NUMBER_OF_SENSORS - 1));
             return;
         }
-        if (tipo == 'a') {
+        if (strcmp(tipoStr, "a") == 0) {
             bool nuevo = !getAbsoluteCalibFlag(sensor);
             setAbsoluteCalibFlag(sensor, nuevo);
-            if (!persistirFlagAbsoluta(sensor)) writeSerialComln("Flag NO persistido (sin tabla o error NVS)");   
+            if (!persistirFlagAbsoluta(sensor)) writeSerialComln("Flag NO persistido (sin tabla o error NVS)");
             writeSerialComln(String("Calibracion absoluta sensor ") + String(sensor) +
                             String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
-        } else if (tipo == 'r') {
-            if (sensor == NUMBER_OF_SENSORS - 1) {   // sensor 4 = CALIB_SENSOR_REL
+        } else if (strcmp(tipoStr, "r") == 0) {
+            if (sensor == NUMBER_OF_SENSORS - 1) {
                 writeSerialComln("La relativa se selecciona por referencia INA219 (0-3)");
                 return;
             }
             if (getSensorCargaActivo() == sensor) {
-                setSensorCargaActivo(-1);                        // deseleccionar
+                setSensorCargaActivo(-1);
                 writeSerialComln(String("Relativa DESACTIVADA (ref ") + String(sensor) + ")");
-            } else if (setSensorCargaActivo(sensor)) {           // valida tabla y persiste
+            } else if (setSensorCargaActivo(sensor)) {
                 writeSerialComln(String("Relativa ACTIVADA con ref ") + String(sensor));
             } else {
                 writeSerialComln("Esa referencia no tiene tabla relativa activa");
             }
             refrescarMenuActual();
-        }
-        else {
-            writeSerialComln("Tipo invalido. Use 'a' para absoluta o 'r' para relativa");
+        } else if (strcmp(tipoStr, "va") == 0) {
+            bool nuevo = !getAbsoluteTensionFlag(sensor);
+            setAbsoluteTensionFlag(sensor, nuevo);
+            if (!persistirFlagTensionAbsoluta(sensor)) writeSerialComln("Flag NO persistido");
+            writeSerialComln(String("Tension absoluta sensor ") + String(sensor) +
+                            String(nuevo ? ": ACTIVADA" : ": DESACTIVADA"));
+        } else if (strcmp(tipoStr, "vr") == 0) {
+            if (sensor == NUMBER_OF_SENSORS - 1) {
+                writeSerialComln("La relativa se selecciona por referencia INA219 (0-3)");
+                return;
+            }
+            if (getTensionRefActiva() == sensor) {
+                setTensionRefActiva(-1);
+                writeSerialComln(String("Tension relativa DESACTIVADA (ref ") + String(sensor) + ")");
+            } else if (setTensionRefActiva(sensor)) {
+                writeSerialComln(String("Tension relativa ACTIVADA con ref ") + String(sensor));
+            } else {
+                writeSerialComln("Esa referencia no tiene tabla relativa de tension activa");
+            }
+        } else {
+            writeSerialComln("Tipo invalido. Use a, r (corriente) o va, vr (tension)");
         }
     } else {
-        writeSerialComln("Formato invalido. Use: <sensor>,<tipo> (ej: 3,r o 4,a)");
+        writeSerialComln("Formato invalido. Use: <sensor>,<tipo> (ej: 3,r | 4,a | 4,va | 2,vr)");
     }
 }
 
@@ -1219,32 +1261,39 @@ static void onEnterNode(MenuNode* n) {
         
         case 40:{
             for(int i=0;i<NUMBER_OF_SENSORS;i++){
-                imprimirCalibracionAbsoluta(i);
+                imprimirCalibracionAbsoluta(i);          // corriente (ya estaba)
+                imprimirCalibracionTensionAbsoluta(i);   // tension (nuevo)
             }
         }break;
         case 41:{
             for(int i=0;i<NUMBER_OF_SENSORS;i++){
-                imprimirCalibracionRelativa(i);
+                imprimirCalibracionRelativa(i);          // corriente (ya estaba)
+                imprimirCalibracionTensionRelativa(i);   // tension (nuevo)
             }
         }break;
         case 43: {
-            int refActiva = getSensorCargaActivo();   // -1 = ninguna
-
+            const int refI = getSensorCargaActivo();     // -1 = ninguna
+            const int refV = getTensionRefActiva();      // -1 = ninguna
+            writeSerialComln("Estado de calibraciones (I = corriente, V = tension):");
             for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
-                String linea = String("Sensor ") + String(i) +
-                            String(": absoluta ") + (getAbsoluteCalibFlag(i) ? "ACTIVADA" : "DESACTIVADA");
-
+                String li = String("Sensor ") + String(i) + String(" | I abs(a): ") +
+                            (getAbsoluteCalibFlag(i) ? "ON" : "OFF");
+                String lv = String("         | V abs(va): ") +
+                            (getAbsoluteTensionFlag(i) ? "ON" : "OFF");
                 if (i == NUMBER_OF_SENSORS - 1) {
-                    // El sensor 4 es el que se corrige: no tiene tabla propia como referencia
-                    linea += String(" | relativa: se corrige con ref ") +
-                            (refActiva >= 0 ? String(refActiva) : String("NINGUNA"));
+                    li += String(" | rel: usa ref ") + (refI >= 0 ? String(refI) : String("NINGUNA"));
+                    lv += String(" | rel: usa ref ") + (refV >= 0 ? String(refV) : String("NINGUNA"));
                 } else {
-                    linea += String(" | tabla relativa: ") + (getRelativeCalibFlag(i) ? "VALIDA" : "NO") +
-                            (refActiva == i ? String(" (SELECCIONADA)") : String(""));
+                    li += String(" | rel(r): tabla ") + (getRelativeCalibFlag(i) ? "VALIDA" : "NO") +
+                        (refI == i ? String(" (SELECCIONADA)") : String(""));
+                    lv += String(" | rel(vr): tabla ") + (getRelativeTensionFlag(i) ? "VALIDA" : "NO") +
+                        (refV == i ? String(" (SELECCIONADA)") : String(""));
                 }
-                writeSerialComln(linea);
+                writeSerialComln(li);
+                writeSerialComln(lv);
             }
         }
+
         break;
         case 44: {
             writeSerialComln("Seleccionar sensores activos");
@@ -1296,9 +1345,26 @@ static void onEnterNode(MenuNode* n) {
             case 34: writeSerialComln("Ingrese <index>,<0/1> para deshabilitar/habilitar feedforward y presione 'ENTER'"); break;
             case 35: writeSerialComln("Ingrese el numero de curva y la variable a estabilizar (V para voltaje, I para corriente) en formato index,variable y presione 'ENTER'"); break;
             case 38: writeSerialComln("Ingrese <pin>,<numPuntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
-            case 40: writeSerialComln("Ingrese <pin>,<#puntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
-            case 41: writeSerialComln("Ingrese <sensor_carga>,<#puntos>,<tiempo_por_punto_s> y presione 'ENTER'"); break;
-            case 43: writeSerialComln("Ingrese <sensor>,<tipo> (ej: 3,r o 4,a) y presione 'ENTER'"); break;
+case 40: writeSerialComln("ABSOLUTA: corrige un sensor contra el valor real medido con el tester.\r\n"
+                          "  Corriente: <sensor>,<puntos>,<seg>     (ej: 4,6,10)\r\n"
+                          "  Tension:   v,<sensor>,<puntos>,<seg>   (ej: v,4,6,10)\r\n"
+                          "En tension, por cada punto ajuste la fuente y escriba la tension real en V.\r\n"
+                          "  -1 = saltear el punto   -2 = abortar\r\n"
+                          "Escriba y presione 'ENTER'"); break;
+
+case 41: writeSerialComln("RELATIVA: corrige el sensor 4 (ACS712+ADS1115) contra un INA219 de referencia.\r\n"
+                          "  Corriente: <ref>,<puntos>,<seg>        (ej: 1,6,10)\r\n"
+                          "  Tension:   v,<ref>,<puntos>,<seg>      (ej: v,1,6,10)\r\n"
+                          "<ref> es un INA219 (0-3). En tension escriba la tension nominal por punto\r\n"
+                          "  (solo informativa)  -1 = saltear el punto   -2 = abortar\r\n"
+                          "Escriba y presione 'ENTER'"); break;
+
+case 43: writeSerialComln("Cada orden ALTERNA entre ACTIVADA y DESACTIVADA: <sensor>,<tipo>\r\n"
+                          "  a  = absoluta  de corriente      va = absoluta  de tension\r\n"
+                          "  r  = relativa  de corriente      vr = relativa  de tension\r\n"
+                          "En r y vr el sensor es la referencia INA219 (0-3), y solo una a la vez.\r\n"
+                          "La relativa corrige siempre al sensor 4. Ej: 4,a  4,va  1,r  1,vr\r\n"
+                          "Escriba y presione 'ENTER'"); break;
             case 44: writeSerialComln("Ingrese <sensor>,<0/1> para desactivar/activar el envio de datos del sensor");break;
             case 45: writeSerialComln("Ingrese <pin> para borrar la identificacion del canal y presione 'ENTER'"); break;
             default: break;

@@ -7,6 +7,8 @@
 #include <config.h>
 
 
+#define ADS_CONVERSION_TIME_US 1400
+
 
 
 typedef enum {
@@ -75,18 +77,23 @@ float busGain[NUMBER_OF_SENSORS]     = {1.0058f, 1.00898f, 1.01247f, 1.0f, 1.0f}
 float busOffset_V[NUMBER_OF_SENSORS] = {0.01006f, 0.01413f, 0.01215f, 0.0f, 0.0f};
 
 //ADS1115
-float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-float ads_gain_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 13.093f};   
+float ads_offset_v[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 4.0f};
+float ads_gain_v[NUMBER_OF_SENSORS]   = {0.0f, 0.0f, 0.0f, 0.0f, 13.186f};
 
 float ads_offset_i[NUMBER_OF_SENSORS];
 float ads_gain_i[NUMBER_OF_SENSORS];
 
 //ACS712
+/*
 float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, 2.4259f};
 float acs_gain[NUMBER_OF_SENSORS] = {
     1, 1, 1, 1, 9610.6f
 };
-
+*/
+// Offset [V]: salida del ACS a 0 A, referida a VCC=5V, sin el VCC/2. Antes 2.4259, ahora ≈0
+float acs_offset_V[NUMBER_OF_SENSORS] = {0.0f, 0.0f, 0.0f, 0.0f, -0.0819f};
+// Ganancia [mA/V] = 1/sensibilidad. Misma unidad que antes (100 mV/A → 10000)
+float acs_gain[NUMBER_OF_SENSORS]     = {1, 1, 1, 1, 10710.0f};
 
 // ── Variables globales ────────────────────────────────────────────────────
 ADS1115* ads1115[NUMBER_OF_SENSORS];
@@ -123,7 +130,7 @@ void ina219Init() {
     writeSerialComln(String("Inicializando sensores INA219 y ADS1115..."));
 
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-    Wire.setClock(1000000);
+    Wire.setClock(400000);
 
     for (int i = 0; i < NUMBER_OF_SENSORS; i++) {
 
@@ -459,10 +466,7 @@ void leerINA219(ADCData dataArr[NUMBER_OF_SENSORS]) {
 // ── ADS1115: request/read separados ──────────────────────────────────────
 static const int ADS_SENSOR_IDX = NUMBER_OF_SENSORS - 1; // ajustar si cambia el layout
 
-void ads_prepareVoltage(ADCData dataArr[NUMBER_OF_SENSORS]) {
-    if (!sensorAvailable[ADS_SENSOR_IDX]) return;
-    ads1115[ADS_SENSOR_IDX]->requestADC_Differential_2_3();
-}
+
 
 void ads_readVoltage(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
     if (!sensorAvailable[ADS_SENSOR_IDX]) return;
@@ -482,40 +486,67 @@ void ads_readVoltage(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
 
 }
 
+
+
+
+
+
+
+
+
+// Calibración ACS712 ratiométrica
+//ACS712 (medición ratiométrica: A0 = Vout/ACS_SIG_DIV, A1 = VCC/ACS_A1_DIV)
+//ACS712 (medición ratiométrica: A0 = Vout/ACS_SIG_DIV, A1 = VCC/ACS_A1_DIV)
+static const float ACS_SIG_DIV = 11.0f;
+static const float ACS_A1_DIV  = 22.0f;   
+
+
+static float vA1_V[NUMBER_OF_SENSORS] = {0};
+
+static inline float acs_dV5(float D_V, float vA1_V) {
+    return D_V * ACS_SIG_DIV * 5.0f / (vA1_V * ACS_A1_DIV);
+}
+static inline float acs_current_mA(int s, float D_V, float vA1_V) {
+    return (acs_dV5(D_V, vA1_V) - acs_offset_V[s]) * acs_gain[s];
+}
+void ads_prepareVcc(ADCData dataArr[NUMBER_OF_SENSORS]) {
+    if (!sensorAvailable[ADS_SENSOR_IDX]) return;
+    ads1115[ADS_SENSOR_IDX]->setGain(8);
+    ads1115[ADS_SENSOR_IDX]->requestADC(1);                   // AIN1 vs GND
+}
+void ads_readVcc(ADCData dataArr[NUMBER_OF_SENSORS]) {
+    if (!sensorAvailable[ADS_SENSOR_IDX]) return;
+    vA1_V[ADS_SENSOR_IDX] = ads1115[ADS_SENSOR_IDX]->toVoltage(ads1115[ADS_SENSOR_IDX]->getValue());
+}
+
+void ads_prepareVoltage(ADCData dataArr[NUMBER_OF_SENSORS]) {
+    if (!sensorAvailable[ADS_SENSOR_IDX]) return;
+    ads1115[ADS_SENSOR_IDX]->setGain(1);                      // explícito
+    ads1115[ADS_SENSOR_IDX]->requestADC_Differential_2_3();
+}
+
 void ads_prepareCurrent(ADCData dataArr[NUMBER_OF_SENSORS]) {
     if (!sensorAvailable[ADS_SENSOR_IDX]) return;
+    ads1115[ADS_SENSOR_IDX]->setGain(16);                    // ±0.256 V
     ads1115[ADS_SENSOR_IDX]->requestADC_Differential_0_1();
 }
 
 void ads_readCurrent(ADCData dataArr[NUMBER_OF_SENSORS], uint32_t timestamp) {
     if (!sensorAvailable[ADS_SENSOR_IDX]) return;
-
     static float meas_filtered[NUMBER_OF_SENSORS] = {0.0f};
+    const int s = ADS_SENSOR_IDX;
 
-    float raw     = ads1115[ADS_SENSOR_IDX]->getValue();
-    float voltage = ads1115[ADS_SENSOR_IDX]->toVoltage(raw) * 11.0f; // divisor resistivo a la salida del ACS712
-    float deltaV  = voltage - acs_offset_V[ADS_SENSOR_IDX];
-    float rawCur  = deltaV * acs_gain[ADS_SENSOR_IDX];
+    const float D    = ads1115[s]->toVoltage(ads1115[s]->getValue());
+    const float vA1  = vA1_V[s];
+    const float busV = dataArr[s].busVoltage_V;
 
-    const float cur = applyCurrentCalib(ADS_SENSOR_IDX, rawCur);
-    const float busV = dataArr[ADS_SENSOR_IDX].busVoltage_V; // ya seteado por ads_readVoltage
+    if (vA1 >= 0.15f) {
+        const float cur = applyCurrentCalib(s, acs_current_mA(s, D, vA1));
+        meas_filtered[s] = 0.5f * cur + 0.5f * meas_filtered[s];
 
-    meas_filtered[ADS_SENSOR_IDX] =
-        0.5f * cur + 0.5f * meas_filtered[ADS_SENSOR_IDX];
-
-
-    dataArr[ADS_SENSOR_IDX].shuntVoltage_mV = 0.0f;
-    dataArr[ADS_SENSOR_IDX].current_mA = meas_filtered[ADS_SENSOR_IDX];
-    dataArr[ADS_SENSOR_IDX].power_mW        = cur * busV;
-    dataArr[ADS_SENSOR_IDX].timestampMillis = timestamp;
-
-
-
-
-
+    }                                                        // si no, conserva el último valor
+    dataArr[s].shuntVoltage_mV = 0.0f;
+    dataArr[s].current_mA      = meas_filtered[s];
+    dataArr[s].power_mW        = meas_filtered[s] * busV;
+    dataArr[s].timestampMillis = timestamp;
 }
-
-
-
-
-
